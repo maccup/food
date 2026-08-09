@@ -1,4 +1,4 @@
-const CACHE_NAME = 'food-v3';
+const CACHE_NAME = 'food-v4';
 
 // Never hand respondWith() an undefined - a cache miss while offline must
 // still resolve to a real Response or the page throws
@@ -52,7 +52,13 @@ self.addEventListener('activate', (event) => {
 // stu i aplikacja wygladala jak goly HTML. Teraz idzie przez siec, a adres
 // niesie skrot tresci, wiec i brzeg CDN nie poda starego pliku.
 function isStaticAsset(pathname) {
-  return pathname.startsWith('/js/') || pathname.startsWith('/icons/') ||
+  // Arkusz stylow wraca do cache, bo jego adres niesie skrot tresci
+  // (patrz scripts/stamp-assets.mjs). Nowa wersja to nowy adres, wiec
+  // strategia "najpierw cache" nie moze juz podac pliku sprzed wdrozenia,
+  // a strona zachowuje wyglad bez sieci. Poza cache zostaje tylko dlatego,
+  // ze adres jest wersjonowany: bez tego wracamy do awarii z 09.08.
+  return pathname.startsWith('/css/') || pathname.startsWith('/js/') ||
+    pathname.startsWith('/icons/') || pathname.startsWith('/fonts/') ||
     pathname === '/manifest.json' || pathname === '/favicon.svg' || pathname === '/favicon.ico';
 }
 
