@@ -77,6 +77,12 @@ export async function renderDay(c: any, date: string) {
     const [h, m] = String(r.time_of_day).split(':').map(Number);
     return h * 60 + (m || 0) >= nowMin;
   }) ?? suppRows.find((r: any) => r.taken !== 1);
+
+  const overdueSupps = nowMin === null ? 0 : suppRows.filter((r: any) => {
+    if (r.taken === 1) return false;
+    const [h, m] = String(r.time_of_day).split(':').map(Number);
+    return h * 60 + (m || 0) < nowMin;
+  }).length;
   const breachBy = new Map<number, any[]>();
   for (const b of breaches.results ?? []) {
     if (!breachBy.has(b.meal_id)) breachBy.set(b.meal_id, []);
@@ -127,6 +133,7 @@ export async function renderDay(c: any, date: string) {
     supplementsTotal: suppRows.length,
     supplementsTaken: suppRows.filter((r: any) => r.taken === 1).length,
     nextSupplement: nextSupp ? { time: nextSupp.time_of_day, name: nextSupp.name } : null,
+    overdueSupplements: overdueSupps,
     forbiddenToday: (breaches.results ?? [])
       .filter((b: any) => b.level === 'forbidden')
       .map((b: any) => ({ food_name: b.food_name, meal_name: b.meal_name ?? '' })),
@@ -175,7 +182,9 @@ export async function renderDay(c: any, date: string) {
     </div>
 
     ${blockTitle('Makro wobec celu')}
-    ${card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))}
+    ${totals
+      ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
+      : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
     ${blockTitle('Posiłki')}
     ${mealsHtml}

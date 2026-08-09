@@ -14,6 +14,7 @@ export interface DashboardData {
   supplementsTotal: number;
   supplementsTaken: number;
   nextSupplement: { time: string; name: string } | null;
+  overdueSupplements: number;
   forbiddenToday: Array<{ food_name: string; meal_name: string }>;
   minGapHours: number;
 }
@@ -92,9 +93,11 @@ export function dashboard(d: DashboardData): string {
           <div class="panel-row-label">Suplementy</div>
           <div class="panel-row-main">${d.supplementsTaken} z ${d.supplementsTotal} wzięte</div>
         </div>
-        <div class="panel-row-side">${d.nextSupplement
-          ? `${esc(d.nextSupplement.time)} ${esc(d.nextSupplement.name)}`
-          : 'komplet'}</div>
+        <div class="panel-row-side">${d.overdueSupplements
+          ? `<span style="color:var(--warn);font-weight:600">${d.overdueSupplements} zaległe</span>`
+          : d.nextSupplement
+            ? `${esc(d.nextSupplement.time)} ${esc(d.nextSupplement.name)}`
+            : 'komplet'}</div>
       </div>`
     : '';
 
