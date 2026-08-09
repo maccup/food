@@ -15,20 +15,39 @@ function numOrNull(v: FormDataEntryValue | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const TABS: Array<[string, string, string]> = [
+  ['posilek', '🍽️', 'Posiłek'],
+  ['objaw', '😖', 'Objaw'],
+  ['stolec', '🚽', 'Stolec'],
+];
+
 log.get('/log', async (c) => {
   const date = c.req.query('date') ?? todayWarsaw();
-  const saved = c.req.query('ok');
+  const co = TABS.some(([k]) => k === c.req.query('co')) ? c.req.query('co')! : 'posilek';
 
   const slotOptions = Object.entries(SLOT_LABEL)
     .map(([k, v]) => `<option value="${k}"${k === 'obiad' ? ' selected' : ''}>${v}</option>`)
     .join('');
 
-  const content = `
-    <div class="cols">
-    <section>
+  // Jeden formularz naraz. Wczesniej wszystkie trzy wisialy pod soba i trzeba
+  // bylo przewijac obok dwoch, ktorych sie akurat nie wypelnia.
+  const segmented = `<div class="segmented">
+    ${TABS.map(([k, icon, label]) =>
+      `<a href="/log?co=${k}&date=${date}" class="${co === k ? 'active' : ''}"${co === k ? ' aria-current="page"' : ''}>
+        <span class="seg-icon" aria-hidden="true">${icon}</span>${label}
+      </a>`).join('')}
+  </div>`;
+
+  const dateBar = `<div class="block" style="margin-top:8px">
+    <label class="field-label" for="glob-date">Dzień, do którego dopisujesz</label>
+    <input type="date" id="glob-date" value="${date}"
+           onchange="location.href='/log?co=${co}&date=' + this.value">
+  </div>`;
+
+  const posilek = `
     ${blockTitle('Posiłek', 'makra możesz zostawić puste')}
     ${card(`
-      <form method="POST" action="/log/meal">
+      <form method="POST" action="/log/meal" class="form-narrow">
         <input type="hidden" name="date" value="${date}">
 
         <div class="field">
@@ -58,10 +77,6 @@ log.get('/log', async (c) => {
             </select>
           </div>
           <div class="field">
-            <label class="field-label" for="meal-date">Data</label>
-            <input type="date" id="meal-date" name="date_override" value="${date}">
-          </div>
-          <div class="field">
             <label class="field-label" for="meal-time">Godzina</label>
             <input type="time" id="meal-time" name="time">
           </div>
@@ -83,22 +98,21 @@ log.get('/log', async (c) => {
 
         <button type="submit" class="button button-fill" style="width:100%">Zapisz posiłek</button>
       </form>
-    `)}
-    </section>
+    `)}`;
 
-    <section>
+  const objaw = `
     ${blockTitle('Objaw')}
     ${card(`
-      <form method="POST" action="/log/symptom">
+      <form method="POST" action="/log/symptom" class="form-narrow">
         <input type="hidden" name="date" value="${date}">
+        <div class="field">
+          <label class="field-label" for="s-kind">Rodzaj</label>
+          <select id="s-kind" name="kind">
+            ${['gazy', 'wzdecia', 'bol', 'przelewanie', 'zgaga', 'inne']
+              .map((k) => `<option value="${k}">${k === 'wzdecia' ? 'wzdęcia' : k === 'bol' ? 'ból' : k}</option>`).join('')}
+          </select>
+        </div>
         <div class="grid-2">
-          <div class="field">
-            <label class="field-label" for="s-kind">Rodzaj</label>
-            <select id="s-kind" name="kind">
-              ${['gazy', 'wzdecia', 'bol', 'przelewanie', 'zgaga', 'inne']
-                .map((k) => `<option value="${k}">${k === 'wzdecia' ? 'wzdęcia' : k === 'bol' ? 'ból' : k}</option>`).join('')}
-            </select>
-          </div>
           <div class="field">
             <label class="field-label" for="s-sev">Nasilenie, 0 do 10</label>
             <input type="number" id="s-sev" name="severity" min="0" max="10" value="5">
@@ -107,36 +121,35 @@ log.get('/log', async (c) => {
             <label class="field-label" for="s-time">Godzina</label>
             <input type="time" id="s-time" name="time">
           </div>
-          <div class="field">
-            <label class="field-label" for="s-note">Notatka</label>
-            <input type="text" id="s-note" name="notes" placeholder="opcjonalnie">
-          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="s-note">Notatka</label>
+          <input type="text" id="s-note" name="notes" placeholder="opcjonalnie">
         </div>
         <button type="submit" class="button button-fill" style="width:100%">Zapisz objaw</button>
       </form>
-    `)}
+    `)}`;
 
+  const stolec = `
     ${blockTitle('Stolec', 'skala Bristolska 1 do 7')}
     ${card(`
-      <form method="POST" action="/log/stool">
+      <form method="POST" action="/log/stool" class="form-narrow">
         <input type="hidden" name="date" value="${date}">
-        <div class="grid-2">
-          <div class="field">
-            <label class="field-label" for="st-type">Typ</label>
-            <select id="st-type" name="bristol">
-              <option value="1">1, twarde grudki, zaparcie</option>
-              <option value="2">2, grudkowaty, zbity</option>
-              <option value="3">3, z pęknięciami, norma</option>
-              <option value="4" selected>4, gładki i miękki, ideał</option>
-              <option value="5">5, miękkie kawałki</option>
-              <option value="6">6, papkowaty, biegunka</option>
-              <option value="7">7, wodnisty</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="field-label" for="st-time">Godzina</label>
-            <input type="time" id="st-time" name="time">
-          </div>
+        <div class="field">
+          <label class="field-label" for="st-type">Typ</label>
+          <select id="st-type" name="bristol">
+            <option value="1">1, twarde grudki, zaparcie</option>
+            <option value="2">2, grudkowaty, zbity</option>
+            <option value="3">3, z pęknięciami, norma</option>
+            <option value="4" selected>4, gładki i miękki, ideał</option>
+            <option value="5">5, miękkie kawałki</option>
+            <option value="6">6, papkowaty, biegunka</option>
+            <option value="7">7, wodnisty</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="st-time">Godzina</label>
+          <input type="time" id="st-time" name="time">
         </div>
         <div class="check-row">
           <label class="check"><input type="checkbox" name="straining" value="1"> parcie</label>
@@ -145,9 +158,12 @@ log.get('/log', async (c) => {
         </div>
         <button type="submit" class="button button-fill" style="width:100%">Zapisz stolec</button>
       </form>
-    `)}
-    </section>
-    </div>
+    `)}`;
+
+  const content = `
+    ${segmented}
+    ${dateBar}
+    ${co === 'posilek' ? posilek : co === 'objaw' ? objaw : stolec}
   `;
 
   return c.html(page({ title: 'Dopisz', tab: 'log', header: 'Dopisz', content }));

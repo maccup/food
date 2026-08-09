@@ -234,9 +234,31 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
 
 .check { display: flex; align-items: center; gap: 9px; min-height: 44px; font-size: 14px; cursor: pointer; }
 
-@media (max-width: 420px) {
-  .grid-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/*
+ * Na telefonie dwie kolumny to za malo miejsca dla natywnych pol daty
+ * i godziny: sama ikona kalendarza plus "09/08/2026" przy 16 px zjada
+ * cala szerokosc kolumny i pola wchodza na siebie. Ponizej 520 px
+ * kazde pole dostaje wlasny wiersz.
+ */
+@media (max-width: 519px) {
+  .grid-2 { grid-template-columns: 1fr; gap: 14px; }
+  .grid-5 { gap: 6px; }
+  .grid-5 input { padding-left: 8px; padding-right: 8px; }
 }
+
+/* Segmentowany przelacznik: co wlasnie dopisuje */
+.segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 6px; margin: 12px 14px 4px;
+  background: var(--hairline); padding: 4px; border-radius: 12px;
+}
+.segmented a {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 46px; border-radius: 9px;
+  font-size: 14px; font-weight: 600; text-decoration: none; color: var(--text);
+}
+.segmented a.active { background: var(--surface); color: var(--color-primary); }
+.segmented .seg-icon { font-size: 15px; }
 
 details > summary::-webkit-details-marker { display: none; }
 details > summary { list-style: none; }
