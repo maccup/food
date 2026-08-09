@@ -1,0 +1,133 @@
+{
+  "days": [
+    {
+      "date": "2026-08-14",
+      "menu": {
+        "availableForDishChange": true,
+        "mealSelectionCutoff": "2026-08-12 12:00:00",
+        "dietVariantMeals": [
+          {
+            "name": "Śniadanie",
+            "orderDayMealId": 50998853,
+            "dishes": [
+              {
+                "dishScheduleId": 52968334,
+                "selected": true,
+                "defaultDish": true,
+                "dish": {
+                  "dishName": "Kaszka kukurydziana z nasionami i musem jagodowym [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "<b><u>Mleko bez laktozy 1,5 %</u></b>, jagody, kasza kukurydziana, Stewia, Masło roślinne, słonecznik nasiona, <b><u>Płatki migdałowe</u></b>, płatki kokosowe, Nasiona chia, dynia pestki",
+                  "calories_kcal": "520,8",
+                  "protein": "17,1",
+                  "fat": "19,4",
+                  "carbohydrates": "74,6",
+                  "fiber": "6,6",
+                  "weight": "385,0"
+                }
+              },
+              {
+                "dishScheduleId": 52968335,
+                "selected": false,
+                "defaultDish": false,
+                "dish": {
+                  "dishName": "Sałatka jarzynowa podana z pieczywem ziarnistym [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "chleb bezglutenowy, marchew, ziemniaki, <b><u>jaja</u></b>, ogórek kiszony, <b><u>seler korzeniowy</u></b>, pIetruszka korzeń, <b><u>majonez</u></b>, pietruszka liście, Sól himalajska, Pieprz czarny",
+                  "calories_kcal": "501,6",
+                  "protein": "14,0",
+                  "fat": "24,0",
+                  "carbohydrates": "57,0",
+                  "fiber": "10,6",
+                  "weight": "304,7"
+                }
+              }
+            ]
+          },
+          {
+            "name": "II Śniadanie",
+            "orderDayMealId": 50998854,
+            "dishes": [
+              {
+                "dishScheduleId": 52968337,
+                "selected": true,
+                "defaultDish": false,
+                "dish": {
+                  "dishName": "Placuszki rostii z tofu, serem camembert i pomidorkami podane z dipem koperkowym [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "Rostii, <b><u>Tofu</u></b>, Pomidor, <b><u>Jogurt naturalny bez laktozy 2,5%</u></b>, <b><u>ser camembert bez laktozy</u></b>, szpinak, ocet balsamiczny, imbir, sól himalajska, syrop klonowy, koper ogrodowy, olej rzepakowy, Oliwa z oliwek, Sok z cytryn, Zioła prowansalskie, Sól himalajska, Pieprz czarny",
+                  "calories_kcal": "455,1",
+                  "protein": "25,0",
+                  "fat": "17,3",
+                  "carbohydrates": "48,2",
+                  "fiber": "1,1",
+                  "weight": "424,5"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Obiad",
+            "orderDayMealId": 50998855,
+            "dishes": [
+              {
+                "dishScheduleId": 52969333,
+                "selected": true,
+                "defaultDish": false,
+                "dish": {
+                  "dishName": "Makaron z kurczakiem w kremowym sosie cytrynowym z brokułem [BL] [BG] [LF]",
+                  "ingredientsName": "pierś z kurczaka, brokuły, Bulion warzywny, bezglutenowy makaron, Sok z cytryn, <b><u>śmietana roślinna</u></b>, Masło roślinne, koper ogrodowy, sól, Pieprz czarny, Stewia, pieprz cytrynowy, olej rzepakowy, Bazylia,suszona, Oregano, suszone, Sól himalajska",
+                  "calories_kcal": "606,2",
+                  "protein": "53,9",
+                  "fat": "12,1",
+                  "carbohydrates": "68,9",
+                  "fiber": "4,9",
+                  "weight": "583,1"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Podwieczorek",
+            "orderDayMealId": 50998856,
+            "dishes": [
+              {
+                "dishScheduleId": 52969334,
+                "selected": true,
+                "defaultDish": false,
+                "dish": {
+                  "dishName": "Zupa warzywna z koperkiem podawana z grzanką ziarnistą [BG] [BL] [LF] [WEGE]",
+                  "ingredientsName": "Bulion warzywny, ziemniaki, Przecier pomidorowy, bezglutenowy chleb rustykalny (skrobia kukurydziana,mąka ryżowa,drożdże,maniok) , <b><u>marchew, pietruszka, seler korzeniowy</u></b>, <b><u>śmietana roślinna</u></b>, fasolka szparagowa, słonecznik nasiona, koper ogrodowy, Masło roślinne, oliwa z oliwek, Sól himalajska, Curry, Papryka mielona, słodka, Ziele angielskie, Liść laurowy, Majeranek, suszony, Oregano, suszone",
+                  "calories_kcal": "446,3",
+                  "protein": "15,3",
+                  "fat": "17,8",
+                  "carbohydrates": "51,1",
+                  "fiber": "5,0",
+                  "weight": "591,6"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Kolacja",
+            "orderDayMealId": 50998857,
+            "dishes": [
+              {
+                "dishScheduleId": 52968530,
+                "selected": true,
+                "defaultDish": false,
+                "dish": {
+                  "dishName": "Biryani z kurczakiem i ryżem jaśminowym podany z dipem curry [BG] [BL] [LF]",
+                  "ingredientsName": "pierś z kurczaka, Ryż , <b><u>śmietana roślinna</u></b>, kukurydza, konserwowa, Ocet winny biały, olej rzepakowy, Kolendra, Kurkuma, mielona, Kmin rzymski, Kardamon, Garam masala, chili, Stewia, Cynamon, Liść laurowy, Imbir, mielony, Papryka mielona, słodka, Sól himalajska, Curry, Pieprz czarny",
+                  "calories_kcal": "516,0",
+                  "protein": "50,1",
+                  "fat": "6,9",
+                  "carbohydrates": "59,3",
+                  "fiber": "2,6",
+                  "weight": "373,0"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

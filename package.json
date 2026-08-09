@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev public --port 8789",
+    "dev": "wrangler pages dev public --port 8789 --d1=DB=3cb98a94-de79-47a1-a29b-52c559143d68",
     "deploy": "wrangler pages deploy public",
     "db:schema": "wrangler d1 execute food --remote --file=src/db/schema.sql",
     "db:seed": "wrangler d1 execute food --remote --file=src/db/seed.sql",

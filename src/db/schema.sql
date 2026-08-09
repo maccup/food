@@ -141,9 +141,11 @@ CREATE TABLE IF NOT EXISTS meals (
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Jedno danie hfood na dany dzien i slot moze byc tylko raz.
+-- Na dany dzien i slot przypada dokladnie jedno pudelko z cateringu.
+-- Klucz celowo bez external_id: po wymianie dania w panelu identyfikator
+-- sie zmienia, a to ma nadpisac istniejacy wiersz, nie dolozyc drugi.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_meals_hfood
-  ON meals(date, slot, external_id) WHERE source = 'hfood';
+  ON meals(date, slot) WHERE source = 'hfood';
 CREATE INDEX IF NOT EXISTS idx_meals_date ON meals(date);
 
 CREATE TABLE IF NOT EXISTS meal_foods (
