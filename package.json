@@ -1,0 +1,23 @@
+{
+  "name": "food",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev public --port 8789",
+    "deploy": "wrangler pages deploy public",
+    "db:schema": "wrangler d1 execute food --remote --file=src/db/schema.sql",
+    "db:seed": "wrangler d1 execute food --remote --file=src/db/seed.sql",
+    "db:schema:local": "wrangler d1 execute food --local --file=src/db/schema.sql",
+    "db:seed:local": "wrangler d1 execute food --local --file=src/db/seed.sql",
+    "export": "node scripts/export-csv.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.11.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "@types/node": "^25.1.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.61.0"
+  }
+}

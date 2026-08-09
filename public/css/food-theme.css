@@ -1,0 +1,1907 @@
+/* ============================================
+   Training App - Fitness Theme
+   Modern, polished design system
+   ============================================ */
+
+:root {
+  /* Typography scale - iOS inspired */
+  --f7-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+
+  /* Large titles */
+  --text-hero: 600 22px/28px var(--f7-font-family);
+  --text-hero-tight: 600 20px/24px var(--f7-font-family);
+
+  /* Exercise names */
+  --text-exercise-title: 600 17px/22px var(--f7-font-family);
+
+  /* Metadata (sets/reps) */
+  --text-metadata: 500 15px/20px var(--f7-font-family);
+  --text-metadata-secondary: 400 13px/18px var(--f7-font-family);
+
+  /* Small labels */
+  --text-label: 600 11px/16px var(--f7-font-family);
+
+  /* Body text */
+  --text-body: 400 15px/20px var(--f7-font-family);
+  --text-body-secondary: 400 13px/18px var(--f7-font-family);
+
+  /* Primary brand - energetic, motivating */
+  --color-primary: #3B82F6;
+  --color-primary-dark: #2563EB;
+  --color-primary-light: #DBEAFE;
+  --color-primary-surface: #EFF6FF;
+
+  /* Success - completion, achievements */
+  --color-success: #10B981;
+  --color-success-dark: #059669;
+  --color-success-light: #D1FAE5;
+  --color-success-surface: #ECFDF5;
+
+  /* Warning - attention, coach notes */
+  --color-warning: #F59E0B;
+  --color-warning-dark: #D97706;
+  --color-warning-light: #FEF3C7;
+  --color-warning-surface: #FFFBEB;
+
+  /* Danger - destructive actions */
+  --color-danger: #EF4444;
+  --color-danger-dark: #DC2626;
+  --color-danger-light: #FEE2E2;
+
+  /* Neutral - backgrounds, text */
+  --color-neutral-50: #F9FAFB;
+  --color-neutral-100: #F3F4F6;
+  --color-neutral-200: #E5E7EB;
+  --color-neutral-300: #D1D5DB;
+  --color-neutral-400: #9CA3AF;
+  --color-neutral-500: #6B7280;
+  --color-neutral-600: #4B5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1F2937;
+  --color-neutral-900: #111827;
+
+  /* Surfaces */
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F9FAFB;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Framework7 overrides */
+  --f7-theme-color: #3B82F6;
+  --f7-theme-color-rgb: 59, 130, 246;
+  --f7-theme-color-shade: #2563EB;
+  --f7-theme-color-tint: #60A5FA;
+  --f7-safe-area-top: env(safe-area-inset-top);
+  --f7-safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+/* Page background */
+.page-content {
+  background-color: var(--surface-secondary) !important;
+}
+
+/* ============================================
+   Exercise Cards
+   ============================================ */
+
+.exercise-card {
+  background: var(--surface-primary);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 16px 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-neutral-100);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.exercise-card:active {
+  transform: scale(0.99);
+}
+
+/* Exercise Header */
+.exercise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.exercise-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.exercise-title {
+  font: var(--text-exercise-title);
+  color: var(--color-neutral-900);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise-header-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Text Buttons */
+.text-btn {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.text-btn:active {
+  background: var(--color-primary-light);
+}
+
+.text-btn.danger {
+  color: var(--color-danger);
+}
+
+.text-btn.danger:active {
+  background: var(--color-danger-light);
+}
+
+.text-btn.small {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* Icon Buttons */
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.icon-btn i {
+  font-size: 16px;
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+  background: var(--color-neutral-200);
+}
+
+.icon-btn.danger {
+  color: var(--color-danger);
+}
+
+.icon-btn.danger:active {
+  background: var(--color-danger-light);
+}
+
+html.dark-mode .icon-btn {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-500);
+}
+
+html.dark-mode .icon-btn:active {
+  background: var(--color-neutral-200);
+}
+
+html.dark-mode .icon-btn.danger {
+  color: #F87171;
+}
+
+/* Video Wrap */
+.exercise-video-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.exercise-video-wrap video {
+  width: 100%;
+  display: block;
+}
+
+/* Exercise Meta Tags */
+.exercise-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.meta-tag {
+  padding: 5px 10px;
+  background: var(--color-neutral-100);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-700);
+}
+
+/* Last Log Display */
+.last-log {
+  background: var(--color-success-surface);
+  border: 1px solid var(--color-success-light);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.last-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.last-log-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-success-dark);
+}
+
+.last-log-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.log-set {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-success-dark);
+}
+
+.log-set:not(:last-child)::after {
+  content: '·';
+  margin-left: 6px;
+  color: var(--color-success);
+}
+
+.last-log-notes {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-success-dark);
+}
+
+/* Log Button */
+.btn-log {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-log:active {
+  transform: scale(0.98);
+  background: var(--color-primary-dark);
+}
+
+.btn-log.logged {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+}
+
+.btn-log.logged:active {
+  background: var(--color-neutral-200);
+}
+
+/* Dark mode */
+html.dark-mode .exercise-title {
+  color: #FFFFFF;
+}
+
+html.dark-mode .text-btn {
+  color: var(--color-primary);
+}
+
+html.dark-mode .text-btn:active {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+html.dark-mode .text-btn.danger {
+  color: #F87171;
+}
+
+html.dark-mode .text-btn.danger:active {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+html.dark-mode .meta-tag {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+}
+
+html.dark-mode .last-log {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+html.dark-mode .last-log-date,
+html.dark-mode .log-set,
+html.dark-mode .last-log-notes {
+  color: #34D399;
+}
+
+html.dark-mode .btn-log.logged {
+  background: var(--color-neutral-100);
+  color: #FFFFFF;
+}
+
+/* Card edit button (library) - keep for library page */
+.card-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.card-edit-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.card-edit-btn:active {
+  transform: scale(0.9);
+}
+
+.card-edit-btn i {
+  font-size: 16px;
+}
+
+/* Video container */
+.exercise-video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+  margin-bottom: 14px;
+}
+
+.exercise-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.exercise-video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-neutral-100), var(--color-neutral-200));
+}
+
+.exercise-video-placeholder span {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--color-neutral-300);
+}
+
+/* Number badge - bottom right to avoid video controls */
+.number-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  z-index: 5;
+}
+
+/* Result badge - bottom left to avoid fullscreen button */
+.result-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: var(--color-success);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  z-index: 5;
+}
+
+/* Exercise info */
+.exercise-name {
+  font: var(--text-exercise-title);
+  letter-spacing: -0.02em;
+  color: var(--color-neutral-900);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Week-specific badge */
+.week-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+html.dark-mode .week-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--color-primary);
+}
+
+/* Prescription display */
+.exercise-prescription {
+  display: flex;
+  gap: 20px;
+  padding: 12px 14px;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.prescription-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prescription-label {
+  font: var(--text-label);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+}
+
+.prescription-value {
+  font: var(--text-metadata);
+  font-weight: 600;
+  color: var(--color-neutral-900);
+  font-feature-settings: 'tnum';
+}
+
+/* Instructions */
+.exercise-instructions {
+  font: var(--text-body-secondary);
+  color: var(--color-neutral-600);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+.exercise-instructions ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.exercise-instructions li {
+  margin-bottom: 2px;
+}
+.exercise-instructions strong {
+  color: var(--color-neutral-800);
+}
+
+/* Format toolbar */
+.format-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.format-toolbar button {
+  background: var(--color-neutral-100);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 20px;
+  padding: 0 16px;
+  min-height: 36px;
+  font-size: 15px;
+  color: var(--color-neutral-700);
+  cursor: pointer;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.format-toolbar button:active {
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-300);
+}
+
+/* Instructions preview */
+.instructions-preview {
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-150, var(--color-neutral-200));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-neutral-700);
+  min-height: 24px;
+}
+.instructions-preview:empty {
+  display: none;
+}
+.instructions-preview ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.instructions-preview li {
+  margin-bottom: 2px;
+}
+.instructions-preview strong {
+  color: var(--color-neutral-800);
+}
+.instructions-preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+/* Result display */
+.result-display {
+  background: var(--color-success-surface);
+  border: 1px solid var(--color-success-light);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.result-values {
+  display: flex;
+  gap: 20px;
+}
+
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-label {
+  font: var(--text-label);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-success-dark);
+}
+
+.result-value {
+  font: var(--text-metadata);
+  font-weight: 600;
+  color: var(--color-success-dark);
+  font-feature-settings: 'tnum';
+}
+
+.result-notes {
+  font: var(--text-body-secondary);
+  font-style: italic;
+  color: var(--color-success-dark);
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-success);
+}
+
+/* Action button */
+.exercise-action-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  border: none;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.exercise-action-btn.primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.exercise-action-btn.primary:active {
+  background: var(--color-primary-dark);
+  transform: scale(0.98);
+}
+
+.exercise-action-btn.secondary {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+}
+
+.exercise-action-btn.secondary:active {
+  background: var(--color-neutral-200);
+  transform: scale(0.98);
+}
+
+/* ============================================
+   Day Cards (Plan View)
+   ============================================ */
+
+.day-card {
+  background: var(--surface-primary);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin: 0 16px 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-neutral-100);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+}
+
+.day-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--day-color, var(--color-primary));
+  transition: width 0.15s ease;
+}
+
+.day-card:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.day-card:active::before {
+  width: 6px;
+}
+
+/* Day icon */
+.day-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.day-icon.pending {
+  background: var(--color-neutral-50);
+  border: 2px solid var(--color-neutral-200);
+}
+
+.day-icon.complete {
+  background: var(--color-success-surface);
+  border: 2px solid var(--color-success-light);
+}
+
+.day-icon.complete::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-success);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Day info */
+.day-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.day-label {
+  font: var(--text-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+  margin-bottom: 3px;
+}
+
+.day-name {
+  font: var(--text-exercise-title);
+  letter-spacing: -0.02em;
+  color: var(--color-neutral-900);
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-meta {
+  font: var(--text-body-secondary);
+  color: var(--color-neutral-500);
+  margin: 0;
+}
+
+/* Day progress */
+.day-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.day-progress-text {
+  font: var(--text-label);
+  color: var(--color-neutral-500);
+  font-feature-settings: 'tnum';
+}
+
+.day-progress-bar {
+  width: 56px;
+  height: 6px;
+  background: var(--color-neutral-100);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.day-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.day-progress-fill.complete {
+  background: var(--color-success);
+}
+
+.day-progress-fill.in-progress {
+  background: var(--color-primary);
+}
+
+/* ============================================
+   Week Selector
+   ============================================ */
+
+.week-selector {
+  padding: 14px 16px;
+  background: var(--surface-primary);
+  margin: 16px 16px 8px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.week-selector::-webkit-scrollbar {
+  display: none;
+}
+
+.week-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.week-btn {
+  flex-shrink: 0;
+  min-width: 72px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 2px solid var(--color-neutral-200);
+  background: var(--surface-primary);
+  color: var(--color-neutral-700);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.week-btn:active {
+  transform: scale(0.96);
+}
+
+.week-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* ============================================
+   Trainer Notes
+   ============================================ */
+
+.trainer-notes-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  padding-bottom: 4px;
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.trainer-notes-header {
+  font: var(--text-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trainer-note {
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-150, var(--color-neutral-200));
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: opacity 0.2s;
+}
+.trainer-note.htmx-swapping {
+  opacity: 0.4;
+}
+
+.trainer-note-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.trainer-note-content {
+  font: var(--text-body);
+  color: var(--color-neutral-800);
+  margin: 0 0 4px;
+  line-height: 1.45;
+}
+
+.trainer-note-date {
+  font: var(--text-label);
+  color: var(--color-neutral-400);
+}
+
+.trainer-note-delete {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-400);
+  font-size: 18px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, color 0.15s;
+  margin-top: -2px;
+  text-decoration: none;
+}
+
+.trainer-note-delete:active {
+  background: var(--color-neutral-100);
+  color: var(--color-danger);
+}
+
+/* Trainer notes form */
+.trainer-notes-form {
+  margin-top: 10px;
+}
+.trainer-notes-form textarea.form-textarea {
+  min-height: 80px !important;
+  margin-bottom: 10px !important;
+}
+.trainer-notes-form .btn {
+  width: 100%;
+  height: 44px;
+}
+.trainer-notes-form .note-spinner {
+  display: none;
+}
+.trainer-notes-form.htmx-request .note-spinner {
+  display: inline-flex;
+  animation: btn-spin 0.8s linear infinite;
+}
+.trainer-notes-form.htmx-request .note-label {
+  display: none;
+}
+
+/* ============================================
+   Sheet Modals
+   ============================================ */
+
+/* Sheet modals - use calc to leave space for iOS status bar */
+.sheet-modal {
+  /* Leave 15% + safe area at top to never overlap browser chrome */
+  height: calc(85vh - env(safe-area-inset-top, 0px)) !important;
+  height: calc(85vh - constant(safe-area-inset-top, 0px)) !important;
+  max-height: calc(85vh - env(safe-area-inset-top, 0px)) !important;
+}
+
+.sheet-modal .sheet-modal-inner {
+  border-radius: 20px 20px 0 0 !important;
+  background: var(--surface-secondary);
+  height: 100% !important;
+  overflow-y: auto;
+  /* Sticky header area with safe padding */
+  padding-top: 8px;
+}
+
+/* Drag handle indicator - enlarged for better gesture target */
+.sheet-modal .sheet-modal-inner::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 5px;
+  background: var(--color-neutral-300);
+  border-radius: 3px;
+  margin: 12px auto 4px;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+.sheet-modal .page-content {
+  padding-bottom: calc(var(--f7-safe-area-bottom) + 24px);
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Sheet header with close button */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 16px;
+  position: sticky;
+  top: 0;
+  background: var(--surface-secondary);
+  z-index: 10;
+}
+
+.sheet-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-neutral-100);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-600);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sheet-close-btn:active {
+  background: var(--color-neutral-200);
+  transform: scale(0.9);
+}
+
+.sheet-close-btn i {
+  font-size: 18px;
+}
+
+.sheet-title {
+  font: var(--text-hero);
+  letter-spacing: -0.02em;
+  color: var(--color-neutral-900);
+  margin: 0;
+  flex: 1;
+}
+
+html.dark-mode .sheet-close-btn {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+}
+
+html.dark-mode .sheet-close-btn:active {
+  background: var(--color-neutral-200);
+}
+
+.form-section {
+  background: var(--surface-primary);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 0 16px 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+.form-field:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  font: var(--text-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+/* Quick select chips */
+.quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  height: 40px;
+  min-width: 44px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-neutral-200);
+  background: var(--surface-primary);
+  color: var(--color-neutral-700);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.chip:active {
+  transform: scale(0.95);
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.week-chip.selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+html.dark-mode .chip {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-700);
+}
+
+html.dark-mode .chip:active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+html.dark-mode .form-hint {
+  color: var(--color-neutral-500);
+}
+
+/* Collapsible preset sections */
+.presets-accordion {
+  margin-top: 12px;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.preset-category-btn {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: none;
+  border-bottom: 1px solid var(--color-neutral-200);
+  background: var(--surface-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-neutral-800);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.preset-category-btn:last-of-type {
+  border-bottom: none;
+}
+
+.preset-category-btn:active {
+  background: var(--color-neutral-50);
+}
+
+.preset-category-btn .preset-icon {
+  margin-right: 8px;
+}
+
+.preset-category-btn .preset-chevron {
+  font-size: 14px;
+  color: var(--color-neutral-400);
+  transition: transform 0.2s;
+}
+
+.preset-category-btn.expanded .preset-chevron {
+  transform: rotate(180deg);
+}
+
+.preset-chips-group {
+  padding: 12px 16px;
+  background: var(--color-neutral-50);
+  border-top: 1px solid var(--color-neutral-200);
+  display: none;
+}
+
+.preset-chips-group.show {
+  display: block;
+}
+
+html.dark-mode .presets-accordion {
+  border-color: var(--color-neutral-200);
+}
+
+html.dark-mode .preset-category-btn {
+  background: var(--surface-primary);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-800);
+}
+
+html.dark-mode .preset-category-btn:active {
+  background: var(--color-neutral-100);
+}
+
+html.dark-mode .preset-chips-group {
+  background: var(--color-neutral-100);
+  border-color: var(--color-neutral-200);
+}
+
+.form-input,
+input.form-input,
+select.form-input {
+  width: 100% !important;
+  height: 50px !important;
+  padding: 0 16px !important;
+  border: 2px solid var(--color-neutral-200) !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+  color: var(--color-neutral-900) !important;
+  background: var(--surface-primary) !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+}
+
+.form-input:focus,
+input.form-input:focus,
+select.form-input:focus {
+  outline: none !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px var(--color-primary-light) !important;
+}
+
+.form-textarea,
+textarea.form-textarea {
+  width: 100% !important;
+  min-height: 150px !important;
+  padding: 14px 16px !important;
+  border: 2px solid var(--color-neutral-200) !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  color: var(--color-neutral-900) !important;
+  background: var(--surface-primary) !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  field-sizing: content;
+  resize: vertical;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Select styling */
+select.form-input {
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  cursor: pointer;
+}
+
+/* Button group */
+.button-row {
+  display: flex;
+  gap: 10px;
+  padding: 8px 16px 0;
+}
+
+.btn {
+  flex: 1;
+  height: 50px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-900);
+}
+
+.btn-secondary:active {
+  background: var(--color-neutral-200);
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:active {
+  background: var(--color-primary-dark);
+  transform: scale(0.98);
+}
+
+.btn-danger {
+  background: #EF4444;
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:active {
+  background: #DC2626;
+  transform: scale(0.98);
+}
+
+/* ============================================
+   Navbar
+   ============================================ */
+
+.navbar {
+  background: var(--surface-primary) !important;
+}
+
+.navbar .title {
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.navbar-bg {
+  background: var(--surface-primary) !important;
+}
+
+/* iOS safe area for navbar right side */
+.navbar-inner .right {
+  padding-right: max(8px, env(safe-area-inset-right, 8px));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navbar-inner .left {
+  padding-left: max(8px, env(safe-area-inset-left, 8px));
+}
+
+/* Navbar icons - ensure visibility */
+.navbar-inner .link i.icon,
+.navbar-inner .link .f7-icons {
+  font-size: 22px !important;
+  color: var(--f7-theme-color) !important;
+}
+
+.navbar-inner .theme-toggle {
+  font-size: 20px;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.navbar-inner .badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-700);
+}
+
+.navbar-inner .badge.color-green {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+
+/* ============================================
+   Swipeout Actions
+   ============================================ */
+
+.swipeout-actions-right {
+  background: transparent;
+}
+
+.swipeout-actions-right a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+}
+
+.swipeout-actions-right a.color-blue {
+  background: var(--color-primary) !important;
+}
+
+.swipeout-actions-right a.swipeout-delete {
+  background: #EF4444 !important;
+}
+
+/* ============================================
+   Empty State
+   ============================================ */
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.empty-state-icon {
+  font-size: 56px;
+  margin-bottom: 14px;
+  opacity: 0.4;
+}
+
+.empty-state-title {
+  font: var(--text-hero-tight);
+  color: var(--color-neutral-900);
+  margin: 0 0 6px;
+}
+
+.empty-state-text {
+  font: var(--text-body);
+  color: var(--color-neutral-500);
+  margin: 0 0 20px;
+}
+
+/* ============================================
+   Sheet Loading Placeholder
+   ============================================ */
+
+.sheet-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 16px;
+}
+
+.sheet-loading .preloader {
+  width: 36px;
+  height: 36px;
+}
+
+.sheet-loading-text {
+  font: var(--text-body);
+  color: var(--color-neutral-500);
+}
+
+/* ============================================
+   Button Loading States
+   ============================================ */
+
+.btn.loading,
+.exercise-action-btn.loading {
+  pointer-events: none;
+  opacity: 0.7;
+  position: relative;
+}
+
+.btn.loading::after,
+.exercise-action-btn.loading::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+  margin-left: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Link loading state */
+a.loading {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ============================================
+   FAB
+   ============================================ */
+
+.fab {
+  --f7-fab-size: 56px;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4) !important;
+}
+
+.fab a {
+  background: var(--color-primary) !important;
+}
+
+/* ============================================
+   iOS Safe Area
+   ============================================ */
+
+.ios .page-content {
+  padding-bottom: calc(var(--f7-safe-area-bottom) + 20px);
+}
+
+/* ============================================
+   Login Page
+   ============================================ */
+
+.login-screen-title {
+  font: var(--text-hero) !important;
+  margin-bottom: 8px !important;
+}
+
+.login-screen-content .list {
+  margin: 24px 16px !important;
+}
+
+.login-screen-content .block {
+  margin: 0 16px !important;
+}
+
+.login-screen-content .button-fill {
+  height: 50px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* ============================================
+   Dark Mode (class-based toggle)
+   ============================================ */
+
+html.dark-mode {
+  --surface-primary: #1C1C1E;
+  --surface-secondary: #000000;
+  --color-neutral-50: #2C2C2E;
+  --color-neutral-100: #3A3A3C;
+  --color-neutral-200: #48484A;
+  --color-neutral-300: #636366;
+  --color-neutral-400: #8E8E93;
+  --color-neutral-500: #AEAEB2;
+  --color-neutral-600: #C7C7CC;
+  --color-neutral-700: #D1D1D6;
+  --color-neutral-800: #E5E5EA;
+  --color-neutral-900: #FFFFFF;
+}
+
+html.dark-mode .navbar,
+html.dark-mode .navbar-bg {
+  background: var(--surface-primary) !important;
+}
+
+html.dark-mode .navbar .title {
+  color: #FFFFFF !important;
+}
+
+html.dark-mode .navbar-inner .link i.icon,
+html.dark-mode .navbar-inner .link .f7-icons {
+  color: var(--f7-theme-color) !important;
+}
+
+html.dark-mode .navbar-inner .link.back i.icon {
+  color: var(--f7-theme-color) !important;
+}
+
+html.dark-mode .page-content {
+  background: var(--surface-secondary) !important;
+}
+
+html.dark-mode .exercise-card,
+html.dark-mode .day-card,
+html.dark-mode .week-selector,
+html.dark-mode .form-section {
+  background: var(--surface-primary);
+  border-color: var(--color-neutral-100);
+}
+
+html.dark-mode .sheet-modal .sheet-modal-inner {
+  background: var(--surface-primary) !important;
+}
+
+html.dark-mode .sheet-modal {
+  --f7-sheet-bg-color: var(--surface-primary);
+}
+
+html.dark-mode .sheet-title {
+  background: var(--surface-primary);
+}
+
+html.dark-mode .sheet-header {
+  background: var(--surface-primary);
+}
+
+html.dark-mode .page-content {
+  background: var(--surface-secondary) !important;
+}
+
+/* Text colors in dark mode */
+html.dark-mode .exercise-name,
+html.dark-mode .day-name,
+html.dark-mode .sheet-title,
+html.dark-mode h1,
+html.dark-mode h2,
+html.dark-mode h3 {
+  color: #FFFFFF !important;
+}
+
+html.dark-mode .day-label,
+html.dark-mode .day-meta,
+html.dark-mode .prescription-label,
+html.dark-mode .result-label,
+html.dark-mode .form-label,
+html.dark-mode .trainer-notes-header,
+html.dark-mode .day-progress-text {
+  color: var(--color-neutral-500) !important;
+}
+
+html.dark-mode .prescription-value,
+html.dark-mode .exercise-instructions {
+  color: var(--color-neutral-700) !important;
+}
+
+html.dark-mode .form-input,
+html.dark-mode .form-textarea {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+  color: #FFFFFF;
+}
+
+html.dark-mode .form-input::placeholder,
+html.dark-mode .form-textarea::placeholder {
+  color: var(--color-neutral-400);
+}
+
+html.dark-mode .instructions-preview {
+  background: var(--color-neutral-100);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-600);
+}
+html.dark-mode .instructions-preview strong {
+  color: var(--color-neutral-500);
+}
+html.dark-mode .format-toolbar button {
+  background: var(--color-neutral-100);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
+}
+
+html.dark-mode .exercise-prescription {
+  background: var(--color-neutral-50);
+}
+
+html.dark-mode .week-btn {
+  background: var(--surface-primary);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-700);
+}
+
+html.dark-mode .week-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+html.dark-mode .btn-secondary {
+  background: var(--color-neutral-100);
+  color: #FFFFFF;
+}
+
+html.dark-mode .exercise-action-btn.secondary {
+  background: var(--color-neutral-100);
+  color: #FFFFFF;
+}
+
+html.dark-mode .block-title {
+  color: var(--color-neutral-500) !important;
+}
+
+html.dark-mode .trainer-note {
+  background: var(--color-neutral-100);
+  border-color: var(--color-neutral-200);
+}
+
+html.dark-mode .trainer-note-content {
+  color: var(--color-neutral-800) !important;
+}
+
+html.dark-mode .trainer-note-delete:active {
+  background: var(--color-neutral-200);
+}
+
+html.dark-mode .empty-state-title {
+  color: #FFFFFF;
+}
+
+html.dark-mode .empty-state-text {
+  color: var(--color-neutral-500);
+}
+
+/* Result display in dark mode */
+html.dark-mode .result-display {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+html.dark-mode .result-value,
+html.dark-mode .result-label {
+  color: #34D399 !important;
+}
+
+html.dark-mode .result-notes {
+  color: #34D399 !important;
+  border-color: #34D399;
+}
+
+/* Day icon in dark mode */
+html.dark-mode .day-icon.pending {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+}
+
+html.dark-mode .day-icon.complete {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Icon Picker */
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.icon-option {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 2px solid var(--color-neutral-200);
+  background: var(--surface-primary);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.icon-option:active {
+  transform: scale(0.95);
+}
+
+.icon-option.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+html.dark-mode .icon-option {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+}
+
+html.dark-mode .icon-option.selected {
+  border-color: var(--color-primary);
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-neutral-100);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 18px;
+}
+
+.theme-toggle:active {
+  background: var(--color-neutral-200);
+}
+
+html.dark-mode .theme-toggle {
+  background: var(--color-neutral-100);
+}
+
+/* Video upload area dark mode */
+html.dark-mode #video-drop-zone,
+html.dark-mode [id^="video-drop-zone"] {
+  border-color: var(--color-neutral-300) !important;
+  background: var(--color-neutral-50) !important;
+}
+
+html.dark-mode #video-drop-zone p,
+html.dark-mode [id^="video-drop-zone"] p {
+  color: var(--color-neutral-600) !important;
+}
+
+/* Copied video preview */
+.copied-video-inner {
+  background: var(--color-primary-surface);
+  border: 2px solid var(--color-primary-light);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.copied-video-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.copied-video-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.copied-video-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-neutral-900);
+}
+
+.copied-video-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.copied-video-remove {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-neutral-200);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-neutral-600);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copied-video-remove:active {
+  background: var(--color-neutral-300);
+}
+
+html.dark-mode .copied-video-inner {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+html.dark-mode .copied-video-title {
+  color: #FFFFFF;
+}
+
+html.dark-mode .copied-video-subtitle {
+  color: var(--color-neutral-500);
+}
+
+html.dark-mode .copied-video-remove {
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-700);
+}
+
+/* Danger zone in dark mode */
+html.dark-mode [style*="color: var(--color-danger)"],
+html.dark-mode [style*="border: 1px solid var(--color-danger)"] {
+  color: #F87171 !important;
+  border-color: #F87171 !important;
+}
