@@ -34,6 +34,22 @@ export function todayWarsaw(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(new Date());
 }
 
+/** Aktualna godzina w Warszawie, jako minuty od północy. */
+export function nowMinutesWarsaw(): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  return h * 60 + m;
+}
+
+export function daysBetween(from: string, to: string): number {
+  const a = new Date(`${from}T12:00:00Z`).getTime();
+  const b = new Date(`${to}T12:00:00Z`).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
 export function shiftDate(date: string, days: number): string {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

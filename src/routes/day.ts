@@ -2,8 +2,10 @@ import { Hono } from 'hono';
 import { Env } from '../types';
 import {
   page, card, blockTitle, emptyState, esc, pl, flag, macroBar,
-  SLOT_LABEL, SITTING_TIME, todayWarsaw, shiftDate, prettyDate,
+  SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween,
 } from '../views/ui';
+import { dashboard } from '../views/dashboard';
+import { loadSettings, sittingTimes } from '../utils/settings';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -39,7 +41,7 @@ export async function renderDay(c: any, date: string) {
                    WHEN 'podwieczorek' THEN 4 WHEN 'kolacja' THEN 5 ELSE 6 END, id`
     ).bind(date).all<MealRow>(),
     db.prepare(
-      `SELECT meal_id, food_name, level, reason, max_amount FROM v_restriction_breaches WHERE date = ?`
+      `SELECT meal_id, meal_name, food_name, level, reason, max_amount FROM v_restriction_breaches WHERE date = ?`
     ).bind(date).all<any>(),
     db.prepare(`SELECT * FROM symptoms WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
     db.prepare(`SELECT * FROM stools WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
@@ -51,6 +53,30 @@ export async function renderDay(c: any, date: string) {
     : { results: [] };
 
   const targetBy = new Map<string, any>((targets.results ?? []).map((t: any) => [t.metric, t]));
+
+  const settings = await loadSettings(db);
+  const times = sittingTimes(settings);
+  const isToday = date === todayWarsaw();
+
+  const dayCode = ['nie', 'pon', 'wt', 'sr', 'czw', 'pt', 'sob'][new Date(`${date}T12:00:00Z`).getUTCDay()];
+  const supps = await db.prepare(
+    `SELECT s.id, s.time_of_day, sup.name, l.taken
+     FROM supplement_schedule s
+     JOIN supplements sup ON sup.id = s.supplement_id
+     LEFT JOIN supplement_log l ON l.schedule_id = s.id AND l.date = ?
+     WHERE ? >= s.date_from AND (s.date_to IS NULL OR ? <= s.date_to)
+       AND (s.days = 'daily' OR (',' || s.days || ',') LIKE ('%,' || ? || ',%'))
+     ORDER BY s.time_of_day`
+  ).bind(date, date, date, dayCode).all<any>();
+
+  const suppRows = supps.results ?? [];
+  const nowMin = isToday ? nowMinutesWarsaw() : null;
+  const nextSupp = suppRows.find((r: any) => {
+    if (r.taken === 1) return false;
+    if (nowMin === null) return true;
+    const [h, m] = String(r.time_of_day).split(':').map(Number);
+    return h * 60 + (m || 0) >= nowMin;
+  }) ?? suppRows.find((r: any) => r.taken !== 1);
   const breachBy = new Map<number, any[]>();
   for (const b of breaches.results ?? []) {
     if (!breachBy.has(b.meal_id)) breachBy.set(b.meal_id, []);
@@ -82,11 +108,36 @@ export async function renderDay(c: any, date: string) {
     bySitting.get(s)!.push(m);
   }
 
+  const panel = dashboard({
+    date,
+    isToday,
+    nowMinutes: nowMin,
+    phaseName: phase?.name ?? null,
+    phaseEnd: phase?.date_to ?? null,
+    daysLeft: phase?.date_to ? Math.max(0, daysBetween(date, phase.date_to)) : null,
+    totals: totals ?? null,
+    targets: targetBy,
+    sittingTimes: times,
+    mealsBySitting: new Map(
+      [...bySitting.entries()].map(([s, list]) => [
+        s,
+        { total: list.length, eaten: list.filter((m) => m.eaten).length },
+      ])
+    ),
+    supplementsTotal: suppRows.length,
+    supplementsTaken: suppRows.filter((r: any) => r.taken === 1).length,
+    nextSupplement: nextSupp ? { time: nextSupp.time_of_day, name: nextSupp.name } : null,
+    forbiddenToday: (breaches.results ?? [])
+      .filter((b: any) => b.level === 'forbidden')
+      .map((b: any) => ({ food_name: b.food_name, meal_name: b.meal_name ?? '' })),
+    minGapHours: Number(settings.get('min_gap_hours') || 4),
+  });
+
   const mealsHtml = (meals.results ?? []).length
     ? [...bySitting.entries()]
         .sort((a, b) => a[0] - b[0])
         .map(([sitting, list]) => {
-          const time = SITTING_TIME[sitting] ?? 'poza oknami';
+          const time = times[sitting] ?? 'poza oknami';
           const kcal = list.reduce((a, m) => a + (m.eaten ? (m.kcal ?? 0) * m.eaten_fraction : 0), 0);
           return `<div class="sitting-head">
               <span class="sitting-time">${sitting <= 3 ? `Podejście ${sitting}, ${time}` : 'Poza oknami'}</span>
@@ -112,16 +163,18 @@ export async function renderDay(c: any, date: string) {
         </ul></div>`;
 
   const content = `
-    <div class="block" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+    ${panel}
+
+    <div class="block" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
       <a href="/day/${shiftDate(date, -1)}" class="button button-small">‹ poprzedni</a>
       <div style="text-align:center">
         <div style="font-weight:700">${esc(prettyDate(date))}</div>
-        <div style="font-size:12px;color:var(--muted)">${phase ? esc(phase.name) : 'poza fazami protokołu'}</div>
+        <div style="font-size:12px;color:var(--muted)">${phase ? esc(phase.diet_type ?? '') : 'poza fazami protokołu'}</div>
       </div>
       <a href="/day/${shiftDate(date, 1)}" class="button button-small">następny ›</a>
     </div>
 
-    ${blockTitle('Makro wobec celu', phase ? esc(phase.diet_type ?? '') : '')}
+    ${blockTitle('Makro wobec celu')}
     ${card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))}
 
     ${blockTitle('Posiłki')}
@@ -135,8 +188,8 @@ export async function renderDay(c: any, date: string) {
 
   return page({
     title: prettyDate(date),
-    tab: date === todayWarsaw() ? 'today' : undefined,
-    header: date === todayWarsaw() ? 'Dziś' : esc(prettyDate(date)),
+    tab: isToday ? 'today' : undefined,
+    header: isToday ? 'Dziś' : esc(prettyDate(date)),
     content,
   });
 }

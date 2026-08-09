@@ -111,10 +111,78 @@ export function layout(title: string, content: string, activeTab?: string) {
       100% { transform: scaleX(.95); }
     }
 
+    /* Panel kontrolny */
+    .panel {
+      margin: 8px 12px 4px; padding: 12px 14px 10px;
+      background: var(--f7-bars-bg-color, #fff);
+      border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .dark-mode .panel { background: #1c1c1d; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+    .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
+    .tile-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .tile-label { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .panel-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 8px 0; border-top: 1px solid rgba(0,0,0,.07);
+    }
+    .dark-mode .panel-row { border-top-color: rgba(255,255,255,.1); }
+    .panel-row:first-of-type { margin-top: 8px; }
+    .panel-row-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .panel-row-main { font-size: 15px; font-weight: 600; margin-top: 1px; }
+    .panel-row-side { font-size: 13px; color: var(--muted); text-align: right; white-space: nowrap; }
+    .panel-note { font-size: 11px; color: var(--warn); margin-top: 6px; }
+    .panel-alert {
+      margin-top: 8px; padding: 8px 10px; border-radius: 10px;
+      background: #fee2e2; color: #b91c1c; font-size: 13px;
+    }
+    .dark-mode .panel-alert { background: #7f1d1d; color: #fecaca; }
+    .panel-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .panel-actions .button { flex: 1; min-height: 40px; }
+
+    /* Kalendarz */
+    .cal-head {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 4px;
+    }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .cal-cell {
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      min-height: 46px; padding: 4px 2px 3px; border-radius: 8px;
+      text-decoration: none; color: inherit; line-height: 1.1;
+    }
+    .cal-empty { background: none; }
+    .cal-num { font-size: 13px; font-weight: 600; }
+    .cal-kcal { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .cal-dots { display: flex; gap: 2px; margin-top: 2px; height: 5px; }
+    .cal-dots .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+    .cal-dots .dot.bad { background: var(--bad); }
+    .cal-dots .dot.ev { background: #6366f1; }
+    .cal-ok     { background: #dcfce7; }
+    .cal-warn   { background: #fef3c7; }
+    .cal-bad    { background: #fee2e2; }
+    .cal-gap    { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px); }
+    .cal-none   { background: #f3f4f6; }
+    .cal-future { background: transparent; border: 1px dashed rgba(0,0,0,.12); }
+    .cal-today  { outline: 2px solid var(--f7-theme-color); outline-offset: -2px; }
+    .dark-mode .cal-ok   { background: #14532d; }
+    .dark-mode .cal-warn { background: #713f12; }
+    .dark-mode .cal-bad  { background: #7f1d1d; }
+    .dark-mode .cal-none { background: #27272a; }
+    .dark-mode .cal-gap  { background: repeating-linear-gradient(45deg, #27272a, #27272a 4px, #3f3f46 4px, #3f3f46 8px); }
+    .dark-mode .cal-future { border-color: rgba(255,255,255,.15); }
+    .cal-legend {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+      font-size: 11px; color: var(--muted);
+    }
+    .cal-legend .sw {
+      display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+      vertical-align: -1px; margin-right: 3px;
+    }
+
     /* Dolna nawigacja */
     .tabbar-bottom {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
-      display: grid; grid-template-columns: repeat(5, 1fr);
+      display: grid; grid-template-columns: repeat(6, 1fr);
       background: var(--f7-bars-bg-color, #fff);
       border-top: 1px solid rgba(0,0,0,.12);
       padding-bottom: var(--f7-safe-area-bottom);
@@ -189,10 +257,11 @@ export function layout(title: string, content: string, activeTab?: string) {
 
 const TABS: Array<{ href: string; icon: string; label: string; key: string }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today' },
-  { href: '/week', icon: '📊', label: 'Tydzień', key: 'week' },
+  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar' },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log' },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements' },
-  { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions' },
+  { href: '/week', icon: '📊', label: 'Tydzień', key: 'week' },
+  { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings' },
 ];
 
 function tabbar(active: string) {

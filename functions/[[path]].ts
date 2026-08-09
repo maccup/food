@@ -9,6 +9,8 @@ import week from '../src/routes/week';
 import log from '../src/routes/log';
 import supplements from '../src/routes/supplements';
 import restrictions from '../src/routes/restrictions';
+import calendar from '../src/routes/calendar';
+import settingsRoutes from '../src/routes/settings';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -20,6 +22,8 @@ app.route('/', week);
 app.route('/', log);
 app.route('/', supplements);
 app.route('/', restrictions);
+app.route('/', calendar);
+app.route('/', settingsRoutes);
 app.route('/', day); // ostatni, bo lapie '/' i '/day/:date'
 
 export const onRequest = handle(app);
