@@ -26,6 +26,33 @@ const STATUS_OPTIONS: Array<[string, string]> = [
   ['active', 'biorę'], ['planned', 'zaplanowane'], ['paused', 'wstrzymane'], ['discontinued', 'odstawione'],
 ];
 
+const DAY_CODES: Array<[string, string]> = [
+  ['pon', 'Pn'], ['wt', 'Wt'], ['sr', 'Śr'], ['czw', 'Cz'], ['pt', 'Pt'], ['sob', 'So'], ['nie', 'Nd'],
+];
+
+/**
+ * Dni tygodnia jako przełączniki, nie wolny tekst. CLAUDE.md tego repo ostrzega,
+ * że dopasowanie dni jest wrażliwe na dokładny format tokenów, a literówka
+ * w polu tekstowym po cichu psuje cały rozkład.
+ */
+function dayChips(days: string, prefix: string): string {
+  const set = days === 'daily' ? new Set(DAY_CODES.map(([c]) => c)) : new Set(days.split(',').map((d) => d.trim()));
+  return `<div style="display:flex;gap:4px;flex-wrap:wrap">${DAY_CODES.map(([code, label]) => `
+    <label style="flex:1;min-width:38px;text-align:center;font-size:12px;padding:9px 0;border-radius:8px;
+                  border:1px solid var(--hairline);cursor:pointer;
+                  ${set.has(code) ? 'background:var(--color-primary);color:#fff;font-weight:600' : ''}">
+      <input type="checkbox" name="${prefix}${code}" value="1" ${set.has(code) ? 'checked' : ''}
+             style="display:none">${label}
+    </label>`).join('')}</div>`;
+}
+
+/** Zaznaczone dni na wartość kolumny: komplet zapisujemy jako 'daily'. */
+function daysFromBody(b: Record<string, unknown>, prefix: string): string {
+  const picked = DAY_CODES.filter(([code]) => b[`${prefix}${code}`] === '1').map(([code]) => code);
+  if (picked.length === 0 || picked.length === DAY_CODES.length) return 'daily';
+  return picked.join(',');
+}
+
 const sel = (options: Array<[string, string]>, current: string | null, name: string, style = '') =>
   `<select name="${name}" style="${style}">${options
     .map(([v, l]) => `<option value="${v}" ${String(current ?? '') === v ? 'selected' : ''}>${l}</option>`)
@@ -104,8 +131,20 @@ settings.get('/ustawienia', async (c) => {
     scheduleBySupp.get(s.supplement_id)!.push(s);
   }
 
+  const statusPill: Record<string, string> = {
+    active: 'biorę', planned: 'plan', paused: 'pauza', discontinued: 'odstawione',
+  };
+
   const suppHtml = (supplements.results ?? []).map((s: any) => card(`
-      <form method="POST" action="/ustawienia/suplement" style="margin-bottom:12px">
+      <details ${s.status === 'active' ? '' : ''}>
+      <summary style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px;cursor:pointer;list-style:none">
+        <span>
+          <b>${esc(s.name)}</b>
+          <span style="font-size:12px;color:var(--muted);display:block">${esc(s.dose ?? '')}${(scheduleBySupp.get(s.id) ?? []).length ? ` &middot; ${(scheduleBySupp.get(s.id) ?? []).length}x dziennie` : ''}</span>
+        </span>
+        <span class="flag ${s.status === 'active' ? 'prefer' : s.status === 'discontinued' ? 'forbidden' : 'limit'}">${statusPill[s.status] ?? s.status}</span>
+      </summary>
+      <form method="POST" action="/ustawienia/suplement" style="margin:12px 0">
         <input type="hidden" name="id" value="${s.id}">
         <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;margin-bottom:8px">
           <input type="text" name="name" value="${esc(s.name)}" style="padding:10px;font-weight:600">
@@ -133,10 +172,8 @@ settings.get('/ustawienia', async (c) => {
             <input type="time" name="time_of_day" value="${esc(sc.time_of_day)}" style="padding:8px;font-size:14px">
             <input type="text" name="amount" value="${esc(sc.amount ?? '')}" placeholder="ile" style="padding:8px;font-size:14px">
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-            ${sel(WITH_MEAL_OPTIONS, sc.with_meal, 'with_meal', 'padding:8px;font-size:13px')}
-            <input type="text" name="days" value="${esc(sc.days)}" placeholder="daily albo pon,wt,sr" style="padding:8px;font-size:13px">
-          </div>
+          ${sel(WITH_MEAL_OPTIONS, sc.with_meal, 'with_meal', 'padding:8px;font-size:13px;width:100%;margin-bottom:6px')}
+          <div style="margin-bottom:6px">${dayChips(sc.days, 'day_')}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
             <input type="date" name="date_from" value="${esc(sc.date_from)}" style="padding:8px;font-size:13px">
             <input type="date" name="date_to" value="${esc(sc.date_to ?? '')}" style="padding:8px;font-size:13px">
@@ -154,6 +191,7 @@ settings.get('/ustawienia', async (c) => {
         <input type="text" name="amount" placeholder="ile, np. 1 kapsułka" style="padding:8px;font-size:14px">
         <button type="submit" class="button button-small button-fill">Dodaj</button>
       </form>
+      </details>
     `)).join('');
 
   const rulesHtml = (rules.results ?? []).map((r: any) => card(`
@@ -258,7 +296,7 @@ settings.post('/ustawienia/rozklad', async (c) => {
        WHERE id = ?`
     ).bind(
       String(b.time_of_day), String(b.amount || '') || null, String(b.with_meal || '') || null,
-      String(b.days || 'daily'), String(b.date_from), String(b.date_to || '') || null, Number(b.id)
+      daysFromBody(b as any, 'day_'), String(b.date_from), String(b.date_to || '') || null, Number(b.id)
     ).run();
   }
 

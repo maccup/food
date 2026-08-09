@@ -16,6 +16,7 @@ export interface DashboardData {
   nextSupplement: { time: string; name: string } | null;
   overdueSupplements: number;
   forbiddenToday: Array<{ food_name: string; meal_name: string }>;
+  nextDeliveryGap: { from: string; days: number } | null;
   minGapHours: number;
 }
 
@@ -125,13 +126,26 @@ export function dashboard(d: DashboardData): string {
       ].filter(Boolean).join(', ')}, więc sumy są przybliżone</div>`
     : '';
 
+  const gapLine = d.nextDeliveryGap
+    ? `<div class="panel-row">
+        <div>
+          <div class="panel-row-label">Przerwa w dostawach</div>
+          <div class="panel-row-main">${esc(d.nextDeliveryGap.from)}</div>
+        </div>
+        <div class="panel-row-side">${d.nextDeliveryGap.days === 0 ? 'dzisiaj' : `za ${d.nextDeliveryGap.days} dni`}</div>
+      </div>`
+    : '';
+
+  // Kolejnosc wiersze przed kafelkami jest celowa. Rano pytanie brzmi
+  // "co mam wziac i kiedy jem", a nie "ile mialem bialka".
   return `<div class="panel">
-    <div class="tiles">${macroTiles}</div>
-    ${missingMacros}
-    ${phaseLine}
-    ${nextWindow}
     ${suppLine}
+    ${nextWindow}
+    ${phaseLine}
+    ${gapLine}
     ${alerts}
+    <div class="tiles" style="margin-top:12px">${macroTiles}</div>
+    ${missingMacros}
     <div class="panel-actions">
       <a href="/log?date=${d.date}" class="button button-small button-fill">Dopisz</a>
       <a href="/suplementy?date=${d.date}" class="button button-small">Suplementy</a>

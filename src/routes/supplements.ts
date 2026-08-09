@@ -59,17 +59,21 @@ supplements.get('/suplementy', async (c) => {
         <div class="list media-list" style="margin:0"><ul>
           ${rows.map((r: any) => `<li>
             <div class="item-content"><div class="item-inner" style="display:block;padding:10px 0">
-              <form method="POST" action="/suplementy/wziete" style="display:flex;gap:10px;align-items:flex-start">
+              <form method="POST" action="/suplementy/wziete">
                 <input type="hidden" name="schedule_id" value="${r.id}">
                 <input type="hidden" name="supplement_id" value="${r.supplement_id}">
                 <input type="hidden" name="date" value="${date}">
+                <!-- Cala pozycja jest etykieta checkboxa. Wczesniej trzeba bylo
+                     trafic w kwadrat 20x20, a to najczestsza czynnosc w aplikacji. -->
+                <label style="display:flex;gap:12px;align-items:flex-start;min-height:48px;padding:2px 0;cursor:pointer">
                 <input type="checkbox" name="taken" value="1" ${r.logged === 1 ? 'checked' : ''}
-                       onchange="this.form.submit()" style="margin-top:3px;width:20px;height:20px">
+                       onchange="this.form.submit()" style="margin-top:4px;width:24px;height:24px;flex:none">
                 <div style="flex:1">
                   <div style="font-weight:600${r.logged === 1 ? ';opacity:.5;text-decoration:line-through' : ''}">${esc(r.name)}</div>
                   <div style="font-size:12px;color:var(--muted)">${esc(r.amount ?? '')}${r.rx ? ' &middot; na receptę' : ''}${r.purpose ? ` &middot; ${esc(r.purpose)}` : ''}</div>
                   ${r.notes ? `<div style="font-size:12px;color:var(--warn);margin-top:2px">${esc(r.notes)}</div>` : ''}
                 </div>
+                </label>
               </form>
             </div></div>
           </li>`).join('')}

@@ -123,7 +123,13 @@ export function page(opts: {
           <div class="navbar-bg"></div>
           <div class="navbar-inner">
             <div class="title">${opts.header}</div>
-            <div class="right">${opts.right ?? ''}<button class="theme-toggle" onclick="toggleTheme()" style="background:none;border:0;font-size:18px;padding:0 8px">🌙</button></div>
+            <div class="right" style="display:flex;align-items:center;gap:2px">
+              ${opts.right ?? ''}
+              <a href="/restrictions" aria-label="Wykluczenia" title="Wykluczenia" style="font-size:17px;padding:8px;text-decoration:none">🚫</a>
+              <a href="/ustawienia" aria-label="Ustawienia" title="Ustawienia" style="font-size:17px;padding:8px;text-decoration:none">⚙️</a>
+              <button class="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz tryb jasny i ciemny"
+                      style="background:none;border:0;font-size:17px;padding:8px;min-height:44px">🌙</button>
+            </div>
           </div>
         </div>
         <div class="page-content" style="padding-top:56px">

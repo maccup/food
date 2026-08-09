@@ -5,7 +5,7 @@ import {
   SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
-import { loadSettings, sittingTimes } from '../utils/settings';
+import { loadSettings, sittingTimes, parseNoDeliveryDates } from '../utils/settings';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -114,6 +114,17 @@ export async function renderDay(c: any, date: string) {
     bySitting.get(s)!.push(m);
   }
 
+  // Najblizsza przerwa w dostawach w ciagu dwoch tygodni. Planowanie, nie retrospekcja.
+  const noDelivery = parseNoDeliveryDates(settings.get('no_delivery_dates'));
+  let nextGap: { from: string; days: number } | null = null;
+  for (let i = 0; i <= 14; i++) {
+    const probe = shiftDate(date, i);
+    if (noDelivery.has(probe) && !noDelivery.has(shiftDate(probe, -1))) {
+      nextGap = { from: probe, days: i };
+      break;
+    }
+  }
+
   const panel = dashboard({
     date,
     isToday,
@@ -138,6 +149,7 @@ export async function renderDay(c: any, date: string) {
       .filter((b: any) => b.level === 'forbidden')
       .map((b: any) => ({ food_name: b.food_name, meal_name: b.meal_name ?? '' })),
     minGapHours: Number(settings.get('min_gap_hours') || 4),
+    nextDeliveryGap: nextGap,
   });
 
   const mealsHtml = (meals.results ?? []).length
@@ -155,7 +167,7 @@ export async function renderDay(c: any, date: string) {
             </div>`;
         })
         .join('')
-    : emptyState('Brak posiłków tego dnia. Zaimportuj menu albo dopisz ręcznie.');
+    : emptyState('Brak posiłków tego dnia. Menu z cateringu wjeżdża importem, a wszystko poza nim dopisujesz w zakładce Dopisz.');
 
   const eventsHtml =
     (symptoms.results?.length ?? 0) + (stools.results?.length ?? 0) === 0

@@ -46,7 +46,10 @@ week.get('/week', async (c) => {
       ((spec.min_value !== null && value < spec.min_value) ||
         (spec.max_value !== null && value > spec.max_value));
     const color = bad ? 'var(--bad)' : warn ? 'var(--warn)' : 'var(--ok)';
-    return `<td style="text-align:right;color:${color};font-weight:600">${pl(value, 0)}</td>`;
+    // Znak obok liczby, bo sam odcien to za malo przy dalonizmie i w slonecu.
+    const low = (spec.min_value !== null && value < spec.min_value);
+    const mark = bad || warn ? (low ? '↓' : '↑') : '';
+    return `<td style="text-align:right;color:${color};font-weight:600;white-space:nowrap">${pl(value, 0)}<span style="font-size:11px">${mark}</span></td>`;
   };
 
   const rows = (totals.results ?? []).map((d: any) => {

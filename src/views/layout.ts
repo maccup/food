@@ -36,6 +36,20 @@ export function layout(title: string, content: string, activeTab?: string) {
       --muted: #6b7280;
     }
 
+    /* Szary tekst pomocniczy z trybu jasnego jest nieczytelny na czarnym tle. */
+    html.dark-mode {
+      --muted: #9ca3af;
+      --ok: #22c55e;
+      --warn: #fbbf24;
+      --bad: #f87171;
+    }
+    .dark-mode .macro-track { background: #3f3f46; }
+    .dark-mode .macro-target-mark { background: rgba(255,255,255,.5); }
+    .dark-mode .flag.info { background: #3f3f46; color: #e5e7eb; }
+    .dark-mode .flag.forbidden { background: #7f1d1d; color: #fecaca; }
+    .dark-mode .flag.limit { background: #713f12; color: #fde68a; }
+    .dark-mode .flag.prefer { background: #14532d; color: #bbf7d0; }
+
     .ios .page-content {
       padding-bottom: calc(var(--f7-safe-area-bottom) + 72px);
     }
@@ -126,7 +140,7 @@ export function layout(title: string, content: string, activeTab?: string) {
       padding: 8px 0; border-top: 1px solid rgba(0,0,0,.07);
     }
     .dark-mode .panel-row { border-top-color: rgba(255,255,255,.1); }
-    .panel-row:first-of-type { margin-top: 8px; }
+    .panel-row:first-child { border-top: 0; }
     .panel-row-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
     .panel-row-main { font-size: 15px; font-weight: 600; margin-top: 1px; }
     .panel-row-side { font-size: 13px; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -139,6 +153,10 @@ export function layout(title: string, content: string, activeTab?: string) {
     .panel-actions { display: flex; gap: 8px; margin-top: 10px; }
     .panel-actions .button { flex: 1; min-height: 40px; }
 
+    /* Zwijane karty: bez domyslnego trojkata Safari */
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary { list-style: none; }
+
     /* Kalendarz */
     .cal-head {
       display: grid; grid-template-columns: repeat(7, 1fr);
@@ -147,7 +165,7 @@ export function layout(title: string, content: string, activeTab?: string) {
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
     .cal-cell {
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-      min-height: 46px; padding: 4px 2px 3px; border-radius: 8px;
+      min-height: 48px; padding: 5px 2px 4px; border-radius: 8px;
       text-decoration: none; color: inherit; line-height: 1.1;
     }
     .cal-empty { background: none; }
@@ -157,16 +175,20 @@ export function layout(title: string, content: string, activeTab?: string) {
     .cal-dots .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
     .cal-dots .dot.bad { background: var(--bad); }
     .cal-dots .dot.ev { background: #6366f1; }
-    .cal-ok     { background: #dcfce7; }
-    .cal-warn   { background: #fef3c7; }
-    .cal-bad    { background: #fee2e2; }
+    .cal-ok     { background: #dcfce7; color: #14532d; }
+    .cal-warn   { background: #fef3c7; color: #713f12; }
+    .cal-bad    { background: #fee2e2; color: #7f1d1d; }
+    /* Kolor nie moze byc jedynym sygnalem, wiec stan ma tez znak. */
+    .cal-warn .cal-num::after { content: '!'; font-size: 9px; vertical-align: super; opacity: .8; }
+    .cal-bad  .cal-num::after { content: '×'; font-size: 11px; vertical-align: super; opacity: .9; }
+    .cal-ok .cal-kcal, .cal-warn .cal-kcal, .cal-bad .cal-kcal { color: inherit; opacity: .75; }
     .cal-gap    { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px); }
     .cal-none   { background: #f3f4f6; }
     .cal-future { background: transparent; border: 1px dashed rgba(0,0,0,.12); }
     .cal-today  { outline: 2px solid var(--f7-theme-color); outline-offset: -2px; }
-    .dark-mode .cal-ok   { background: #14532d; }
-    .dark-mode .cal-warn { background: #713f12; }
-    .dark-mode .cal-bad  { background: #7f1d1d; }
+    .dark-mode .cal-ok   { background: #14532d; color: #dcfce7; }
+    .dark-mode .cal-warn { background: #713f12; color: #fef3c7; }
+    .dark-mode .cal-bad  { background: #7f1d1d; color: #fee2e2; }
     .dark-mode .cal-none { background: #27272a; }
     .dark-mode .cal-gap  { background: repeating-linear-gradient(45deg, #27272a, #27272a 4px, #3f3f46 4px, #3f3f46 8px); }
     .dark-mode .cal-future { border-color: rgba(255,255,255,.15); }
@@ -182,7 +204,7 @@ export function layout(title: string, content: string, activeTab?: string) {
     /* Dolna nawigacja */
     .tabbar-bottom {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
-      display: grid; grid-template-columns: repeat(6, 1fr);
+      display: grid; grid-template-columns: repeat(5, 1fr);
       background: var(--f7-bars-bg-color, #fff);
       border-top: 1px solid rgba(0,0,0,.12);
       padding-bottom: var(--f7-safe-area-bottom);
@@ -255,13 +277,15 @@ export function layout(title: string, content: string, activeTab?: string) {
 </html>`;
 }
 
+// Pięć pozycji to górna granica czytelnej dolnej nawigacji na telefonie.
+// Ustawienia i Wykluczenia mają swoje wejścia w pasku górnym, bo wchodzi
+// się tam raz na jakiś czas, a nie kilka razy dziennie.
 const TABS: Array<{ href: string; icon: string; label: string; key: string }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today' },
   { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar' },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log' },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements' },
   { href: '/week', icon: '📊', label: 'Tydzień', key: 'week' },
-  { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings' },
 ];
 
 function tabbar(active: string) {

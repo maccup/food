@@ -44,6 +44,13 @@ restrictions.get('/restrictions', async (c) => {
      GROUP BY f.id ORDER BY f.name`
   ).all<any>();
 
+  // Pelna lista produktow i grup, zeby wykluczenie dalo sie dodac z aplikacji.
+  // Wczesniej ta strona byla tylko do czytania, a to jest jej glowna funkcja.
+  const [allFoods, allGroups] = await Promise.all([
+    db.prepare(`SELECT id, name FROM foods ORDER BY name`).all<any>(),
+    db.prepare(`SELECT id, name FROM food_groups ORDER BY name`).all<any>(),
+  ]);
+
   const group = (status: string) => (rules.results ?? []).filter((r: any) => r.status === status);
 
   const ruleList = (rows: any[]) =>
@@ -61,6 +68,29 @@ restrictions.get('/restrictions', async (c) => {
               ${r.date_to ? `do ${esc(r.date_to)}${expired ? ', termin minął' : ''}` : 'bezterminowo'}
               ${r.source ? ` &middot; ${esc(r.source)}` : ''}
             </div>
+            <details style="margin-top:6px">
+              <summary style="font-size:12px;color:var(--f7-theme-color);cursor:pointer;min-height:32px;display:flex;align-items:center">Zmień</summary>
+              <form method="POST" action="/restrictions/${r.id}" style="margin-top:8px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+                  <select name="level" style="padding:8px;font-size:13px">
+                    ${[['forbidden', 'zakaz'], ['limit', 'limit'], ['prefer', 'preferowane']]
+                      .map(([v, l]) => `<option value="${v}" ${r.level === v ? 'selected' : ''}>${l}</option>`).join('')}
+                  </select>
+                  <select name="status" style="padding:8px;font-size:13px">
+                    ${Object.entries(STATUS_LABEL).map(([v, l]) => `<option value="${v}" ${r.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                  </select>
+                </div>
+                <input type="text" name="reason" value="${esc(r.reason)}" placeholder="powód" style="width:100%;padding:8px;font-size:13px;margin-bottom:6px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+                  <input type="text" name="max_amount" value="${esc(r.max_amount ?? '')}" placeholder="ile można" style="padding:8px;font-size:13px">
+                  <input type="date" name="date_to" value="${esc(r.date_to ?? '')}" style="padding:8px;font-size:13px">
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button type="submit" name="action" value="save" class="button button-small button-fill" style="flex:1">Zapisz</button>
+                  <button type="submit" name="action" value="delete" class="button button-small" style="color:var(--bad)">Usuń</button>
+                </div>
+              </form>
+            </details>
           </div></div></li>`;
         }).join('')}</ul></div>`
       : emptyState('Pusto.');
@@ -82,7 +112,35 @@ restrictions.get('/restrictions', async (c) => {
         </div></div></li>`).join('')}</ul></div>`
     : emptyState('Żadnych testów. Rozszerzanie diety startuje 15.09, wtedy to się zapełni.');
 
+  const addForm = card(`
+    <form method="POST" action="/restrictions">
+      <div style="display:grid;grid-template-columns:1fr 110px;gap:8px;margin-bottom:8px">
+        <select name="target" style="padding:10px">
+          <optgroup label="Produkt">
+            ${(allFoods.results ?? []).map((f: any) => `<option value="f${f.id}">${esc(f.name)}</option>`).join('')}
+          </optgroup>
+          <optgroup label="Cała grupa">
+            ${(allGroups.results ?? []).map((g: any) => `<option value="g${g.id}">${esc(g.name)}</option>`).join('')}
+          </optgroup>
+        </select>
+        <select name="level" style="padding:10px">
+          <option value="forbidden">zakaz</option>
+          <option value="limit">limit</option>
+          <option value="prefer">preferowane</option>
+        </select>
+      </div>
+      <input type="text" name="reason" placeholder="Dlaczego, np. mannitol albo histamina" required style="width:100%;padding:10px;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input type="text" name="max_amount" placeholder="ile można, opcjonalnie" style="padding:10px">
+        <input type="date" name="date_to" title="do kiedy obowiązuje" style="padding:10px">
+      </div>
+      <button type="submit" class="button button-fill">Dodaj wykluczenie</button>
+    </form>`);
+
   const content = `
+    ${blockTitle('Nowe wykluczenie', 'data pusta oznacza bezterminowo')}
+    ${addForm}
+
     ${blockTitle('Test produktu', 'jeden produkt naraz, obserwacja 48 h')}
     ${card(`
       <form method="POST" action="/trials" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
@@ -116,6 +174,44 @@ restrictions.get('/restrictions', async (c) => {
   `;
 
   return c.html(page({ title: 'Wykluczenia', tab: 'restrictions', header: 'Wykluczenia', content }));
+});
+
+restrictions.post('/restrictions', async (c) => {
+  const b = await c.req.parseBody();
+  const target = String(b.target || '');
+  const isGroup = target.startsWith('g');
+  const id = Number(target.slice(1));
+  if (!id) return c.redirect('/restrictions');
+
+  await c.env.DB.prepare(
+    `INSERT INTO restrictions (food_id, group_id, level, reason, source, date_from, date_to, status, max_amount)
+     VALUES (?, ?, ?, ?, 'dodane z aplikacji', date('now'), ?, 'active', ?)`
+  ).bind(
+    isGroup ? null : id, isGroup ? id : null,
+    String(b.level || 'forbidden'), String(b.reason || 'bez powodu'),
+    String(b.date_to || '') || null, String(b.max_amount || '') || null
+  ).run();
+
+  return c.redirect('/restrictions');
+});
+
+restrictions.post('/restrictions/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  const b = await c.req.parseBody();
+
+  if (String(b.action) === 'delete') {
+    await c.env.DB.prepare(`DELETE FROM restrictions WHERE id = ?`).bind(id).run();
+    return c.redirect('/restrictions');
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE restrictions SET level = ?, status = ?, reason = ?, max_amount = ?, date_to = ? WHERE id = ?`
+  ).bind(
+    String(b.level), String(b.status), String(b.reason || ''),
+    String(b.max_amount || '') || null, String(b.date_to || '') || null, id
+  ).run();
+
+  return c.redirect('/restrictions');
 });
 
 restrictions.post('/trials', async (c) => {
