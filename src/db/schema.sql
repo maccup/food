@@ -137,6 +137,8 @@ CREATE TABLE IF NOT EXISTS meals (
   weight_g        REAL,
   eaten           INTEGER NOT NULL DEFAULT 1,
   eaten_fraction  REAL NOT NULL DEFAULT 1.0,
+  -- 1 = makra podane na oko, np. posilek w restauracji opisany z pamieci
+  estimated       INTEGER NOT NULL DEFAULT 0,
   notes           TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -257,12 +259,14 @@ DROP VIEW IF EXISTS v_day_totals;
 CREATE VIEW v_day_totals AS
 SELECT
   m.date,
-  ROUND(SUM(m.kcal      * m.eaten_fraction), 1) AS kcal,
-  ROUND(SUM(m.protein_g * m.eaten_fraction), 1) AS protein_g,
-  ROUND(SUM(m.fat_g     * m.eaten_fraction), 1) AS fat_g,
-  ROUND(SUM(m.carbs_g   * m.eaten_fraction), 1) AS carbs_g,
-  ROUND(SUM(m.fiber_g   * m.eaten_fraction), 1) AS fiber_g,
-  COUNT(*) AS meals_count
+  ROUND(SUM(COALESCE(m.kcal, 0)      * m.eaten_fraction), 1) AS kcal,
+  ROUND(SUM(COALESCE(m.protein_g, 0) * m.eaten_fraction), 1) AS protein_g,
+  ROUND(SUM(COALESCE(m.fat_g, 0)     * m.eaten_fraction), 1) AS fat_g,
+  ROUND(SUM(COALESCE(m.carbs_g, 0)   * m.eaten_fraction), 1) AS carbs_g,
+  ROUND(SUM(COALESCE(m.fiber_g, 0)   * m.eaten_fraction), 1) AS fiber_g,
+  COUNT(*) AS meals_count,
+  SUM(CASE WHEN m.estimated = 1 THEN 1 ELSE 0 END) AS meals_estimated,
+  SUM(CASE WHEN m.kcal IS NULL THEN 1 ELSE 0 END)  AS meals_without_macros
 FROM meals m
 WHERE m.eaten = 1
 GROUP BY m.date;

@@ -1,0 +1,158 @@
+{
+  "days": [
+    {
+      "date": "2026-08-15",
+      "menu": {
+        "dietVariantMeals": [
+          {
+            "name": "Śniadanie",
+            "dishes": [
+              {
+                "dishScheduleId": 52968480,
+                "selected": true,
+                "dish": {
+                  "dishName": "Twarożek tzatziki podany z pieczywem ziarnistym, pomidorem i papryką [BG] [BL] [LF] [WEGE]",
+                  "ingredientsName": "chleb bezglutenowy, <b><u>Twaróg półtłusty bez laktozy</u></b>, pomidor, papryka, ogórek, Czarnuszka, koper ogrodowy, Sól himalajska, Pieprz czarny",
+                  "calories_kcal": "498,5", "protein": "26,0", "fat": "20,5", "carbohydrates": "49,9", "fiber": "8,2", "weight": "335,6"
+                }
+              }
+            ]
+          },
+          {
+            "name": "II Śniadanie",
+            "dishes": [
+              {
+                "dishScheduleId": 52969376,
+                "selected": true,
+                "dish": {
+                  "dishName": "Czekoladowe ciasto z porzeczką czerwoną [BG] [WEGE] [BL] [LF]",
+                  "ingredientsName": "porzeczki, <b><u>Napój ryżowy</u></b>, mąka ryżowa, Stewia, <b><u>migdały</u></b>, <b><u>jaja</u></b>, olej rzepakowy, kakao 16%, Sok z cytryn, Proszek do pieczenia, Wanilia mielona, Sól himalajska",
+                  "calories_kcal": "440,9", "protein": "11,4", "fat": "22,9", "carbohydrates": "76,5", "fiber": "7,6", "weight": "167,8"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Obiad",
+            "dishes": [
+              {
+                "dishScheduleId": 52969429,
+                "selected": true,
+                "dish": {
+                  "dishName": "Kaszotto buraczane podane z grillowaną piersią z kurczaka i serem fetą [BG] [BL] [LF]",
+                  "ingredientsName": "pierś z kurczaka, kasza gryczana , <b><u>Ser typu \"Feta\" bez laktozy</u></b>, Bulion warzywny, burak, pietruszka liście, Sok z buraka, oliwa z oliwek, Sól himalajska, Pieprz czarny, Tymianek, suszony",
+                  "calories_kcal": "600,0", "protein": "59,9", "fat": "15,4", "carbohydrates": "53,5", "fiber": "0,8", "weight": "491,6"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Podwieczorek",
+            "dishes": [
+              {
+                "dishScheduleId": 52968485,
+                "selected": true,
+                "dish": {
+                  "dishName": "Sałatka na mixie z tuńczykiem, kaparami, oliwkami, papryką podana z sosem majonezowym i pieczywem ziarnistym [LF] [BG] [BL]",
+                  "ingredientsName": "sałata lodowa, sałata fryzyjska, sałata rzymska, cykoria radicchio, <b><u>tuńczyk w sosie własnym</u></b>, chleb bezglutenowy, <b><u>Jogurt naturalny bez laktozy 2,5%</u></b>, papryka, <b><u>majonez</u></b>, oliwki, Kapary, Oregano, suszone, sól, Pieprz czarny",
+                  "calories_kcal": "453,8", "protein": "30,0", "fat": "21,5", "carbohydrates": "34,7", "fiber": "5,4", "weight": "356,7"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Kolacja",
+            "dishes": [
+              {
+                "dishScheduleId": 52968486,
+                "selected": true,
+                "dish": {
+                  "dishName": "Afrykańska sałatka z kaszą jaglaną, batatami, serem i dressingiem orzechowym [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "marchew, kasza jaglana, Bataty, papryka, <b><u>masło orzechowe 100%</u></b>, Syrop klonowy, <b><u>Ser Gouda bez laktozy</u></b>, śmietana roślinna, Woda, ocet balsamiczny, imbir, sól himalajska, syrop klonowy, Sok z cytryn, Sok z limonki, pietruszka liście, Czarnuszka, Stewia, Pieprz czarny, Papryka słodka wędzona, sól, Sól himalajska, Kumin",
+                  "calories_kcal": "601,2", "protein": "23,5", "fat": "21,5", "carbohydrates": "79,4", "fiber": "7,8", "weight": "464,7"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "date": "2026-08-16",
+      "menu": {
+        "dietVariantMeals": [
+          {
+            "name": "Śniadanie",
+            "dishes": [
+              {
+                "dishScheduleId": 52968679,
+                "selected": true,
+                "dish": {
+                  "dishName": "Warzywny pasztet podany z pieczywem ziarnistym i pomidorkami z ogórkiem [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "<b><u>marchew, pietruszka, seler korzeniowy</u></b>, chleb bezglutenowy, Pomidor, ogórek, <b><u>jaja</u></b>, Siemię lniane, nasiona, dynia pestki, skrobia ziemniaczna, papryka , Masło roślinne, Sól himalajska, Majeranek, suszony, Pieprz czarny",
+                  "calories_kcal": "500,7", "protein": "15,0", "fat": "22,2", "carbohydrates": "60,3", "fiber": "8,7", "weight": "319,3"
+                }
+              }
+            ]
+          },
+          {
+            "name": "II Śniadanie",
+            "dishes": [
+              {
+                "dishScheduleId": 52969477,
+                "selected": true,
+                "dish": {
+                  "dishName": "Koktajl kawowo-bananowy [WEGE] [BG] [BL] [LF]",
+                  "ingredientsName": "<b><u>Mleko bez laktozy 1,5 %</u></b>, banan, Kawa rozpuszczalna, Stewia, <b><u>wiórki kokosowe</u></b>, kakao 16%",
+                  "calories_kcal": "342,8", "protein": "15,7", "fat": "11,0", "carbohydrates": "53,8", "fiber": "3,0", "weight": "475,0"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Obiad",
+            "dishes": [
+              {
+                "dishScheduleId": 52969592,
+                "selected": true,
+                "dish": {
+                  "dishName": "Kotlety mielone podane na curry ryżowym z buraczkami i marchewką [BL] [BG] [LF]",
+                  "ingredientsName": "wieprzowina, burak, marchew, ryż, <b><u>jaja</u></b>, bułka tarta bezglutenowa, <b><u>Mleko bez laktozy 1,5 %</u></b>, olej rzepakowy, Syrop klonowy, Ocet balsamiczny, oliwa z oliwek, Sól himalajska, Curry, Pieprz czarny, Majeranek, suszony",
+                  "calories_kcal": "603,9", "protein": "38,7", "fat": "14,9", "carbohydrates": "81,3", "fiber": "5,3", "weight": "421,9"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Podwieczorek",
+            "dishes": [
+              {
+                "dishScheduleId": 52968683,
+                "selected": true,
+                "dish": {
+                  "dishName": "Krem pomidorowy podany z ziołową grzanką [BG] [BL] [WEGE] [LF]",
+                  "ingredientsName": "Bulion warzywny, pomidory , <b><u>marchew, pietruszka, seler korzeniowy</u></b>, dynia pestki, bułka szkolna (mąka ryżowa,skrobia z tapioki,mak niebieski,drożdże,olej rzepakowy), koncentrat pomidorowy, 30%, papryka, pietruszka liście, Masło roślinne, koper ogrodowy, oliwa z oliwek, Zioła prowansalskie, Bazylia",
+                  "calories_kcal": "445,1", "protein": "15,3", "fat": "24,1", "carbohydrates": "47,2", "fiber": "8,4", "weight": "610,4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Kolacja",
+            "dishes": [
+              {
+                "dishScheduleId": 52968685,
+                "selected": true,
+                "dish": {
+                  "dishName": "Sałatka z melonem, kurczakiem i serem camembert podana z dressingiem na bazie syropu klonowego i oliwy [LF] [IG] [BG] [BL]",
+                  "ingredientsName": "pierś z kurczaka, sałata lodowa, sałata fryzyjska, sałata rzymska, cykoria radicchio, melon, <b><u>ser camembert bez laktozy</u></b>, Woda, Syrop klonowy, oliwa z oliwek, Sok z cytryn, <b><u>orzechy włoskie</u></b>, olej rzepakowy, imbir,papryka ostra,kurkuma,majeranek,kminek,rozmaryn,bazylia,kardamon,gałka muszkatołowa, Pieprz czarny",
+                  "calories_kcal": "493,8", "protein": "45,7", "fat": "28,0", "carbohydrates": "15,7", "fiber": "1,2", "weight": "314,8"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
