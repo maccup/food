@@ -1,4 +1,4 @@
-const CACHE_NAME = 'food-v2';
+const CACHE_NAME = 'food-v3';
 
 // Never hand respondWith() an undefined - a cache miss while offline must
 // still resolve to a real Response or the page throws
@@ -19,7 +19,6 @@ function offlineFallback(cached, kind) {
 
 // App shell - cached on install so the app boots without any network
 const PRECACHE_URLS = [
-  '/css/food-theme.css',
   '/js/htmx.min.js',
   '/manifest.json',
   '/favicon.svg',
@@ -47,9 +46,13 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Arkusz stylow celowo poza ta lista. Nazywa sie zawsze tak samo, wiec
+// strategia "najpierw cache" potrafi podac wersje sprzed wdrozenia. Zdarzylo
+// sie to 09.08.2026: przegladarka dostala arkusz z 24 regulami zamiast ponad
+// stu i aplikacja wygladala jak goly HTML. Teraz idzie przez siec, a adres
+// niesie skrot tresci, wiec i brzeg CDN nie poda starego pliku.
 function isStaticAsset(pathname) {
-  return pathname.startsWith('/css/') || pathname.startsWith('/js/') ||
-    pathname.startsWith('/fonts/') || pathname.startsWith('/icons/') ||
+  return pathname.startsWith('/js/') || pathname.startsWith('/icons/') ||
     pathname === '/manifest.json' || pathname === '/favicon.svg' || pathname === '/favicon.ico';
 }
 

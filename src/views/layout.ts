@@ -1,3 +1,5 @@
+import { ASSET_V } from './assets';
+
 const NAV: Array<{ href: string; icon: string; label: string; key: string; tab: boolean }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today', tab: true },
   { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: true },
@@ -37,7 +39,7 @@ export function layout(title: string, content: string, activeTab?: string) {
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icons/icon-192.svg">
-  <link rel="stylesheet" href="/css/food-theme.css">
+  <link rel="stylesheet" href="/css/food-theme.css?v=${ASSET_V}">
   <script src="/js/htmx.min.js"></script>
 </head>
 <body>
