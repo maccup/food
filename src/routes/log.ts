@@ -24,86 +24,95 @@ log.get('/log', async (c) => {
     .join('');
 
   const content = `
-    ${saved ? `<div class="block"><div style="background:#dcfce7;color:#15803d;padding:10px 14px;border-radius:10px;font-size:14px">Zapisane: ${esc(saved)}</div></div>` : ''}
-
     <div class="cols">
     <section>
     ${blockTitle('Posiłek', 'makra możesz zostawić puste')}
     ${card(`
       <form method="POST" action="/log/meal">
         <input type="hidden" name="date" value="${date}">
-        <div class="list no-hairlines" style="margin:0">
-          <ul>
-            <li class="item-content item-input"><div class="item-inner"><div class="item-input-wrap">
-              <input type="text" name="name" placeholder="Co to było, np. Pad thai z kurczakiem" required>
-            </div></div></li>
-            <li class="item-content item-input"><div class="item-inner"><div class="item-input-wrap">
-              <textarea name="ingredients" rows="3" placeholder="Co w tym było, po przecinku: makaron ryżowy, kurczak, orzechy arachidowe, sos sojowy"></textarea>
-            </div></div></li>
-          </ul>
+
+        <div class="field">
+          <label class="field-label" for="meal-name">Co to było</label>
+          <input type="text" id="meal-name" name="name" placeholder="np. Pad thai z kurczakiem" required>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin:4px 2px 12px">
-          Opis składników jest ważniejszy niż makra. Po nim aplikacja sprawdza wykluczenia i pokrycie grup,
-          nawet jeśli nie znasz żadnej liczby.
+
+        <div class="field">
+          <label class="field-label" for="meal-ing">Składniki, po przecinku</label>
+          <textarea id="meal-ing" name="ingredients" rows="3" placeholder="makaron ryżowy, kurczak, orzechy arachidowe, sos sojowy"></textarea>
+        </div>
+        <p class="hint">
+          Składniki są ważniejsze niż makra. To po nich aplikacja sprawdza wykluczenia
+          i pokrycie grup, nawet jeśli nie znasz żadnej liczby.
         </p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <label style="font-size:13px">Posiłek
-            <select name="slot" style="width:100%;padding:8px;margin-top:4px">${slotOptions}</select>
-          </label>
-          <label style="font-size:13px">Skąd
-            <select name="source" style="width:100%;padding:8px;margin-top:4px">
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="meal-slot">Posiłek</label>
+            <select id="meal-slot" name="slot">${slotOptions}</select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="meal-source">Skąd</label>
+            <select id="meal-source" name="source">
               <option value="restauracja">restauracja</option>
               <option value="dom">dom</option>
             </select>
-          </label>
-          <label style="font-size:13px">Data
-            <input type="date" name="date_override" value="${date}" style="width:100%;padding:8px;margin-top:4px">
-          </label>
-          <label style="font-size:13px">Godzina
-            <input type="time" name="time" style="width:100%;padding:8px;margin-top:4px">
-          </label>
+          </div>
+          <div class="field">
+            <label class="field-label" for="meal-date">Data</label>
+            <input type="date" id="meal-date" name="date_override" value="${date}">
+          </div>
+          <div class="field">
+            <label class="field-label" for="meal-time">Godzina</label>
+            <input type="time" id="meal-time" name="time">
+          </div>
         </div>
 
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Makra, jeśli je znasz albo chcesz strzelić</div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px">
+        <div class="subhead">Makra, jeśli je znasz albo chcesz strzelić</div>
+        <div class="grid-5">
           ${[['kcal', 'kcal'], ['protein_g', 'białko'], ['fat_g', 'tłuszcz'], ['carbs_g', 'węgle'], ['fiber_g', 'błonnik']]
-            .map(([n, l]) => `<label style="font-size:11px;color:var(--muted)">${l}
-              <input type="text" inputmode="decimal" name="${n}" placeholder="?" style="width:100%;padding:6px;margin-top:2px;font-size:14px">
-            </label>`).join('')}
+            .map(([n, l]) => `<div class="field">
+              <label class="field-label" for="m-${n}">${l}</label>
+              <input type="text" inputmode="decimal" id="m-${n}" name="${n}" placeholder="?">
+            </div>`).join('')}
         </div>
 
-        <label style="font-size:13px;display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <label class="check" style="margin-bottom:14px">
           <input type="checkbox" name="estimated" value="1" checked>
           Makra podane na oko
         </label>
 
-        <button type="submit" class="button button-fill">Zapisz posiłek</button>
+        <button type="submit" class="button button-fill" style="width:100%">Zapisz posiłek</button>
       </form>
     `)}
-
     </section>
+
     <section>
     ${blockTitle('Objaw')}
     ${card(`
       <form method="POST" action="/log/symptom">
         <input type="hidden" name="date" value="${date}">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-          <label style="font-size:13px">Rodzaj
-            <select name="kind" style="width:100%;padding:8px;margin-top:4px">
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="s-kind">Rodzaj</label>
+            <select id="s-kind" name="kind">
               ${['gazy', 'wzdecia', 'bol', 'przelewanie', 'zgaga', 'inne']
                 .map((k) => `<option value="${k}">${k === 'wzdecia' ? 'wzdęcia' : k === 'bol' ? 'ból' : k}</option>`).join('')}
             </select>
-          </label>
-          <label style="font-size:13px">Nasilenie 0 do 10
-            <input type="number" name="severity" min="0" max="10" value="5" style="width:100%;padding:8px;margin-top:4px">
-          </label>
-          <label style="font-size:13px">Godzina
-            <input type="time" name="time" style="width:100%;padding:8px;margin-top:4px">
-          </label>
+          </div>
+          <div class="field">
+            <label class="field-label" for="s-sev">Nasilenie, 0 do 10</label>
+            <input type="number" id="s-sev" name="severity" min="0" max="10" value="5">
+          </div>
+          <div class="field">
+            <label class="field-label" for="s-time">Godzina</label>
+            <input type="time" id="s-time" name="time">
+          </div>
+          <div class="field">
+            <label class="field-label" for="s-note">Notatka</label>
+            <input type="text" id="s-note" name="notes" placeholder="opcjonalnie">
+          </div>
         </div>
-        <input type="text" name="notes" placeholder="Notatka, opcjonalnie" style="width:100%;padding:8px;margin-bottom:10px">
-        <button type="submit" class="button button-fill">Zapisz objaw</button>
+        <button type="submit" class="button button-fill" style="width:100%">Zapisz objaw</button>
       </form>
     `)}
 
@@ -111,9 +120,10 @@ log.get('/log', async (c) => {
     ${card(`
       <form method="POST" action="/log/stool">
         <input type="hidden" name="date" value="${date}">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <label style="font-size:13px">Typ
-            <select name="bristol" style="width:100%;padding:8px;margin-top:4px">
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="st-type">Typ</label>
+            <select id="st-type" name="bristol">
               <option value="1">1, twarde grudki, zaparcie</option>
               <option value="2">2, grudkowaty, zbity</option>
               <option value="3">3, z pęknięciami, norma</option>
@@ -122,17 +132,18 @@ log.get('/log', async (c) => {
               <option value="6">6, papkowaty, biegunka</option>
               <option value="7">7, wodnisty</option>
             </select>
-          </label>
-          <label style="font-size:13px">Godzina
-            <input type="time" name="time" style="width:100%;padding:8px;margin-top:4px">
-          </label>
+          </div>
+          <div class="field">
+            <label class="field-label" for="st-time">Godzina</label>
+            <input type="time" id="st-time" name="time">
+          </div>
         </div>
-        <div style="display:flex;gap:16px;font-size:13px;margin-bottom:10px;flex-wrap:wrap">
-          <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="straining" value="1"> parcie</label>
-          <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="incomplete" value="1"> niepełne</label>
-          <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="floating" value="1"> pływający</label>
+        <div class="check-row">
+          <label class="check"><input type="checkbox" name="straining" value="1"> parcie</label>
+          <label class="check"><input type="checkbox" name="incomplete" value="1"> niepełne</label>
+          <label class="check"><input type="checkbox" name="floating" value="1"> pływający</label>
         </div>
-        <button type="submit" class="button button-fill">Zapisz stolec</button>
+        <button type="submit" class="button button-fill" style="width:100%">Zapisz stolec</button>
       </form>
     `)}
     </section>

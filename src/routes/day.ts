@@ -6,6 +6,7 @@ import {
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, parseNoDeliveryDates } from '../utils/settings';
+import { loadDayGaps, renderGaps } from './gaps';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -114,6 +115,14 @@ export async function renderDay(c: any, date: string) {
     bySitting.get(s)!.push(m);
   }
 
+  // Poniedzialek biezacego tygodnia, bo reguly braków sa tygodniowe.
+  const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const weekStart = shiftDate(date, -dow);
+  const [dayGaps, shoppingOpen] = await Promise.all([
+    loadDayGaps(db, date, weekStart),
+    db.prepare(`SELECT id, label, note FROM shopping WHERE bought = 0 ORDER BY added_on, id`).all<any>(),
+  ]);
+
   // Najblizsza przerwa w dostawach w ciagu dwoch tygodni. Planowanie, nie retrospekcja.
   const noDelivery = parseNoDeliveryDates(settings.get('no_delivery_dates'));
   let nextGap: { from: string; days: number } | null = null;
@@ -200,6 +209,9 @@ export async function renderDay(c: any, date: string) {
 
     ${blockTitle('Posiłki')}
     <div class="cols">${mealsHtml}</div>
+
+    ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
+    ${renderGaps(dayGaps, date, shoppingOpen.results ?? [])}
 
     ${blockTitle('Objawy i stolec')}
     ${eventsHtml}

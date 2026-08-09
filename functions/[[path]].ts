@@ -11,6 +11,7 @@ import supplements from '../src/routes/supplements';
 import restrictions from '../src/routes/restrictions';
 import calendar from '../src/routes/calendar';
 import settingsRoutes from '../src/routes/settings';
+import gaps from '../src/routes/gaps';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -24,6 +25,7 @@ app.route('/', supplements);
 app.route('/', restrictions);
 app.route('/', calendar);
 app.route('/', settingsRoutes);
+app.route('/', gaps);
 app.route('/', day); // ostatni, bo lapie '/' i '/day/:date'
 
 export const onRequest = handle(app);
