@@ -1,7 +1,8 @@
 # Food App
 
 Prywatna aplikacja do kontroli jedzenia, objawów i suplementów. Jeden użytkownik.
-Produkcja: https://food.cupial.eu (fallback: https://food-55c.pages.dev)
+Produkcja: https://food.cupial.eu (domena podpieta 2026-08-09, certyfikat aktywny).
+Adres zapasowy Cloudflare: https://food-55c.pages.dev
 
 Kontekst medyczny, decyzje i narracja żyją w osobnym repo:
 `~/Library/CloudStorage/GoogleDrive-maciej@cupial.eu/My Drive/Prywatne/Medycyna/Longevity Agent`.
