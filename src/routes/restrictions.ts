@@ -69,7 +69,7 @@ restrictions.get('/restrictions', async (c) => {
               ${r.source ? ` &middot; ${esc(r.source)}` : ''}
             </div>
             <details style="margin-top:6px">
-              <summary style="font-size:12px;color:var(--f7-theme-color);cursor:pointer;min-height:32px;display:flex;align-items:center">Zmień</summary>
+              <summary style="font-size:12px;color:var(--accent-text);cursor:pointer;min-height:32px;display:flex;align-items:center">Zmień</summary>
               <form method="POST" action="/restrictions/${r.id}" style="margin-top:8px">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
                   <select name="level" style="padding:8px;font-size:13px">
@@ -114,8 +114,10 @@ restrictions.get('/restrictions', async (c) => {
 
   const addForm = card(`
     <form method="POST" action="/restrictions">
-      <div style="display:grid;grid-template-columns:1fr 110px;gap:8px;margin-bottom:8px">
-        <select name="target" style="padding:10px">
+      <div class="grid-2">
+        <div class="field">
+          <label class="field-label" for="r-target">Produkt albo grupa</label>
+        <select name="target" id="r-target">
           <optgroup label="Produkt">
             ${(allFoods.results ?? []).map((f: any) => `<option value="f${f.id}">${esc(f.name)}</option>`).join('')}
           </optgroup>
@@ -123,16 +125,29 @@ restrictions.get('/restrictions', async (c) => {
             ${(allGroups.results ?? []).map((g: any) => `<option value="g${g.id}">${esc(g.name)}</option>`).join('')}
           </optgroup>
         </select>
-        <select name="level" style="padding:10px">
-          <option value="forbidden">zakaz</option>
-          <option value="limit">limit</option>
-          <option value="prefer">preferowane</option>
-        </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="r-level">Poziom</label>
+          <select name="level" id="r-level">
+            <option value="forbidden">zakaz</option>
+            <option value="limit">limit</option>
+            <option value="prefer">preferowane</option>
+          </select>
+        </div>
       </div>
-      <input type="text" name="reason" placeholder="Dlaczego, np. mannitol albo histamina" required style="width:100%;padding:10px;margin-bottom:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <input type="text" name="max_amount" placeholder="ile można, opcjonalnie" style="padding:10px">
-        <input type="date" name="date_to" title="do kiedy obowiązuje" style="padding:10px">
+      <div class="field">
+        <label class="field-label" for="r-reason">Powód</label>
+        <input type="text" name="reason" id="r-reason" placeholder="np. mannitol albo histamina" required>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label class="field-label" for="r-max">Ile można</label>
+          <input type="text" name="max_amount" id="r-max" placeholder="opcjonalnie">
+        </div>
+        <div class="field">
+          <label class="field-label" for="r-to">Obowiązuje do</label>
+          <input type="date" name="date_to" id="r-to">
+        </div>
       </div>
       <button type="submit" class="button button-fill">Dodaj wykluczenie</button>
     </form>`);
@@ -143,16 +158,18 @@ restrictions.get('/restrictions', async (c) => {
 
     ${blockTitle('Test produktu', 'jeden produkt naraz, obserwacja 48 h')}
     ${card(`
-      <form method="POST" action="/trials" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
-        <label style="font-size:13px">Produkt do sprawdzenia
-          <select name="food_id" style="width:100%;padding:8px;margin-top:4px">
+      <form method="POST" action="/trials">
+        <div class="field">
+          <label class="field-label" for="t-food">Produkt do sprawdzenia</label>
+          <select name="food_id" id="t-food">
             ${(foods.results ?? []).map((f: any) => `<option value="${f.id}">${esc(f.name)}</option>`).join('')}
           </select>
-        </label>
-        <button type="submit" class="button button-fill">Zacznij</button>
-        <label style="font-size:13px;grid-column:1 / -1">Ile i kiedy
-          <input type="text" name="amount" placeholder="np. pół szklanki, jutro na śniadanie" style="width:100%;padding:8px;margin-top:4px">
-        </label>
+        </div>
+        <div class="field">
+          <label class="field-label" for="t-amount">Ile i kiedy</label>
+          <input type="text" name="amount" id="t-amount" placeholder="np. pół szklanki, jutro na śniadanie">
+        </div>
+        <button type="submit" class="button button-fill" style="width:100%">Zacznij test</button>
       </form>
     `)}
     ${trialsHtml}

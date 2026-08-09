@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, card, blockTitle, esc, todayWarsaw, prettyDate, SLOT_LABEL } from '../views/ui';
-import { parseIngredients } from '../utils/ingredients';
+import { parseIngredients, stripHtml } from '../utils/ingredients';
 
 const meal = new Hono<{ Bindings: Env }>();
 
@@ -62,7 +62,7 @@ meal.get('/meal/:id/edit', async (c) => {
 
         <div class="field">
           <label class="field-label" for="e-ing">Składniki, po przecinku</label>
-          <textarea id="e-ing" name="ingredients" rows="3">${esc(m.ingredients_raw ?? '')}</textarea>
+          <textarea id="e-ing" name="ingredients" rows="3">${esc(stripHtml(m.ingredients_raw ?? ''))}</textarea>
         </div>
         <p class="hint">Zmiana składników przelicza wykluczenia i pokrycie grup dla tego dnia.</p>
 
@@ -78,7 +78,7 @@ meal.get('/meal/:id/edit', async (c) => {
             <label class="field-label" for="e-source">Skąd</label>
             <select id="e-source" name="source">
               ${['hfood', 'dom', 'restauracja'].map((s) =>
-                `<option value="${s}" ${m.source === s ? 'selected' : ''}>${s === 'hfood' ? 'catering' : s}</option>`).join('')}
+                `<option value="${s}" ${m.source === s ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
           </div>
           <div class="field">
@@ -143,7 +143,7 @@ meal.get('/meal/:id/edit', async (c) => {
     `)}
   `;
 
-  return c.html(page({ title: 'Edycja posiłku', header: 'Edycja posiłku', content }));
+  return c.html(page({ title: 'Edycja posiłku', tab: 'today', header: 'Edycja posiłku', content }));
 });
 
 meal.post('/meal/:id', async (c) => {

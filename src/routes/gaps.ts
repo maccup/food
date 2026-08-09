@@ -136,10 +136,15 @@ export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): s
     }
     ${shoppingHtml ? `<div style="padding:16px 16px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Do kupienia</div>${shoppingHtml}` : ''}
     <div class="block">
-      <form method="POST" action="/zakupy/dodaj" style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <form method="POST" action="/zakupy/dodaj">
         <input type="hidden" name="date" value="${date}">
-        <input type="text" name="label" placeholder="Dopisz coś do kupienia" required>
-        <button type="submit" class="button">Dodaj</button>
+        <div class="field">
+          <label class="field-label" for="shop-add">Dopisz do listy zakupów</label>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+            <input type="text" name="label" id="shop-add" placeholder="np. kiwi zielone" required>
+            <button type="submit" class="button">Dodaj</button>
+          </div>
+        </div>
       </form>
     </div>`;
 }

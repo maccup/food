@@ -13,8 +13,21 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-  --color-primary: #16a34a;
-  --color-primary-dark: #15803d;
+  /*
+   * Zielen marki #16a34a daje na bieli kontrast 3,30:1, czyli ponizej progu
+   * 4,5:1 wymaganego dla zwyklego tekstu. Dotyczylo to linkow, etykiet
+   * aktywnych zakladek i bialego napisu na wypelnionym przycisku, czyli
+   * praktycznie kazdego napisu w kolorze marki.
+   *
+   * --color-primary to teraz odcien wypelnien: bialy tekst na nim daje 5,01:1
+   * i tyle samo w obu motywach, bo kontrast liczy sie miedzy tymi dwoma
+   * kolorami, nie wobec tla strony.
+   * --accent-text to kolor napisow na powierzchni, osobny, bo na ciemnym tle
+   * ten sam ciemny odcien mialby tylko 3,39:1.
+   */
+  --color-primary: #15803d;
+  --color-primary-dark: #14652f;
+  --accent-text: #15803d;
 
   --ok: #16a34a;
   --warn: #b45309;
@@ -47,6 +60,7 @@ html.dark-mode {
   --ok: #34d399;
   --warn: #fbbf24;
   --bad: #f87171;
+  --accent-text: #34d399;   /* 9,6:1 na #1c1c1e, ciemna zielen mialaby 3,4:1 */
 }
 
 html { background: var(--surface-sunken); }
@@ -59,7 +73,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--color-primary); }
+a { color: var(--accent-text); }
 
 /* ==========================================================================
    SZKIELET
@@ -109,7 +123,7 @@ a { color: var(--color-primary); }
   gap: 2px; padding: 8px 0 6px; min-height: 52px;
   font-size: 10px; color: var(--muted); text-decoration: none;
 }
-.tabbar-bottom a.active { color: var(--color-primary); font-weight: 700; }
+.tabbar-bottom a.active { color: var(--accent-text); font-weight: 700; }
 .tabbar-bottom .tab-icon { font-size: 18px; line-height: 1; }
 
 /* ==========================================================================
@@ -154,7 +168,7 @@ a { color: var(--color-primary); }
   color: var(--muted); padding: 6px;
 }
 .data-table td { padding: 8px 6px; border-top: 1px solid var(--hairline); }
-.data-table a { text-decoration: none; }
+.data-table a { text-decoration: none; color: var(--accent-text); }
 
 .sheet-title { font-size: 22px; font-weight: 700; }
 
@@ -197,14 +211,17 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
   min-height: 44px; padding: 0 16px;
   border-radius: 10px; border: 1px solid var(--hairline);
   font-size: 15px; font-weight: 600;
-  color: var(--color-primary); background: var(--surface);
+  color: var(--accent-text); background: var(--surface);
   text-decoration: none; cursor: pointer;
 }
 .btn:hover, .button:hover { border-color: var(--color-primary); }
 .btn-primary, .button-fill {
   background: var(--color-primary); border-color: var(--color-primary); color: #fff;
 }
-.button-small { min-height: 38px; padding: 0 12px; font-size: 13px; }
+/* 44 px, nie 38. Ten wariant siedzi przy akcjach codziennych: "Zjedzone
+   dzisiaj" przy brakach i "Edytuj" przy posilku. Mniejszy byl wylacznie
+   wizualnie, a nie funkcjonalnie drugorzedny. */
+.button-small { min-height: 44px; padding: 0 12px; font-size: 13px; }
 
 /* Jeden system pol formularza. Wczesniej w jednym formularzu byly trzy
    rozne style etykiet i resztki listy Framework7, ktore robily kreske
@@ -257,7 +274,7 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
   min-height: 46px; border-radius: 9px;
   font-size: 14px; font-weight: 600; text-decoration: none; color: var(--text);
 }
-.segmented a.active { background: var(--surface); color: var(--color-primary); }
+.segmented a.active { background: var(--surface); color: var(--accent-text); }
 .segmented .seg-icon { font-size: 15px; }
 
 details > summary::-webkit-details-marker { display: none; }

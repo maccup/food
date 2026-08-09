@@ -89,10 +89,10 @@ settings.get('/ustawienia', async (c) => {
 
   const generalHtml = `<form method="POST" action="/ustawienia/ogolne">
     ${general.map((s) => `<div style="margin-bottom:14px">
-      <label style="font-size:13px;font-weight:600">${esc(s.label)}</label>
+      <label class="field-label" for="set-${esc(s.key)}">${esc(s.label)}</label>
       ${s.hint ? `<div style="font-size:12px;color:var(--muted);margin:2px 0 4px">${esc(s.hint)}</div>` : ''}
       <input type="${s.kind === 'time' ? 'time' : s.kind === 'number' ? 'number' : 'text'}"
-             name="${esc(s.key)}" value="${esc(s.value)}"
+             id="set-${esc(s.key)}" name="${esc(s.key)}" value="${esc(s.value)}"
              style="width:100%;padding:10px;font-size:15px">
     </div>`).join('')}
     <button type="submit" class="button button-fill">Zapisz ustawienia</button>
@@ -108,11 +108,15 @@ settings.get('/ustawienia', async (c) => {
       <form method="POST" action="/ustawienia/faza">
         <input type="hidden" name="id" value="${p.id}">
         <input type="text" name="name" value="${esc(p.name)}" style="width:100%;padding:8px;font-weight:600;margin-bottom:8px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <label style="font-size:12px;color:var(--muted)">od
-            <input type="date" name="date_from" value="${esc(p.date_from)}" style="width:100%;padding:8px"></label>
-          <label style="font-size:12px;color:var(--muted)">do
-            <input type="date" name="date_to" value="${esc(p.date_to ?? '')}" style="width:100%;padding:8px"></label>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Od</label>
+            <input type="date" name="date_from" value="${esc(p.date_from)}">
+          </div>
+          <div class="field">
+            <label class="field-label">Do</label>
+            <input type="date" name="date_to" value="${esc(p.date_to ?? '')}">
+          </div>
         </div>
         <table style="width:100%;font-size:13px;margin-bottom:10px">
           <tr><th style="text-align:left;font-weight:600">Cel</th><th style="width:70px">min</th><th style="width:70px">maks</th></tr>
@@ -136,7 +140,7 @@ settings.get('/ustawienia', async (c) => {
   };
 
   const suppHtml = (supplements.results ?? []).map((s: any) => card(`
-      <details ${s.status === 'active' ? '' : ''}>
+      <details ${s.status === 'active' ? 'open' : ''}>
       <summary style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px;cursor:pointer;list-style:none">
         <span>
           <b>${esc(s.name)}</b>
@@ -211,19 +215,24 @@ settings.get('/ustawienia', async (c) => {
     ${card(generalHtml)}
 
     ${blockTitle('Fazy protokołu i cele makro')}
-    ${phasesHtml}
+    <div class="cols">${phasesHtml}</div>
 
     ${blockTitle('Suplementy i rozkład dnia')}
     ${card(`
-      <form method="POST" action="/ustawienia/suplement" style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <form method="POST" action="/ustawienia/suplement">
         <input type="hidden" name="id" value="new">
-        <input type="text" name="name" placeholder="Nazwa nowego preparatu" required style="padding:10px">
-        <button type="submit" class="button button-fill">Dodaj</button>
+        <div class="field">
+          <label class="field-label" for="new-supp">Nazwa nowego preparatu</label>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+            <input type="text" name="name" id="new-supp" placeholder="np. Imbir" required>
+            <button type="submit" class="button button-fill">Dodaj</button>
+          </div>
+        </div>
       </form>`)}
-    ${suppHtml}
+    <div class="cols">${suppHtml}</div>
 
     ${blockTitle('Reguły braków')}
-    ${rulesHtml}
+    <div class="cols">${rulesHtml}</div>
   `;
 
   return c.html(page({ title: 'Ustawienia', tab: 'settings', header: 'Ustawienia', content }));

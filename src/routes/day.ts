@@ -222,7 +222,10 @@ export async function renderDay(c: any, date: string) {
 
   return page({
     title: prettyDate(date),
-    tab: isToday ? 'today' : undefined,
+    // Zawsze 'today', nie tylko dla dzisiaj. Brak zakladki znaczy brak dolnego
+    // paska, wiec po kliknieciu "poprzedni dzien" albo dnia w kalendarzu
+    // uzytkownik na telefonie tracil cala nawigacje i wracal tylko wstecz.
+    tab: 'today',
     header: isToday ? 'Dziś' : esc(prettyDate(date)),
     content,
   });
@@ -236,7 +239,7 @@ function mealItem(m: MealRow, breaches: any[]): string {
     ...forbidden.map((b) => flag('forbidden', b.food_name)),
     ...limits.map((b) => flag('limit', b.food_name)),
     m.estimated ? flag('info', 'na oko') : '',
-    m.source !== 'hfood' ? flag('info', m.source) : '',
+    m.source !== 'hfood' ? flag('info', m.source) : '',  // catering nie potrzebuje znacznika, ma swoje makra
     m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
   ]
     .filter(Boolean)
