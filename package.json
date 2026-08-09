@@ -4,12 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev public --port 8789 --d1=DB=3cb98a94-de79-47a1-a29b-52c559143d68",
-    "deploy": "wrangler pages deploy public",
-    "db:schema": "wrangler d1 execute food --remote --file=src/db/schema.sql",
-    "db:seed": "wrangler d1 execute food --remote --file=src/db/seed.sql",
+    "deploy": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd wrangler pages deploy public --project-name=food --commit-dirty=true",
+    "db:schema": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd wrangler d1 execute food --remote --file=src/db/schema.sql",
+    "db:seed": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd wrangler d1 execute food --remote --file=src/db/seed.sql && CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd wrangler d1 execute food --remote --file=src/db/seed-foods.sql",
     "db:schema:local": "wrangler d1 execute food --local --file=src/db/schema.sql",
     "db:seed:local": "wrangler d1 execute food --local --file=src/db/seed.sql",
-    "export": "node scripts/export-csv.mjs",
+    "export": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd node scripts/export-csv.mjs",
     "test": "node scripts/test-ingredients.mjs"
   },
   "dependencies": {

@@ -2,9 +2,9 @@ name = "food"
 compatibility_date = "2026-08-01"
 pages_build_output_dir = "./public"
 
-# Konto "Private". Jawne, bo na tym profilu wrangler widzi dwa konta
-# i bez tego nie da sie uruchomic zadnej komendy nieinteraktywnie.
-account_id = "fdde32a072754a917c3e8206d585d1dd"
+# Uwaga: konfiguracja Pages NIE przyjmuje account_id, wiec konto "Private"
+# podaja skrypty w package.json przez CLOUDFLARE_ACCOUNT_ID. Na tym profilu
+# wrangler widzi dwa konta i bez tego nic nie ruszy nieinteraktywnie.
 
 [[d1_databases]]
 binding = "DB"
