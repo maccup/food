@@ -79,8 +79,8 @@ export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): s
         ${g.examples ? `<div style="font-size:13px;margin-top:3px">${esc(g.examples)}</div>` : ''}
         <div style="font-size:12px;color:var(--muted);margin-top:2px">daje: ${esc(g.provides ?? '')}</div>
 
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <form method="POST" action="/braki/zjedzone" style="flex:1 1 150px">
+        <div class="gap-actions">
+          <form method="POST" action="/braki/zjedzone">
             <input type="hidden" name="group_id" value="${g.group_id}">
             <input type="hidden" name="date" value="${date}">
             <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
@@ -88,7 +88,7 @@ export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): s
           ${
             g.onShoppingList
               ? `<span class="flag info" style="align-self:center">na liście zakupów</span>`
-              : `<form method="POST" action="/zakupy/dodaj" style="flex:1 1 150px">
+              : `<form method="POST" action="/zakupy/dodaj">
                   <input type="hidden" name="group_id" value="${g.group_id}">
                   <input type="hidden" name="date" value="${date}">
                   <button type="submit" class="button button-small" style="width:100%">Do kupienia</button>
