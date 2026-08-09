@@ -253,17 +253,20 @@ function mealItem(m: MealRow, breaches: any[]): string {
         <div class="item-title" style="white-space:normal;font-weight:600;line-height:1.35">${esc(m.name)}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px">${macros}</div>
         ${chips ? `<div style="margin-top:6px">${chips}</div>` : ''}
-        <form method="POST" action="/meal/${m.id}/eaten" style="margin-top:8px;display:flex;gap:8px;align-items:center">
-          <label style="font-size:13px;display:flex;gap:6px;align-items:center">
-            <input type="checkbox" name="eaten" value="1" ${m.eaten ? 'checked' : ''} onchange="this.form.submit()">
-            zjedzone
-          </label>
-          <select name="fraction" onchange="this.form.submit()" style="font-size:13px;padding:2px 6px">
-            ${[1, 0.75, 0.5, 0.25].map((f) =>
-              `<option value="${f}" ${Math.abs(m.eaten_fraction - f) < 0.01 ? 'selected' : ''}>${f === 1 ? 'całość' : `${f * 100}%`}</option>`
-            ).join('')}
-          </select>
-        </form>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <form method="POST" action="/meal/${m.id}/eaten" style="display:flex;gap:8px;align-items:center;margin:0">
+            <label class="check" style="min-height:40px">
+              <input type="checkbox" name="eaten" value="1" ${m.eaten ? 'checked' : ''} onchange="this.form.submit()">
+              zjedzone
+            </label>
+            <select name="fraction" onchange="this.form.submit()" style="min-height:36px;width:auto;font-size:13px;padding:4px 8px">
+              ${[1, 0.75, 0.5, 0.25].map((f) =>
+                `<option value="${f}" ${Math.abs(m.eaten_fraction - f) < 0.01 ? 'selected' : ''}>${f === 1 ? 'całość' : `${f * 100}%`}</option>`
+              ).join('')}
+            </select>
+          </form>
+          <a href="/meal/${m.id}/edit" class="button button-small" style="margin-left:auto">Edytuj</a>
+        </div>
       </div>
     </div>
   </li>`;
