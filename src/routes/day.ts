@@ -170,6 +170,11 @@ export async function renderDay(c: any, date: string) {
    * posiłkami, bo to ona uruchamia falę oczyszczającą jelito.
    */
   const minGap = Number(settings.get('min_gap_hours') || 4);
+  // Fala oczyszczajaca jelito cienkie wygasza sie po naplywie kalorii, nie od
+  // samego przelkniecia. Woda i czarne espresso jej nie przerywaja, kawa
+  // z mlekiem juz tak. Prog do zmiany w ustawieniach.
+  const progKcal = Number(settings.get('gap_kcal_prog') || 30);
+  const liczySie = (m: MealRow) => m.eaten === 1 && (m.kcal ?? 0) >= progKcal;
   const doMinut = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + (m || 0);
@@ -180,7 +185,7 @@ export async function renderDay(c: any, date: string) {
   let poprzednia: number | null = null;
 
   for (const m of lista) {
-    if (m.eaten_at && poprzednia !== null) {
+    if (m.eaten_at && poprzednia !== null && liczySie(m)) {
       const przerwa = doMinut(m.eaten_at) - poprzednia;
       const h = Math.floor(przerwa / 60);
       const min = przerwa % 60;
@@ -190,7 +195,7 @@ export async function renderDay(c: any, date: string) {
         ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
       </div>`);
     }
-    if (m.eaten_at) poprzednia = doMinut(m.eaten_at);
+    if (m.eaten_at && liczySie(m)) poprzednia = doMinut(m.eaten_at);
 
     wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
   }
@@ -228,7 +233,7 @@ export async function renderDay(c: any, date: string) {
       ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
-    ${blockTitle('Posiłki', `cel: przerwy min. ${Number(settings.get('min_gap_hours') || 4)} h`)}
+    ${blockTitle('Posiłki', `cel: przerwy min. ${minGap} h, poniżej ${progKcal} kcal nie liczy się jako przerwanie`)}
     ${mealsHtml}
 
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
@@ -261,6 +266,7 @@ function mealItem(m: MealRow, breaches: any[]): string {
     m.estimated ? flag('info', 'na oko') : '',
     m.source !== 'hfood' ? flag('info', m.source) : '',  // catering nie potrzebuje znacznika, ma swoje makra
     m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
+    (m.kcal ?? 0) > 0 && (m.kcal ?? 0) < 30 ? flag('info', 'nie przerywa przerwy') : '',
   ]
     .filter(Boolean)
     .join('');
