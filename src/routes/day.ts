@@ -166,11 +166,14 @@ export async function renderDay(c: any, date: string) {
     ? [...bySitting.entries()]
         .sort((a, b) => a[0] - b[0])
         .map(([sitting, list]) => {
-          const time = times[sitting] ?? 'poza oknami';
+          const time = times[sitting] ?? null;
           const kcal = list.reduce((a, m) => a + (m.eaten ? (m.kcal ?? 0) * m.eaten_fraction : 0), 0);
+          // Nazwa okna mowi wprost, ktore posilki sie w nim laczy. "Podejscie 3"
+          // nic nie znaczy, dopoki nie pamieta sie schematu z trzema oknami.
+          const czego = [...new Set(list.map((m) => SLOT_LABEL[m.slot] ?? m.slot))].join(' i ').toLowerCase();
           return `<section><div class="sitting-head">
-              <span class="sitting-time">${sitting <= 3 ? `Podejście ${sitting}, ${time}` : 'Poza oknami'}</span>
-              <span class="sitting-gap">${pl(kcal, 0)} kcal</span>
+              <span class="sitting-time">${time ?? 'Poza oknami'}</span>
+              <span class="sitting-gap">${czego}${kcal ? ` &middot; ${pl(kcal, 0)} kcal` : ''}</span>
             </div>
             <div class="list media-list" style="margin:0">
               <ul>${list.map((m) => mealItem(m, breachBy.get(m.id) ?? [])).join('')}</ul>
@@ -208,7 +211,11 @@ export async function renderDay(c: any, date: string) {
       ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
-    ${blockTitle('Posiłki')}
+    ${blockTitle('Posiłki', times[1] && times[2] && times[3] ? `trzy podejścia: ${times[1]}, ${times[2]}, ${times[3]}` : '')}
+    ${(meals.results ?? []).length ? `<p class="hint" style="margin:0 14px 8px">
+      Pięć pudełek jesz w trzech podejściach, żeby między nimi wypadły przerwy 4 do 5 godzin.
+      To one uruchamiają falę oczyszczającą jelito, a po rezygnacji z prokinetyku są jedynym narzędziem na motorykę.
+    </p>` : ''}
     <div class="cols">${mealsHtml}</div>
 
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}

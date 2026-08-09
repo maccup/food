@@ -1,4 +1,4 @@
-const CACHE_NAME = 'food-v4';
+const CACHE_NAME = 'food-v5';
 
 // Never hand respondWith() an undefined - a cache miss while offline must
 // still resolve to a real Response or the page throws
@@ -59,7 +59,7 @@ function isStaticAsset(pathname) {
   // ze adres jest wersjonowany: bez tego wracamy do awarii z 09.08.
   return pathname.startsWith('/css/') || pathname.startsWith('/js/') ||
     pathname.startsWith('/icons/') || pathname.startsWith('/fonts/') ||
-    pathname === '/manifest.json' || pathname === '/favicon.svg' || pathname === '/favicon.ico';
+    pathname === '/manifest.json' || pathname === '/favicon.svg';
 }
 
 self.addEventListener('fetch', (event) => {
