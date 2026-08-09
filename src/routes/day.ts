@@ -19,7 +19,7 @@ const MACROS = [
 ];
 
 interface MealRow {
-  id: number; slot: string; sitting: number | null; source: string; name: string;
+  id: number; slot: string; sitting: number | null; source: string; name: string; eaten_at: string | null;
   kcal: number | null; protein_g: number | null; fat_g: number | null;
   carbs_g: number | null; fiber_g: number | null; fiber: number | null;
   eaten: number; eaten_fraction: number; estimated: number; notes: string | null;
@@ -34,7 +34,7 @@ export async function renderDay(c: any, date: string) {
       `SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`
     ).bind(date, date).first<any>(),
     db.prepare(
-      `SELECT id, slot, sitting, source, name, kcal, protein_g, fat_g, carbs_g, fiber_g,
+      `SELECT id, slot, sitting, source, name, eaten_at, kcal, protein_g, fat_g, carbs_g, fiber_g,
               eaten, eaten_fraction, estimated, notes
        FROM meals WHERE date = ?
        ORDER BY COALESCE(eaten_at, '99:99'),
