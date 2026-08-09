@@ -26,6 +26,8 @@ log.get('/log', async (c) => {
   const content = `
     ${saved ? `<div class="block"><div style="background:#dcfce7;color:#15803d;padding:10px 14px;border-radius:10px;font-size:14px">Zapisane: ${esc(saved)}</div></div>` : ''}
 
+    <div class="cols">
+    <section>
     ${blockTitle('Posiłek', 'makra możesz zostawić puste')}
     ${card(`
       <form method="POST" action="/log/meal">
@@ -80,6 +82,8 @@ log.get('/log', async (c) => {
       </form>
     `)}
 
+    </section>
+    <section>
     ${blockTitle('Objaw')}
     ${card(`
       <form method="POST" action="/log/symptom">
@@ -131,6 +135,8 @@ log.get('/log', async (c) => {
         <button type="submit" class="button button-fill">Zapisz stolec</button>
       </form>
     `)}
+    </section>
+    </div>
   `;
 
   return c.html(page({ title: 'Dopisz', tab: 'log', header: 'Dopisz', content }));

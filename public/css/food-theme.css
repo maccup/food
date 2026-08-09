@@ -1,182 +1,423 @@
 /*
  * Food, arkusz stylów aplikacji.
  *
- * Poprzednia wersja tego pliku to była kopia arkusza z aplikacji treningowej:
- * 1907 linii, niebieski kolor wiodący przy zielonej aplikacji i klasy w rodzaju
- * .exercise-card, których nikt tu nie używa. Siedziały w niej jednak jedyne
- * działające reguły trybu ciemnego, więc "posprzątanie martwego kodu" wycięłoby
- * ostatnie miejsce, gdzie tryb ciemny w ogóle działał.
+ * Jedna aplikacja, dwa układy. Do 768 px kolumna z dolną nawigacją, jak było.
+ * Powyżej boczne menu, szersza treść i siatki wielokolumnowe.
  *
- * Ten plik zawiera tylko to, czego ta aplikacja faktycznie używa.
+ * Framework7 został usunięty. To biblioteka do udawania natywnej aplikacji
+ * na telefonie i to ona blokowała sensowny widok na dużym ekranie: stała
+ * wysokość paska, pojedyncza kolumna, marginesy liczone pod ekran 375 px.
+ * Klasy w widokach zostały te same, zmieniło się tylko to, kto je definiuje.
  */
+
+*, *::before, *::after { box-sizing: border-box; }
 
 :root {
   --color-primary: #16a34a;
   --color-primary-dark: #15803d;
 
-  --color-neutral-50:  #f9fafb;
-  --color-neutral-100: #f3f4f6;
-  --color-neutral-200: #e5e7eb;
-  --color-neutral-300: #d1d5db;
-  --color-neutral-500: #6b7280;
-  --color-neutral-700: #374151;
-  --color-neutral-900: #111827;
-
-  --text-body: 400 15px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  --ok: #16a34a;
+  --warn: #b45309;
+  --bad: #dc2626;
 
   --surface: #ffffff;
   --surface-sunken: #f2f2f7;
   --text: #111827;
-  --text-muted: #6b7280;
+  --muted: #5b6472;
   --hairline: rgba(0, 0, 0, .12);
+
+  --color-neutral-500: var(--muted);
+  --text-body: 400 15px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+
+  --nav-w: 232px;
+  --content-max: 1180px;
+  --radius: 12px;
 }
 
 /*
- * Tryb ciemny ustawiany jednym miejscem, na korzeniu dokumentu.
- * Wcześniej koloru tekstu nie ustawiał nikt, więc wszystko, co nie miało
- * własnej reguły, zostawało czarne na czarnym tle: nazwy posiłków, lista
- * suplementów, nazwy wykluczonych produktów. Dziedziczenie załatwia to
- * raz, zamiast łatania każdego selektora osobno.
+ * Tryb ciemny ustawiany raz, na korzeniu. Wcześniej koloru tekstu nie ustawiał
+ * nikt, więc wszystko bez własnej reguły zostawało czarne na czarnym tle.
  */
 html.dark-mode {
-  --surface: #1c1c1d;
+  --surface: #1c1c1e;
   --surface-sunken: #000000;
-  --text: #e5e7eb;
-  --text-muted: #9ca3af;
+  --text: #e8eaed;
+  --muted: #9aa2ae;
   --hairline: rgba(255, 255, 255, .16);
-  --color-neutral-500: #9ca3af;
-  color: var(--text);
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
 }
 
-html.dark-mode body,
-html.dark-mode .page,
-html.dark-mode .page-content {
-  color: var(--text);
-  background: var(--surface-sunken);
-}
-
-html.dark-mode .card,
-html.dark-mode .list .item-content,
-html.dark-mode .navbar-bg {
-  color: var(--text);
-}
+html { background: var(--surface-sunken); }
 
 body {
+  margin: 0;
   font: var(--text-body);
   color: var(--text);
+  background: var(--surface-sunken);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Nagłówki bloków */
-.block-title {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--text-muted);
-  margin: 20px 16px 6px;
+a { color: var(--color-primary); }
+
+/* ==========================================================================
+   SZKIELET
+   ========================================================================== */
+
+.app { display: flex; min-height: 100vh; }
+
+.sidenav { display: none; }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: max(env(safe-area-inset-top), 8px) 14px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.topbar h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
+.topbar-actions { display: flex; align-items: center; gap: 2px; }
+.topbar-actions a, .topbar-actions button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px;
+  background: none; border: 0; font-size: 17px; text-decoration: none; cursor: pointer;
+  border-radius: 10px; color: inherit;
+}
+.topbar-actions a:hover, .topbar-actions button:hover { background: var(--surface-sunken); }
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 76px);
 }
 
-/* Formularze */
-.form-section {
+/* Dolna nawigacja, tylko na telefonie */
+.tabbar-bottom {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-bottom: env(safe-area-inset-bottom);
 }
-.form-field { margin-bottom: 10px; }
+.tabbar-bottom a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 8px 0 6px; min-height: 52px;
+  font-size: 10px; color: var(--muted); text-decoration: none;
+}
+.tabbar-bottom a.active { color: var(--color-primary); font-weight: 700; }
+.tabbar-bottom .tab-icon { font-size: 18px; line-height: 1; }
+
+/* ==========================================================================
+   BLOKI TREŚCI
+   ========================================================================== */
+
+.block { padding: 0 14px; margin: 12px 0; }
+
+.block-title {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--muted);
+  margin: 22px 14px 6px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  margin: 8px 14px;
+  overflow: hidden;
+}
+.card-content-padding { padding: 14px; }
+
+/* Listy: zachowana struktura z widoków (list > ul > li > item-content > item-inner) */
+.list { margin: 8px 0; }
+.list ul { list-style: none; margin: 0; padding: 0; background: var(--surface); }
+.list > ul { border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.list li + li .item-content { border-top: 1px solid var(--hairline); }
+.item-content { padding: 0 14px; }
+.item-inner { padding: 10px 0; }
+.item-title { font-weight: 600; }
+.simple-list li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 11px 14px; border-top: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.data-table { border-collapse: collapse; }
+.data-table th {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--muted); padding: 6px;
+}
+.data-table td { padding: 8px 6px; border-top: 1px solid var(--hairline); }
+.data-table a { text-decoration: none; }
+
+.sheet-title { font-size: 22px; font-weight: 700; }
+
+/* ==========================================================================
+   FORMULARZE
+   ========================================================================== */
+
+.form-section {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+}
+.form-field { margin-bottom: 12px; }
 .form-field:last-child { margin-bottom: 0; }
 .form-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  display: block; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 5px;
 }
-.form-input {
+
+input[type="text"], input[type="password"], input[type="number"],
+input[type="date"], input[type="time"], select, textarea, .form-input {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  font-size: 16px; /* 16px, bo iOS zoomuje pola poniżej tej wartości */
+  font: inherit;
+  font-size: 16px; /* iOS zoomuje pola poniżej 16 px */
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: 10px;
 }
-.form-input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -1px;
+textarea { min-height: 64px; }
+select { appearance: none; background-image: none; }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--color-primary); outline-offset: -1px;
 }
+input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color: var(--color-primary); }
 
-/*
- * Każde pole formularza, nie tylko .form-input. Formularze w ustawieniach
- * i w dopisywaniu używają zwykłych inputów ze stylem inline.
- */
-input[type="text"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
-input[type="time"],
-select,
-textarea {
-  font-size: 16px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  min-height: 40px;
-  box-sizing: border-box;
-}
-textarea { min-height: 60px; }
-
-input[type="checkbox"] {
-  width: 22px;
-  height: 22px;
-  accent-color: var(--color-primary);
-}
-
-/* Przyciski */
 .btn, .button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  text-decoration: none;
-  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 16px;
+  border-radius: 10px; border: 1px solid var(--hairline);
+  font-size: 15px; font-weight: 600;
+  color: var(--color-primary); background: var(--surface);
+  text-decoration: none; cursor: pointer;
 }
+.btn:hover, .button:hover { border-color: var(--color-primary); }
 .btn-primary, .button-fill {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary); border-color: var(--color-primary); color: #fff;
 }
-.button-small { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.button-small { min-height: 38px; padding: 0 12px; font-size: 13px; }
 
-/* Tabela tygodnia */
-.data-table th {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .4px;
-  color: var(--text-muted);
-  padding: 4px 6px;
+details > summary::-webkit-details-marker { display: none; }
+details > summary { list-style: none; }
+
+/* ==========================================================================
+   PANEL KONTROLNY
+   ========================================================================== */
+
+.panel {
+  margin: 10px 14px; padding: 14px;
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
 }
-.data-table td { padding: 6px; border-top: 1px solid var(--hairline); }
-.data-table a { color: var(--color-primary); text-decoration: none; }
+.panel-main > .panel-row:first-child { border-top: 0; padding-top: 0; }
+.panel > .tiles { margin-top: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
+.tile-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.panel-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 9px 0; border-top: 1px solid var(--hairline);
+}
+.panel-row:first-child { border-top: 0; padding-top: 0; }
+.panel-row-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.panel-row-main { font-size: 15px; font-weight: 600; margin-top: 1px; }
+.panel-row-side { font-size: 13px; color: var(--muted); text-align: right; white-space: nowrap; }
+.panel-note { font-size: 11px; color: var(--warn); margin-top: 8px; }
+.panel-alert {
+  margin-top: 10px; padding: 9px 11px; border-radius: 10px;
+  background: rgba(220, 38, 38, .1); color: var(--bad); font-size: 13px;
+}
+.panel-actions { display: flex; gap: 8px; margin-top: 12px; }
+.panel-actions .button { flex: 1; }
 
-/* Tytuł w arkuszu i na logowaniu */
-.sheet-title { font-size: 22px; font-weight: 700; }
+/* ==========================================================================
+   PASKI MAKRO, ZNACZNIKI, POSIŁKI
+   ========================================================================== */
 
-/* Listy Framework7: czytelny tekst w obu motywach */
-.list .item-title, .list .item-inner { color: var(--text); }
+.macro-row {
+  display: grid; grid-template-columns: 84px 1fr 96px;
+  align-items: center; gap: 10px; padding: 6px 0;
+}
+.macro-label { font-size: 13px; color: var(--muted); }
+.macro-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.macro-track {
+  height: 8px; background: var(--hairline); border-radius: 4px;
+  overflow: hidden; position: relative;
+}
+.macro-fill { height: 100%; border-radius: 4px; }
+.macro-fill.ok { background: var(--ok); }
+.macro-fill.warn { background: var(--warn); }
+.macro-fill.bad { background: var(--bad); }
+.macro-target-mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: .45; }
 
-/* Obszar bezpieczny iOS pod dolną nawigacją */
-.page-content { padding-bottom: calc(env(safe-area-inset-bottom) + 76px); }
+.flag {
+  display: inline-block; font-size: 11px; line-height: 1; font-weight: 600;
+  padding: 4px 7px; border-radius: 999px; margin: 2px 4px 2px 0;
+}
+.flag.forbidden { background: rgba(220, 38, 38, .12); color: var(--bad); }
+.flag.limit     { background: rgba(180, 83, 9, .14);  color: var(--warn); }
+.flag.prefer    { background: rgba(22, 163, 74, .12); color: var(--ok); }
+.flag.info      { background: var(--hairline); color: var(--muted); }
+
+.sitting-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 14px 14px 4px;
+}
+.sitting-time { font-size: 16px; font-weight: 700; }
+.sitting-gap { font-size: 12px; color: var(--muted); }
+
+.meal-skipped { opacity: .45; }
+.meal-skipped .item-title { text-decoration: line-through; }
+
+/* ==========================================================================
+   KALENDARZ
+   ========================================================================== */
+
+.cal-head {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 4px;
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  min-height: 48px; padding: 5px 2px 4px; border-radius: 8px;
+  text-decoration: none; color: inherit; line-height: 1.1;
+}
+.cal-empty { background: none; }
+.cal-num { font-size: 13px; font-weight: 600; }
+.cal-kcal { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.cal-dots { display: flex; gap: 3px; margin-top: 3px; height: 5px; }
+.cal-dots .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.cal-dots .dot.bad { background: var(--bad); }
+.cal-dots .dot.ev { background: #6366f1; }
+.cal-ok   { background: #dcfce7; color: #14532d; }
+.cal-warn { background: #fef3c7; color: #713f12; }
+.cal-bad  { background: #fee2e2; color: #7f1d1d; }
+/* Kolor nie może być jedynym sygnałem, więc stan ma też znak. */
+.cal-warn .cal-num::after { content: '!'; font-size: 9px; vertical-align: super; opacity: .8; }
+.cal-bad  .cal-num::after { content: '×'; font-size: 11px; vertical-align: super; opacity: .9; }
+.cal-ok .cal-kcal, .cal-warn .cal-kcal, .cal-bad .cal-kcal { color: inherit; opacity: .78; }
+.cal-gap    { background: repeating-linear-gradient(45deg, #eceef1, #eceef1 4px, #dfe3e8 4px, #dfe3e8 8px); }
+.cal-none   { background: var(--surface); border: 1px solid var(--hairline); }
+.cal-future { background: transparent; border: 1px dashed var(--hairline); }
+.cal-today  { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+html.dark-mode .cal-ok   { background: #14532d; color: #dcfce7; }
+html.dark-mode .cal-warn { background: #713f12; color: #fef3c7; }
+html.dark-mode .cal-bad  { background: #7f1d1d; color: #fee2e2; }
+html.dark-mode .cal-gap  { background: repeating-linear-gradient(45deg, #27272a, #27272a 4px, #3f3f46 4px, #3f3f46 8px); }
+.cal-legend {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;
+  font-size: 11px; color: var(--muted);
+}
+.cal-legend .sw {
+  display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+  vertical-align: -1px; margin-right: 4px;
+}
+
+/* Pasek postępu nawigacji */
+#page-loader {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--color-primary); z-index: 9999;
+  transform: scaleX(0); transform-origin: left;
+}
+#page-loader.active { animation: loading-bar 2s ease-out forwards; }
+@keyframes loading-bar {
+  0% { transform: scaleX(0); } 50% { transform: scaleX(.7); } 100% { transform: scaleX(.95); }
+}
+
+/* Siatka, której używają widoki na szerokich ekranach */
+.cols { display: block; }
+
+/* ==========================================================================
+   TABLET, od 768 px
+   ========================================================================== */
+
+@media (min-width: 768px) {
+  .content { padding: 0 8px calc(env(safe-area-inset-bottom) + 76px); }
+  .card, .panel { margin-left: 8px; margin-right: 8px; }
+  .tiles { grid-template-columns: repeat(5, 1fr); }
+  .tile-value { font-size: 24px; }
+  .tile-label { font-size: 11px; }
+  .cal-cell { min-height: 76px; padding: 8px 4px; }
+  .cal-num { font-size: 15px; }
+  .cal-kcal { font-size: 12px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 16px; align-items: start; }
+}
+
+/* ==========================================================================
+   DUŻY EKRAN, od 1024 px: boczne menu zamiast dolnego paska
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  .tabbar-bottom { display: none; }
+
+  .sidenav {
+    display: flex; flex-direction: column; gap: 2px;
+    width: var(--nav-w); flex: none;
+    padding: 18px 12px;
+    background: var(--surface);
+    border-right: 1px solid var(--hairline);
+    position: sticky; top: 0; height: 100vh;
+  }
+  .sidenav-brand {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 17px; font-weight: 700; padding: 4px 10px 16px;
+  }
+  .sidenav a {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px 12px; border-radius: 10px;
+    color: var(--text); text-decoration: none; font-size: 14px; font-weight: 500;
+  }
+  .sidenav a:hover { background: var(--surface-sunken); }
+  .sidenav a.active { background: var(--color-primary); color: #fff; font-weight: 600; }
+  .sidenav .tab-icon { font-size: 17px; width: 22px; text-align: center; }
+  .sidenav-sep { height: 1px; background: var(--hairline); margin: 12px 6px; }
+
+  .topbar { padding: 14px 22px; }
+  .topbar h1 { font-size: 24px; }
+  .content { padding: 0 14px 40px; }
+
+  .block, .block-title { padding-left: 0; padding-right: 0; margin-left: 8px; margin-right: 8px; }
+
+  /* Panel: wiersze po lewej, kafelki makro po prawej */
+  .panel {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: 8px 28px; align-items: center; padding: 18px 22px;
+  }
+  .panel-main { min-width: 0; }
+  .panel > .tiles { margin-top: 0; }
+  .panel > .panel-alert, .panel > .panel-note, .panel > .panel-actions { grid-column: 1 / -1; }
+  .panel-actions .button { flex: 0 1 220px; }
+
+  /* auto-fit, zeby dwie sekcje zajely cala szerokosc, a trzy podejscia trzy kolumny */
+  .cols { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 0 18px; }
+  .cols > * { min-width: 0; }
+
+  .cal-cell { min-height: 92px; }
+  .macro-row { grid-template-columns: 110px 1fr 120px; }
+
+  /* Formularze przestają być kolumną na całą szerokość ekranu */
+  .form-narrow { max-width: 640px; }
+}
+
+@media (min-width: 1400px) {
+  :root { --content-max: 1320px; }
+  .cols { gap: 0 22px; }
+}
+
+/* Klawiatura: widoczny focus wszędzie, nie tylko w polach */
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

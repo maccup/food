@@ -14,12 +14,31 @@ Kontekst medyczny, decyzje i narracja żyją w osobnym repo:
 | Runtime | Cloudflare Pages (Functions + statyki), konto **Private** |
 | Framework | Hono (TypeScript) |
 | Baza | Cloudflare D1, `food`, id `3cb98a94-de79-47a1-a29b-52c559143d68` |
-| Frontend | HTML renderowany na serwerze + HTMX + Framework7 (iOS) |
+| Frontend | HTML renderowany na serwerze + HTMX, własny arkusz stylów |
 | Auth | hasło, sesja na ciasteczku podpisanym HMAC, 7 dni |
 
 Wzorzec skopiowany z `~/Projects/priv/training`. Obowiązują te same zasady:
 bez SPA, bez Reacta, bez bundlera, widoki to funkcje TS zwracające stringi HTML,
 system fonts, żadnych ozdobników. To narzędzie, nie portfolio.
+
+**Framework7 został usunięty 2026-08-09.** To biblioteka do udawania natywnej
+aplikacji na telefonie i to ona blokowała sensowny widok na dużym ekranie.
+Klasy w widokach (`.card`, `.list`, `.block-title`, `.item-content`) zostały
+te same, definiuje je teraz `public/css/food-theme.css`. Nie dodawać jej z powrotem.
+
+## Układ responsywny
+
+Jeden HTML, dwa układy, decyduje CSS:
+
+| Szerokość | Co się dzieje |
+|---|---|
+| do 768 px | jedna kolumna, dolna nawigacja z 5 pozycjami |
+| 768 do 1023 px | szersze marginesy, siatki dwukolumnowe, większe komórki kalendarza |
+| od 1024 px | boczne menu ze wszystkimi pozycjami, dolny pasek znika, panel dzieli się na wiersze i kafelki, `.cols` układa sekcje obok siebie |
+
+Klasa `.cols` to `auto-fit` z minimum 330 px, więc dwie sekcje zajmują całą
+szerokość, a trzy podejścia do jedzenia trafiają w trzy kolumny. Nie wpisywać
+tam sztywnej liczby kolumn.
 
 **Konto Cloudflare podaje się przez `CLOUDFLARE_ACCOUNT_ID` w skryptach npm.**
 Konfiguracja Pages nie przyjmuje `account_id`, a na tym profilu wrangler widzi

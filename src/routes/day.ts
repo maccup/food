@@ -158,13 +158,13 @@ export async function renderDay(c: any, date: string) {
         .map(([sitting, list]) => {
           const time = times[sitting] ?? 'poza oknami';
           const kcal = list.reduce((a, m) => a + (m.eaten ? (m.kcal ?? 0) * m.eaten_fraction : 0), 0);
-          return `<div class="sitting-head">
+          return `<section><div class="sitting-head">
               <span class="sitting-time">${sitting <= 3 ? `Podejście ${sitting}, ${time}` : 'Poza oknami'}</span>
               <span class="sitting-gap">${pl(kcal, 0)} kcal</span>
             </div>
             <div class="list media-list" style="margin:0">
               <ul>${list.map((m) => mealItem(m, breachBy.get(m.id) ?? [])).join('')}</ul>
-            </div>`;
+            </div></section>`;
         })
         .join('')
     : emptyState('Brak posiłków tego dnia. Menu z cateringu wjeżdża importem, a wszystko poza nim dopisujesz w zakładce Dopisz.');
@@ -199,7 +199,7 @@ export async function renderDay(c: any, date: string) {
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
     ${blockTitle('Posiłki')}
-    ${mealsHtml}
+    <div class="cols">${mealsHtml}</div>
 
     ${blockTitle('Objawy i stolec')}
     ${eventsHtml}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'food-v1';
+const CACHE_NAME = 'food-v2';
 
 // Never hand respondWith() an undefined - a cache miss while offline must
 // still resolve to a real Response or the page throws
@@ -19,12 +19,8 @@ function offlineFallback(cached, kind) {
 
 // App shell - cached on install so the app boots without any network
 const PRECACHE_URLS = [
-  '/css/framework7-bundle.min.css',
-  '/css/framework7-icons.min.css',
   '/css/food-theme.css',
-  '/js/framework7-bundle.min.js',
   '/js/htmx.min.js',
-  '/fonts/Framework7Icons-Regular.woff2',
   '/manifest.json',
   '/favicon.svg',
   '/icons/icon-192.svg',

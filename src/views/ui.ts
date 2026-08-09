@@ -1,4 +1,4 @@
-import { layout } from './layout';
+import { layout, sidenav } from './layout';
 
 export function esc(value: unknown): string {
   if (value === null || value === undefined) return '';
@@ -117,29 +117,23 @@ export function page(opts: {
 }): string {
   return layout(
     opts.title,
-    `<div class="view view-main">
-      <div class="page">
-        <div class="navbar">
-          <div class="navbar-bg"></div>
-          <div class="navbar-inner">
-            <div class="title">${opts.header}</div>
-            <div class="right" style="display:flex;align-items:center;gap:2px">
-              ${opts.right ?? ''}
-              <a href="/restrictions" aria-label="Wykluczenia" title="Wykluczenia" style="font-size:17px;padding:8px;text-decoration:none">🚫</a>
-              <a href="/ustawienia" aria-label="Ustawienia" title="Ustawienia" style="font-size:17px;padding:8px;text-decoration:none">⚙️</a>
-              <button class="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz tryb jasny i ciemny"
-                      style="background:none;border:0;font-size:17px;padding:8px;min-height:44px">🌙</button>
-            </div>
+    `<div class="app">
+      ${sidenav(opts.tab)}
+      <div class="main">
+        <header class="topbar">
+          <h1>${opts.header}</h1>
+          <div class="topbar-actions">
+            ${opts.right ?? ''}
+            <a href="/restrictions" aria-label="Wykluczenia" title="Wykluczenia">🚫</a>
+            <a href="/ustawienia" aria-label="Ustawienia" title="Ustawienia">⚙️</a>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz tryb jasny i ciemny">🌙</button>
           </div>
-        </div>
-        <div class="page-content" style="padding-top:56px">
+        </header>
+        <main class="content">
           ${opts.content}
-        </div>
+        </main>
       </div>
-    </div>
-    <script>
-      var app = new Framework7({ el: '#app', name: 'Food', theme: 'ios', clicks: { externalLinks: 'a[href]' } });
-    </script>`,
+    </div>`,
     opts.tab
   );
 }

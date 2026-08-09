@@ -139,12 +139,14 @@ export function dashboard(d: DashboardData): string {
   // Kolejnosc wiersze przed kafelkami jest celowa. Rano pytanie brzmi
   // "co mam wziac i kiedy jem", a nie "ile mialem bialka".
   return `<div class="panel">
-    ${suppLine}
-    ${nextWindow}
-    ${phaseLine}
-    ${gapLine}
+    <div class="panel-main">
+      ${suppLine}
+      ${nextWindow}
+      ${phaseLine}
+      ${gapLine}
+    </div>
+    <div class="tiles">${macroTiles}</div>
     ${alerts}
-    <div class="tiles" style="margin-top:12px">${macroTiles}</div>
     ${missingMacros}
     <div class="panel-actions">
       <a href="/log?date=${d.date}" class="button button-small button-fill">Dopisz</a>
