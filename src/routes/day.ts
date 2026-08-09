@@ -37,7 +37,7 @@ export async function renderDay(c: any, date: string) {
       `SELECT id, slot, sitting, source, name, kcal, protein_g, fat_g, carbs_g, fiber_g,
               eaten, eaten_fraction, estimated, notes
        FROM meals WHERE date = ?
-       ORDER BY COALESCE(sitting, 9),
+       ORDER BY COALESCE(eaten_at, '99:99'),
          CASE slot WHEN 'sniadanie' THEN 1 WHEN 'ii_sniadanie' THEN 2 WHEN 'obiad' THEN 3
                    WHEN 'podwieczorek' THEN 4 WHEN 'kolacja' THEN 5 ELSE 6 END, id`
     ).bind(date).all<MealRow>(),
@@ -162,24 +162,41 @@ export async function renderDay(c: any, date: string) {
     nextDeliveryGap: nextGap,
   });
 
-  const mealsHtml = (meals.results ?? []).length
-    ? [...bySitting.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .map(([sitting, list]) => {
-          const time = times[sitting] ?? null;
-          const kcal = list.reduce((a, m) => a + (m.eaten ? (m.kcal ?? 0) * m.eaten_fraction : 0), 0);
-          // Nazwa okna mowi wprost, ktore posilki sie w nim laczy. "Podejscie 3"
-          // nic nie znaczy, dopoki nie pamieta sie schematu z trzema oknami.
-          const czego = [...new Set(list.map((m) => SLOT_LABEL[m.slot] ?? m.slot))].join(' i ').toLowerCase();
-          return `<section><div class="sitting-head">
-              <span class="sitting-time">${time ?? 'Poza oknami'}</span>
-              <span class="sitting-gap">${czego}${kcal ? ` &middot; ${pl(kcal, 0)} kcal` : ''}</span>
-            </div>
-            <div class="list media-list" style="margin:0">
-              <ul>${list.map((m) => mealItem(m, breachBy.get(m.id) ?? [])).join('')}</ul>
-            </div></section>`;
-        })
-        .join('')
+  /*
+   * Oś czasu z faktycznymi godzinami, nie z planowanymi oknami.
+   * Nagłówki "Podejście 1, 09:00" pokazywały godzinę z ustawień, czyli tę,
+   * o której miało się jeść, a nie tę, o której się jadło. Zaciemniało to
+   * jedyną rzecz, która tu jest naprawdę ważna: realną przerwę między
+   * posiłkami, bo to ona uruchamia falę oczyszczającą jelito.
+   */
+  const minGap = Number(settings.get('min_gap_hours') || 4);
+  const doMinut = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+
+  const lista = meals.results ?? [];
+  const wiersze: string[] = [];
+  let poprzednia: number | null = null;
+
+  for (const m of lista) {
+    if (m.eaten_at && poprzednia !== null) {
+      const przerwa = doMinut(m.eaten_at) - poprzednia;
+      const h = Math.floor(przerwa / 60);
+      const min = przerwa % 60;
+      const zaKrotka = przerwa < minGap * 60;
+      wiersze.push(`<div class="gap ${zaKrotka ? 'gap-short' : ''}">
+        <span>przerwa ${h ? `${h} h ` : ''}${min} min</span>
+        ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
+      </div>`);
+    }
+    if (m.eaten_at) poprzednia = doMinut(m.eaten_at);
+
+    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
+  }
+
+  const mealsHtml = lista.length
+    ? wiersze.join('')
     : emptyState('Brak posiłków tego dnia. Menu z cateringu wjeżdża importem, a wszystko poza nim dopisujesz w zakładce Dopisz.');
 
   const eventsHtml =
@@ -211,12 +228,8 @@ export async function renderDay(c: any, date: string) {
       ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
-    ${blockTitle('Posiłki', times[1] && times[2] && times[3] ? `trzy podejścia: ${times[1]}, ${times[2]}, ${times[3]}` : '')}
-    ${(meals.results ?? []).length ? `<p class="hint" style="margin:0 14px 8px">
-      Pięć pudełek jesz w trzech podejściach, żeby między nimi wypadły przerwy 4 do 5 godzin.
-      To one uruchamiają falę oczyszczającą jelito, a po rezygnacji z prokinetyku są jedynym narzędziem na motorykę.
-    </p>` : ''}
-    <div class="cols">${mealsHtml}</div>
+    ${blockTitle('Posiłki', `cel: przerwy min. ${Number(settings.get('min_gap_hours') || 4)} h`)}
+    ${mealsHtml}
 
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
     ${renderGaps(dayGaps, date, shoppingOpen.results ?? [])}
@@ -259,7 +272,9 @@ function mealItem(m: MealRow, breaches: any[]): string {
   return `<li class="${m.eaten ? '' : 'meal-skipped'}">
     <div class="item-content">
       <div class="item-inner" style="display:block;padding-top:10px;padding-bottom:10px">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">${esc(SLOT_LABEL[m.slot] ?? m.slot)}</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+          ${m.eaten_at ? `<b style="color:var(--text);font-size:13px">${esc(m.eaten_at)}</b> &middot; ` : ''}${esc(SLOT_LABEL[m.slot] ?? m.slot)}
+        </div>
         <div class="item-title" style="white-space:normal;font-weight:600;line-height:1.35">${esc(m.name)}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px">${macros}</div>
         ${chips ? `<div style="margin-top:6px">${chips}</div>` : ''}
@@ -296,9 +311,23 @@ day.post('/meal/:id/eaten', async (c) => {
   const eaten = body.eaten === '1' ? 1 : 0;
   const fraction = Number(body.fraction ?? 1) || 1;
 
-  const row = await c.env.DB.prepare(`SELECT date FROM meals WHERE id = ?`).bind(id).first<{ date: string }>();
-  await c.env.DB.prepare(`UPDATE meals SET eaten = ?, eaten_fraction = ? WHERE id = ?`)
-    .bind(eaten, fraction, id).run();
+  const row = await c.env.DB.prepare(`SELECT date, eaten_at FROM meals WHERE id = ?`)
+    .bind(id).first<{ date: string; eaten_at: string | null }>();
+
+  // Odhaczenie stempluje godzine, jesli jeszcze jej nie ma i chodzi o dzisiaj.
+  // Bez tego pudelka z cateringu nigdy nie maja godziny, a wtedy nie da sie
+  // policzyc przerw miedzy posilkami, czyli jedynej rzeczy, ktora tu realnie
+  // pracuje na motoryke. Godzine mozna potem poprawic w edycji posilku.
+  const stempel =
+    eaten === 1 && !row?.eaten_at && row?.date === todayWarsaw()
+      ? new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
+        }).format(new Date())
+      : null;
+
+  await c.env.DB.prepare(
+    `UPDATE meals SET eaten = ?, eaten_fraction = ?, eaten_at = COALESCE(?, eaten_at) WHERE id = ?`
+  ).bind(eaten, fraction, stempel, id).run();
 
   return c.redirect(`/day/${row?.date ?? todayWarsaw()}`);
 });
