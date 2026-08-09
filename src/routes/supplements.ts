@@ -34,6 +34,9 @@ supplements.get('/suplementy', async (c) => {
      LEFT JOIN supplement_log l ON l.schedule_id = s.id AND l.date = ?
      WHERE ? >= s.date_from AND (s.date_to IS NULL OR ? <= s.date_to)
        AND (s.days = 'daily' OR (',' || s.days || ',') LIKE ('%,' || ? || ',%'))
+       -- Wstrzymane i odstawione znikaja z dnia i z licznika. Rozklad zostaje
+       -- w bazie, wiec przywrocenie statusu przywraca je bez przepisywania por.
+       AND sup.status NOT IN ('paused', 'discontinued')
      ORDER BY s.time_of_day, sup.name`
   ).bind(date, date, date, code).all<any>();
 
@@ -51,6 +54,10 @@ supplements.get('/suplementy', async (c) => {
 
   const takenCount = (schedule.results ?? []).filter((r: any) => r.logged === 1).length;
   const total = (schedule.results ?? []).length;
+
+  const hidden = (all.results ?? []).filter(
+    (s: any) => s.status === 'paused' || s.status === 'discontinued'
+  );
 
   const todayHtml = total
     ? [...byTime.entries()].map(([time, rows]) => `
@@ -118,6 +125,11 @@ supplements.get('/suplementy', async (c) => {
 
     ${blockTitle('Co brać dzisiaj')}
     ${todayHtml}
+    ${hidden.length
+      ? `<div style="padding:10px 16px 0;font-size:12px;color:var(--muted)">
+           Poza licznikiem: ${hidden.map((h: any) => `${esc(h.name)} (${h.status === 'paused' ? 'wstrzymane' : 'odstawione'})`).join(', ')}
+         </div>`
+      : ''}
 
     ${blockTitle('Cały protokół', 'status zmieniasz listą po prawej')}
     ${allHtml}

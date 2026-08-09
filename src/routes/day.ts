@@ -67,6 +67,7 @@ export async function renderDay(c: any, date: string) {
      LEFT JOIN supplement_log l ON l.schedule_id = s.id AND l.date = ?
      WHERE ? >= s.date_from AND (s.date_to IS NULL OR ? <= s.date_to)
        AND (s.days = 'daily' OR (',' || s.days || ',') LIKE ('%,' || ? || ',%'))
+       AND sup.status NOT IN ('paused', 'discontinued')
      ORDER BY s.time_of_day`
   ).bind(date, date, date, dayCode).all<any>();
 
