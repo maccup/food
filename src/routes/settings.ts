@@ -68,7 +68,7 @@ function toNumberOrNull(value: unknown): number | null {
 settings.get('/ustawienia', async (c) => {
   const db = c.env.DB;
 
-  const [general, phases, targets, supplements, schedule, rules] = await Promise.all([
+  const [general, phases, targets, supplements, schedule, rules, templates] = await Promise.all([
     listSettings(db),
     db.prepare(`SELECT * FROM phases ORDER BY date_from`).all<any>(),
     db.prepare(`SELECT * FROM targets ORDER BY phase_id, metric`).all<any>(),
@@ -84,6 +84,9 @@ settings.get('/ustawienia', async (c) => {
     db.prepare(
       `SELECT r.*, g.name AS group_name FROM coverage_rules r JOIN food_groups g ON g.id = r.group_id
        ORDER BY CASE r.severity WHEN 'critical' THEN 1 WHEN 'important' THEN 2 ELSE 3 END`
+    ).all<any>(),
+    db.prepare(
+      `SELECT * FROM meal_templates WHERE archived = 0 ORDER BY times_used DESC, name`
     ).all<any>(),
   ]);
 
@@ -210,7 +213,35 @@ settings.get('/ustawienia', async (c) => {
         <div style="font-size:11px;color:var(--muted);margin-top:4px">dni w tygodniu, w których ta grupa ma się pojawić</div>
       </form>`)).join('');
 
+  const szablonyHtml = (templates.results ?? []).map((t: any) => card(`
+      <form method="POST" action="/ustawienia/szablon">
+        <input type="hidden" name="id" value="${t.id}">
+        <div class="field">
+          <label class="field-label">Nazwa</label>
+          <input type="text" name="name" value="${esc(t.name)}">
+        </div>
+        <div class="field">
+          <label class="field-label">Skład, po przecinku</label>
+          <input type="text" name="ingredients" value="${esc(t.ingredients ?? '')}" placeholder="po nim działają wykluczenia">
+        </div>
+        <div class="grid-5">
+          ${[['kcal', 'kcal'], ['protein_g', 'białko'], ['fat_g', 'tłuszcz'], ['carbs_g', 'węgle'], ['fiber_g', 'błonnik']]
+            .map(([k, l]) => `<div class="field">
+              <label class="field-label">${l}</label>
+              <input type="text" inputmode="decimal" name="${k}" value="${t[k] ?? ''}">
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:12px;color:var(--muted)">użyte ${t.times_used}x</span>
+          <button type="submit" name="action" value="save" class="button button-small button-fill" style="margin-left:auto">Zapisz</button>
+          <button type="submit" name="action" value="delete" class="button button-small" style="color:var(--bad)">Usuń</button>
+        </div>
+      </form>`)).join('');
+
   const content = `
+    ${blockTitle('Szablony posiłków', 'jedno dotknięcie w zakładce Dopisz')}
+    <div class="cols">${szablonyHtml}</div>
+
     ${blockTitle('Okna jedzenia i catering')}
     ${card(generalHtml)}
 
@@ -308,6 +339,28 @@ settings.post('/ustawienia/rozklad', async (c) => {
       daysFromBody(b as any, 'day_'), String(b.date_from), String(b.date_to || '') || null, Number(b.id)
     ).run();
   }
+
+  return c.redirect('/ustawienia');
+});
+
+settings.post('/ustawienia/szablon', async (c) => {
+  const b = await c.req.parseBody();
+  const id = Number(b.id);
+
+  if (String(b.action) === 'delete') {
+    // Archiwum, nie kasowanie: licznik uzyc jest informacja o nawykach.
+    await c.env.DB.prepare(`UPDATE meal_templates SET archived = 1 WHERE id = ?`).bind(id).run();
+    return c.redirect('/ustawienia');
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE meal_templates SET name = ?, ingredients = ?, kcal = ?, protein_g = ?,
+       fat_g = ?, carbs_g = ?, fiber_g = ? WHERE id = ?`
+  ).bind(
+    String(b.name || 'Bez nazwy'), String(b.ingredients || '') || null,
+    toNumberOrNull(b.kcal), toNumberOrNull(b.protein_g), toNumberOrNull(b.fat_g),
+    toNumberOrNull(b.carbs_g), toNumberOrNull(b.fiber_g), id
+  ).run();
 
   return c.redirect('/ustawienia');
 });

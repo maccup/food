@@ -263,6 +263,22 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
   .grid-5 input { padding-left: 8px; padding-right: 8px; }
 }
 
+/* Szablony posilkow: duze cele dotykowe, bo to sie klika w biegu */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 0 14px;
+  border: 1px solid var(--hairline); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  text-align: left;
+}
+.chip:hover { border-color: var(--color-primary); }
+.chip-kcal {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  background: var(--surface-sunken); border-radius: 999px; padding: 3px 8px;
+}
+
 /* Segmentowany przelacznik: co wlasnie dopisuje */
 .segmented {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;

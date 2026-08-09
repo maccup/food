@@ -95,6 +95,28 @@ dostawą o 12:00. Dlatego przeglądu nie da się zrobić raz na cały okres,
 trzeba wracać co tydzień. Kryteria doboru posiłków: patrz
 `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md` w repo Longevity Agent.
 
+## Wpisywanie posiłków przez czat
+
+Maciej często wrzuca w rozmowie zdjęcie menu albo opis tego, co zjadł, zamiast
+wypełniać formularz. Wtedy:
+
+1. **Oszacuj makra z typowych porcji**, nie z jego oceny. Sprawdzone 09.08:
+   tłuszcz zaniżał pięciokrotnie, białko trzykrotnie. Jeśli lokal podaje
+   białko na tablicy albo w menu, to jedyna twarda liczba, użyj jej.
+2. **Skład wpisz dokładnie**, bo to po nim działają wykluczenia. Makra mogą
+   być szacowane, skład nie.
+3. Zapisz przez `POST /log/meal` albo `POST /meal/:id` na produkcji.
+4. **Sprawdź kolejkę nierozpoznanych składników.** Jeśli coś doszło, dopisz
+   alias migracją, potem przepisz posiłek, żeby przeliczył powiązania.
+5. **Jeśli pozycja się powtarza, zrób z niej szablon.** `npm run audit` ma
+   sekcję „kandydaci na szablony": wszystko wpisane ręcznie dwa razy lub
+   więcej, co nie ma jeszcze pozycji jednym dotknięciem. To jest ta lista
+   do cyklicznego uzupełniania, nie trzeba jej pamiętać.
+
+Szablony żyją w `meal_templates`, dodawanie jednym dotknięciem jest
+w zakładce Dopisz, edycja w Ustawieniach. Wariantów nie skracamy:
+„duże latte" i „małe latte" to dwie pozycje, bo różnią się o 55 kcal.
+
 ## Przegląd danych, uruchamiany na żądanie
 
 Aplikacja nie ocenia, tylko zbiera. Ocenę robi Claude, na żądanie, hasłem

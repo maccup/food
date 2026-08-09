@@ -101,6 +101,22 @@ const dane = {
     FROM trials t JOIN foods f ON f.id = t.food_id ORDER BY t.status, t.id DESC`),
 
   zakupy: q(`SELECT label, note, added_on FROM shopping WHERE bought = 0 ORDER BY added_on`),
+
+  // Kandydaci na szablony: to samo wpisywane recznie wiecej niz raz,
+  // a nie ma jeszcze pozycji jednym dotknieciem. Stad bierze sie cykliczne
+  // uzupelnianie listy szablonow.
+  kandydaci_na_szablony: q(`
+    SELECT m.name, COUNT(*) AS ile, MAX(m.date) AS ostatnio,
+           ROUND(AVG(m.kcal), 0) AS srednio_kcal
+    FROM meals m
+    WHERE m.source != 'hfood'
+      AND NOT EXISTS (SELECT 1 FROM meal_templates t WHERE t.archived = 0 AND lower(t.name) = lower(m.name))
+    GROUP BY lower(m.name) HAVING COUNT(*) >= 2
+    ORDER BY ile DESC, ostatnio DESC`),
+
+  szablony: q(`
+    SELECT name, times_used, last_used, kcal FROM meal_templates
+    WHERE archived = 0 ORDER BY times_used DESC, name`),
 };
 
 if (FORMAT === 'json') {
@@ -167,6 +183,15 @@ for (const s of dane.stolce) {
   console.log(`  ${s.date} ${s.time ?? '--:--'} stolec Bristol ${s.bristol} ${cechy}`);
 }
 if (!dane.objawy.length && !dane.stolce.length) console.log('  (brak wpisów, a to jedyny miernik skuteczności po decyzji o braku badań)');
+
+sek('szablony i kandydaci na szablony');
+for (const t of dane.szablony) console.log(`  ${String(t.times_used).padStart(3)}x  ${t.name}${t.kcal ? `  (${Math.round(t.kcal)} kcal)` : ''}`);
+if (dane.kandydaci_na_szablony.length) {
+  console.log('  --- powtarza sie, a nie ma szablonu:');
+  for (const k of dane.kandydaci_na_szablony) console.log(`  ${String(k.ile).padStart(3)}x  ${k.name}  (srednio ${k.srednio_kcal ?? '?'} kcal, ostatnio ${k.ostatnio})`);
+} else {
+  console.log('  --- brak nowych kandydatow');
+}
 
 sek('testy produktów i lista zakupów');
 for (const t of dane.testy) console.log(`  ${t.status.padEnd(8)} ${t.produkt} ${t.amount ?? ''} ${t.verdict ? `→ ${t.verdict}` : ''}`);

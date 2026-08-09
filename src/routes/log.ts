@@ -23,6 +23,7 @@ const TABS: Array<[string, string, string]> = [
 
 log.get('/log', async (c) => {
   const date = c.req.query('date') ?? todayWarsaw();
+  const db = c.env.DB;
   const co = TABS.some(([k]) => k === c.req.query('co')) ? c.req.query('co')! : 'posilek';
 
   const slotOptions = Object.entries(SLOT_LABEL)
@@ -31,6 +32,31 @@ log.get('/log', async (c) => {
 
   // Jeden formularz naraz. Wczesniej wszystkie trzy wisialy pod soba i trzeba
   // bylo przewijac obok dwoch, ktorych sie akurat nie wypelnia.
+  // Szablony: rzeczy powtarzalne jednym dotknieciem. Kolejnosc wg tego,
+  // jak czesto uzywane, wiec lista sama sie ustawia pod realne nawyki.
+  const szablony = co === 'posilek'
+    ? (await db.prepare(
+        `SELECT id, name, kcal, slot FROM meal_templates
+         WHERE archived = 0 ORDER BY times_used DESC, last_used DESC, name LIMIT 12`
+      ).all<any>()).results ?? []
+    : [];
+
+  const szybkie = szablony.length
+    ? `${blockTitle('Szybkie dodanie', 'jedno dotknięcie')}
+       <div class="block">
+         <div class="chips">
+           ${szablony.map((t: any) => `
+             <form method="POST" action="/log/szablon/${t.id}" style="display:contents">
+               <input type="hidden" name="date" value="${date}">
+               <button type="submit" class="chip">
+                 <span>${esc(t.name)}</span>
+                 ${t.kcal ? `<span class="chip-kcal">${Math.round(t.kcal)}</span>` : ''}
+               </button>
+             </form>`).join('')}
+         </div>
+       </div>`
+    : '';
+
   const segmented = `<div class="segmented">
     ${TABS.map(([k, icon, label]) =>
       `<a href="/log?co=${k}&date=${date}" class="${co === k ? 'active' : ''}"${co === k ? ' aria-current="page"' : ''}>
@@ -91,9 +117,13 @@ log.get('/log', async (c) => {
             </div>`).join('')}
         </div>
 
-        <label class="check" style="margin-bottom:14px">
+        <label class="check">
           <input type="checkbox" name="estimated" value="1" checked>
           Makra podane na oko
+        </label>
+        <label class="check" style="margin-bottom:14px">
+          <input type="checkbox" name="jako_szablon" value="1">
+          Zapamiętaj jako szablon, żeby dodawać jednym dotknięciem
         </label>
 
         <button type="submit" class="button button-fill" style="width:100%">Zapisz posiłek</button>
@@ -163,6 +193,7 @@ log.get('/log', async (c) => {
   const content = `
     ${segmented}
     ${dateBar}
+    ${szybkie}
     ${co === 'posilek' ? posilek : co === 'objaw' ? objaw : stolec}
   `;
 
@@ -217,6 +248,60 @@ log.post('/log/meal', async (c) => {
         .bind(inserted.id, alias.food_id).run();
     }
   }
+
+  if (b.jako_szablon === '1') {
+    await c.env.DB.prepare(
+      `INSERT INTO meal_templates (name, ingredients, slot, source, kcal, protein_g, fat_g, carbs_g, fiber_g)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      String(b.name || 'Bez nazwy'), ingredients, slot, String(b.source || 'dom'),
+      numOrNull(b.kcal), numOrNull(b.protein_g), numOrNull(b.fat_g),
+      numOrNull(b.carbs_g), numOrNull(b.fiber_g)
+    ).run();
+  }
+
+  return c.redirect(`/day/${date}`);
+});
+
+/** Dodanie z szablonu: godzina bierze sie z zegara, reszta z szablonu. */
+log.post('/log/szablon/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  const b = await c.req.parseBody();
+  const date = String(b.date || todayWarsaw());
+
+  const t = await c.env.DB.prepare(`SELECT * FROM meal_templates WHERE id = ?`).bind(id).first<any>();
+  if (!t) return c.redirect(`/log?date=${date}`);
+
+  const teraz = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date());
+
+  const wstawiony = await c.env.DB.prepare(
+    `INSERT INTO meals (date, eaten_at, slot, sitting, source, name, ingredients_raw,
+       kcal, protein_g, fat_g, carbs_g, fiber_g, estimated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
+  ).bind(
+    date, teraz, t.slot, SITTING_BY_SLOT[t.slot] ?? 0, t.source, t.name, t.ingredients,
+    t.kcal, t.protein_g, t.fat_g, t.carbs_g, t.fiber_g, t.estimated
+  ).first<{ id: number }>();
+
+  if (wstawiony) {
+    for (const ing of parseIngredients(t.ingredients ?? t.name)) {
+      const alias = await c.env.DB.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
+        .bind(ing.alias).first<{ food_id: number | null }>();
+      if (!alias) {
+        await c.env.DB.prepare(`INSERT INTO food_aliases (alias, food_id) VALUES (?, NULL)`).bind(ing.alias).run();
+        continue;
+      }
+      if (alias.food_id === null) continue;
+      await c.env.DB.prepare(`INSERT OR IGNORE INTO meal_foods (meal_id, food_id) VALUES (?, ?)`)
+        .bind(wstawiony.id, alias.food_id).run();
+    }
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE meal_templates SET times_used = times_used + 1, last_used = ? WHERE id = ?`
+  ).bind(date, id).run();
 
   return c.redirect(`/day/${date}`);
 });
