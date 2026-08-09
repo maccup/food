@@ -6,6 +6,14 @@ const supplements = new Hono<{ Bindings: Env }>();
 
 const DAY_CODES = ['nie', 'pon', 'wt', 'sr', 'czw', 'pt', 'sob'];
 
+const WITH_MEAL_LABEL: Record<string, string> = {
+  na_czczo: 'na czczo',
+  sniadanie: 'do śniadania',
+  obiad: 'do obiadu',
+  kolacja: 'do kolacji',
+  przed_snem: 'przed snem',
+};
+
 function dayCode(date: string): string {
   return DAY_CODES[new Date(`${date}T12:00:00Z`).getUTCDay()];
 }
@@ -47,7 +55,7 @@ supplements.get('/suplementy', async (c) => {
   const todayHtml = total
     ? [...byTime.entries()].map(([time, rows]) => `
         <div class="sitting-head"><span class="sitting-time">${esc(time)}</span>
-          <span class="sitting-gap">${rows[0].with_meal ? esc(String(rows[0].with_meal).replace('_', ' ')) : ''}</span></div>
+          <span class="sitting-gap">${rows[0].with_meal ? esc(WITH_MEAL_LABEL[rows[0].with_meal] ?? rows[0].with_meal) : ''}</span></div>
         <div class="list media-list" style="margin:0"><ul>
           ${rows.map((r: any) => `<li>
             <div class="item-content"><div class="item-inner" style="display:block;padding:10px 0">
