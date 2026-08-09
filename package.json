@@ -12,7 +12,8 @@
     "export": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd node scripts/export-csv.mjs",
     "test": "node scripts/test-ingredients.mjs",
     "predeploy": "node scripts/stamp-assets.mjs",
-    "predev": "node scripts/stamp-assets.mjs"
+    "predev": "node scripts/stamp-assets.mjs",
+    "audit": "CLOUDFLARE_ACCOUNT_ID=fdde32a072754a917c3e8206d585d1dd node scripts/audit.mjs"
   },
   "dependencies": {
     "hono": "^4.11.7"

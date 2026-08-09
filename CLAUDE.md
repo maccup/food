@@ -95,6 +95,48 @@ dostawą o 12:00. Dlatego przeglądu nie da się zrobić raz na cały okres,
 trzeba wracać co tydzień. Kryteria doboru posiłków: patrz
 `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md` w repo Longevity Agent.
 
+## Przegląd danych, uruchamiany na żądanie
+
+Aplikacja nie ocenia, tylko zbiera. Ocenę robi Claude, na żądanie, hasłem
+w rodzaju „zrób przegląd jedzenia" albo „sprawdź moje makra".
+
+```bash
+npm run audit            # ostatnie 14 dni, raport tekstowy
+npm run audit -- 30      # inny zakres
+npm run audit -- 14 json # surowe dane
+```
+
+`scripts/audit.mjs` wyciąga w jednym miejscu: sumy dzień po dniu z liczbą
+posiłków szacowanych i bez makr, cele bieżącej fazy, pełne składy posiłków
+wpisanych ręcznie, naruszenia wykluczeń, pokrycie grup wobec reguł,
+składniki nierozpoznane przez słownik, odhaczone suplementy, objawy i stolce,
+otwarte testy produktów i listę zakupów.
+
+### Co z tym zrobić, kolejność
+
+1. **Najpierw wiarygodność, potem ocena.** Kolumny `naOko` i `bezMakr` mówią,
+   ile dnia jest zgadywane. Ocenianie makr dnia złożonego z szacunków jest
+   ocenianiem szacunków. Posiłki wpisane ręcznie przeliczyć z typowych porcji
+   i poprawić przez `/meal/:id/edit`.
+2. **Kolejka nierozpoznanych składników.** Jeśli nie jest pusta, reguły
+   pracują na niepełnym składzie i naruszenia są zaniżone. Dopisać aliasy
+   migracją w `src/db/migrations/`, potem przepisać dotknięte posiłki, żeby
+   przeliczyły powiązania.
+3. **Naruszenia wykluczeń.** Zakazy przed limitami. Sprawdzić w repo
+   „Longevity Agent", czy reguła nadal obowiązuje, bo część wygasa 15.09.
+4. **Pokrycie grup.** Raport przelicza regułę tygodniową na zadany zakres.
+5. **Suplementy i objawy.** Po decyzji z 09.08 o braku badań kontrolnych
+   objawy i stolec są jedynym miernikiem skuteczności leczenia.
+
+### Skąd brać oceny kliniczne
+
+Nie z pamięci. Źródła w repo `Longevity Agent`:
+`Konsultacje/2026-08-03_Sidor-Baginska_gastrolog.md` (leczenie, fazy, wykluczenia),
+`Konsultacje/2026-05-21_Piotrowski.md` (cele makro),
+`Diagnostyka/Dieta_obecna_ranking.md` (rankingi produktów),
+`food_list.md` (czarna lista), `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md`
+(kryteria doboru posiłków).
+
 ## Komendy
 
 ```bash
