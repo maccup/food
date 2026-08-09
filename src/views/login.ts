@@ -29,12 +29,19 @@ export function loginPage(error?: string) {
 
     <style>
       .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-      .login-box { width: 100%; max-width: 380px; }
-      .login-mark {
-        width: 72px; height: 72px; margin: 0 auto 18px;
-        display: flex; align-items: center; justify-content: center;
-        background: var(--color-primary); border-radius: 18px; font-size: 34px;
+      .login-box {
+        width: 100%; max-width: 400px;
+        background: var(--surface);
+        border: 1px solid var(--hairline);
+        border-radius: 16px;
+        padding: 32px 28px 28px;
       }
+      .login-mark {
+        width: 64px; height: 64px; margin: 0 auto 16px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--color-primary); border-radius: 16px; font-size: 30px;
+      }
+      .login-box .form-label { text-align: left; }
     </style>`
   );
 }
