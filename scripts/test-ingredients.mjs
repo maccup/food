@@ -13,7 +13,7 @@ execFileSync(
   ['esbuild', 'src/utils/ingredients.ts', '--bundle', '--format=esm', `--outfile=${out}`],
   { stdio: 'pipe' }
 );
-const { parseIngredients } = await import(out);
+const { parseIngredients, stripQuantity } = await import(out);
 
 const CASES = [
   {
@@ -52,7 +52,32 @@ const CASES = [
   },
 ];
 
+// Ilosci przy recznym wpisywaniu. "maslo 7 g" ma trafic na "maslo",
+// ale "mleko bez laktozy 1,5 %" i "czekolada 85%" to nazwy produktow.
+const ILOSCI = [
+  ['chleb białkowy 35 g', 'chleb białkowy'],
+  ['masło 7 g', 'masło'],
+  ['dżem malinowy 15 g', 'dżem malinowy'],
+  ['35 g chleba', 'chleba'],
+  ['ryż 1 szt', 'ryż'],
+  ['miód 1 łyżeczka', 'miód'],
+  ['mleko bez laktozy 1,5 %', 'mleko bez laktozy 1,5 %'],
+  ['czekolada 85%', 'czekolada 85%'],
+  ['figi x2', 'figi x2'],
+  ['masło', 'masło'],
+];
+
 let failed = 0;
+
+for (const [wejscie, oczekiwane] of ILOSCI) {
+  const got = stripQuantity(wejscie);
+  if (got === oczekiwane) {
+    console.log(`OK    ilosc: "${wejscie}" -> "${got}"`);
+  } else {
+    failed++;
+    console.log(`FAIL  ilosc: "${wejscie}" -> "${got}", oczekiwano "${oczekiwane}"`);
+  }
+}
 
 for (const c of CASES) {
   const got = parseIngredients(c.input);
@@ -71,5 +96,5 @@ for (const c of CASES) {
   }
 }
 
-console.log(failed ? `\n${failed} z ${CASES.length} nie przeszlo` : `\nWszystkie ${CASES.length} przeszly`);
+console.log(failed ? `\n${failed} nie przeszlo` : `\nWszystkie ${CASES.length + ILOSCI.length} przeszly`);
 process.exit(failed ? 1 : 0);

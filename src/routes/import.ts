@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { Env, MealSlot } from '../types';
-import { parseIngredients } from '../utils/ingredients';
+import { linkMealFoods } from '../utils/link-foods';
 
 const importRoutes = new Hono<{ Bindings: Env }>();
 
@@ -179,44 +179,10 @@ importRoutes.post('/api/import/hfood', async (c) => {
       }
 
       // Sklad budujemy od zera, bo danie moglo sie zmienic.
-      await c.env.DB.prepare(`DELETE FROM meal_foods WHERE meal_id = ?`).bind(mealId).run();
-
-      for (const ing of parseIngredients(dish.ingredientsName)) {
-        const alias = await c.env.DB.prepare(
-          `SELECT alias, food_id, ignored FROM food_aliases WHERE alias = ?`
-        )
-          .bind(ing.alias)
-          .first<{ alias: string; food_id: number | null; ignored: number }>();
-
-        if (!alias) {
-          await c.env.DB.prepare(
-            `INSERT INTO food_aliases (alias, food_id, times_seen) VALUES (?, NULL, 1)`
-          )
-            .bind(ing.alias)
-            .run();
-          stats.aliasesNew++;
-          unmapped.add(ing.alias);
-          continue;
-        }
-
-        await c.env.DB.prepare(
-          `UPDATE food_aliases SET times_seen = times_seen + 1 WHERE alias = ?`
-        )
-          .bind(ing.alias)
-          .run();
-
-        if (alias.food_id === null) {
-          if (!alias.ignored) unmapped.add(ing.alias);
-          continue;
-        }
-
-        await c.env.DB.prepare(
-          `INSERT OR IGNORE INTO meal_foods (meal_id, food_id, amount_note) VALUES (?, ?, ?)`
-        )
-          .bind(mealId, alias.food_id, ing.nested ? 'skladnik produktu zlozonego' : null)
-          .run();
-        stats.linksCreated++;
-      }
+      const powiazania = await linkMealFoods(c.env.DB, mealId, dish.ingredientsName, true);
+      stats.aliasesNew += powiazania.nowe;
+      stats.linksCreated += powiazania.polaczone;
+      for (const a of powiazania.nierozpoznane) unmapped.add(a);
     }
   }
 

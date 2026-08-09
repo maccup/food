@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, card, blockTitle, esc, todayWarsaw, prettyDate, SLOT_LABEL } from '../views/ui';
-import { parseIngredients, stripHtml } from '../utils/ingredients';
+import { stripHtml } from '../utils/ingredients';
+import { linkMealFoods } from '../utils/link-foods';
 
 const meal = new Hono<{ Bindings: Env }>();
 
@@ -14,30 +15,6 @@ function numOrNull(v: unknown): number | null {
   if (!s) return null;
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : null;
-}
-
-/** Przepisanie składu na powiązania ze słownikiem. Ten sam parser co przy imporcie. */
-async function relinkFoods(db: D1Database, mealId: number, ingredients: string | null, nazwa = '') {
-  await db.prepare(`DELETE FROM meal_foods WHERE meal_id = ?`).bind(mealId).run();
-
-  // Brak skladnikow nie znaczy brak informacji: przy prostych pozycjach
-  // nazwa jest skladem. Patrz komentarz w log.ts.
-  const zrodlo = ingredients ?? nazwa;
-  if (!zrodlo) return;
-
-  for (const ing of parseIngredients(zrodlo)) {
-    const alias = await db.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
-      .bind(ing.alias).first<{ food_id: number | null }>();
-
-    if (!alias) {
-      await db.prepare(`INSERT INTO food_aliases (alias, food_id) VALUES (?, NULL)`).bind(ing.alias).run();
-      continue;
-    }
-    if (alias.food_id === null) continue;
-
-    await db.prepare(`INSERT OR IGNORE INTO meal_foods (meal_id, food_id) VALUES (?, ?)`)
-      .bind(mealId, alias.food_id).run();
-  }
 }
 
 meal.get('/meal/:id/edit', async (c) => {
@@ -179,7 +156,9 @@ meal.post('/meal/:id', async (c) => {
     id
   ).run();
 
-  await relinkFoods(c.env.DB, id, ingredients, String(b.name || ''));
+  // Brak skladnikow nie znaczy brak informacji: przy prostych pozycjach
+  // nazwa jest skladem. Patrz komentarz w log.ts.
+  await linkMealFoods(c.env.DB, id, ingredients ?? String(b.name || ''));
 
   return c.redirect(`/day/${date}`);
 });

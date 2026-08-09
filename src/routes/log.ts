@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, card, blockTitle, esc, todayWarsaw, SLOT_LABEL } from '../views/ui';
-import { parseIngredients } from '../utils/ingredients';
+import { linkMealFoods } from '../utils/link-foods';
 
 const log = new Hono<{ Bindings: Env }>();
 
@@ -232,21 +232,8 @@ log.post('/log/meal', async (c) => {
   // ("Kawa espresso", "Kiwi") nazwa JEST skladem, a wpisywanie jej drugi raz
   // to praca dla aplikacji, nie dla czlowieka. Bez tego taki posilek byl
   // dla regul niewidzialny i limit kofeiny sie nie odzywal.
-  const doParsowania = ingredients ?? String(b.name || '');
-  if (inserted && doParsowania) {
-    for (const ing of parseIngredients(doParsowania)) {
-      const alias = await c.env.DB.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
-        .bind(ing.alias).first<{ food_id: number | null }>();
-
-      if (!alias) {
-        await c.env.DB.prepare(`INSERT INTO food_aliases (alias, food_id) VALUES (?, NULL)`).bind(ing.alias).run();
-        continue;
-      }
-      if (alias.food_id === null) continue;
-
-      await c.env.DB.prepare(`INSERT OR IGNORE INTO meal_foods (meal_id, food_id) VALUES (?, ?)`)
-        .bind(inserted.id, alias.food_id).run();
-    }
+  if (inserted) {
+    await linkMealFoods(c.env.DB, inserted.id, ingredients ?? String(b.name || ''));
   }
 
   if (b.jako_szablon === '1') {
@@ -286,17 +273,7 @@ log.post('/log/szablon/:id', async (c) => {
   ).first<{ id: number }>();
 
   if (wstawiony) {
-    for (const ing of parseIngredients(t.ingredients ?? t.name)) {
-      const alias = await c.env.DB.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
-        .bind(ing.alias).first<{ food_id: number | null }>();
-      if (!alias) {
-        await c.env.DB.prepare(`INSERT INTO food_aliases (alias, food_id) VALUES (?, NULL)`).bind(ing.alias).run();
-        continue;
-      }
-      if (alias.food_id === null) continue;
-      await c.env.DB.prepare(`INSERT OR IGNORE INTO meal_foods (meal_id, food_id) VALUES (?, ?)`)
-        .bind(wstawiony.id, alias.food_id).run();
-    }
+    await linkMealFoods(c.env.DB, wstawiony.id, t.ingredients ?? t.name);
   }
 
   await c.env.DB.prepare(

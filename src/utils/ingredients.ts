@@ -51,6 +51,25 @@ export function normalizeAlias(input: string): string {
     .trim();
 }
 
+/**
+ * Jednostki, ktore pojawiaja sie przy recznym wpisywaniu posilku:
+ * "maslo 7 g", "35 g chleba bialkowego", "dzem 1 lyzeczka".
+ * Celowo NIE ma tu procentu, bo "mleko bez laktozy 1,5 %" i "czekolada 85%"
+ * to nazwy produktow, a nie ilosci.
+ */
+const JEDNOSTKI = 'g|gr|dag|kg|ml|l|szt|sztuki|sztuk|łyżka|łyżki|łyżeczka|łyżeczki|plaster|plastry|kromka|kromki';
+const ILOSC_NA_KONCU = new RegExp(`\\s+\\d+([.,]\\d+)?\\s*(${JEDNOSTKI})\\.?$`, 'i');
+const ILOSC_NA_POCZATKU = new RegExp(`^\\d+([.,]\\d+)?\\s*(${JEDNOSTKI})\\.?\\s+`, 'i');
+
+/**
+ * Alias bez ilosci. Uzywany jako drugie podejscie przy dopasowaniu do slownika,
+ * nigdy przy zapisie: "maslo 7 g" ma trafic na "maslo", ale nie ma powodu
+ * zakladac w slowniku osobnego wpisu na kazda gramature.
+ */
+export function stripQuantity(alias: string): string {
+  return alias.replace(ILOSC_NA_KONCU, '').replace(ILOSC_NA_POCZATKU, '').trim();
+}
+
 const isDigit = (ch: string | undefined) => !!ch && ch >= '0' && ch <= '9';
 
 /**
