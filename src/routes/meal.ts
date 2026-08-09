@@ -17,11 +17,15 @@ function numOrNull(v: unknown): number | null {
 }
 
 /** Przepisanie składu na powiązania ze słownikiem. Ten sam parser co przy imporcie. */
-async function relinkFoods(db: D1Database, mealId: number, ingredients: string | null) {
+async function relinkFoods(db: D1Database, mealId: number, ingredients: string | null, nazwa = '') {
   await db.prepare(`DELETE FROM meal_foods WHERE meal_id = ?`).bind(mealId).run();
-  if (!ingredients) return;
 
-  for (const ing of parseIngredients(ingredients)) {
+  // Brak skladnikow nie znaczy brak informacji: przy prostych pozycjach
+  // nazwa jest skladem. Patrz komentarz w log.ts.
+  const zrodlo = ingredients ?? nazwa;
+  if (!zrodlo) return;
+
+  for (const ing of parseIngredients(zrodlo)) {
     const alias = await db.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
       .bind(ing.alias).first<{ food_id: number | null }>();
 
@@ -175,7 +179,7 @@ meal.post('/meal/:id', async (c) => {
     id
   ).run();
 
-  await relinkFoods(c.env.DB, id, ingredients);
+  await relinkFoods(c.env.DB, id, ingredients, String(b.name || ''));
 
   return c.redirect(`/day/${date}`);
 });

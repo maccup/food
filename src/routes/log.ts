@@ -196,8 +196,14 @@ log.post('/log/meal', async (c) => {
 
   // Ten sam parser co przy imporcie z cateringu, wiec wykluczenia dzialaja
   // tak samo dla obiadu w restauracji, jak dla pudelka.
-  if (inserted && ingredients) {
-    for (const ing of parseIngredients(ingredients)) {
+  //
+  // Gdy skladnikow nie podano, parsujemy nazwe. Przy prostych pozycjach
+  // ("Kawa espresso", "Kiwi") nazwa JEST skladem, a wpisywanie jej drugi raz
+  // to praca dla aplikacji, nie dla czlowieka. Bez tego taki posilek byl
+  // dla regul niewidzialny i limit kofeiny sie nie odzywal.
+  const doParsowania = ingredients ?? String(b.name || '');
+  if (inserted && doParsowania) {
+    for (const ing of parseIngredients(doParsowania)) {
       const alias = await c.env.DB.prepare(`SELECT food_id FROM food_aliases WHERE alias = ?`)
         .bind(ing.alias).first<{ food_id: number | null }>();
 
