@@ -109,6 +109,33 @@ Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_totals`, `v_group_cover
   fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
   pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
   pełną listę wykluczeń jeszcze jeden dzień.
+- **Przerwa dzieli podejścia, nie wiersze.** `day.ts` grupuje posiłki po kolumnie
+  `sitting` i liczy przerwę od końca ostatniego liczącego się posiłku poprzedniego
+  podejścia. Deser i kawa po obiedzie to osobne pozycje w tym samym podejściu,
+  więc nie mogą produkować przerwy zerowej z ostrzeżeniem. Wpisy poza podejściami
+  (`sitting` 0 albo NULL) zostają osobnymi zdarzeniami, każdy z własnym kluczem.
+- **Ustawienia mają grupy, nie jedną płaską listę.** `settings.grupa` decyduje,
+  w którym zwijanym bloku pole się pojawi (`okna`, `przerwy`). Nowy klucz bez
+  przypisania trafia do bloku „Pozostałe" i nie znika z ekranu.
+- **Godziny okien i próg przerwy muszą do siebie pasować, a to dwa niezależne pola.**
+  Blok „Okna jedzenia" wylicza przerwy między oknami przy obecnym `default_meal_min`
+  i oznacza te poniżej `min_gap_hours`. 09:00 / 14:00 / 18:30 mieści się w progu 4 h
+  tylko przy posiłku 30-minutowym; przy 60 minutach druga przerwa spada do 3 h 30.
+  To odczyt, nie blokada zapisu.
+
+## Zamówienia cateringowe
+
+`catering_orders`, jeden wiersz na zamówienie. Numery zamówienia i diety siedziały
+wcześniej w `settings`, więc kolejne zamówienie nadpisywało poprzednie, a dni bez
+dostawy były globalne, choć należą do konkretnego okresu.
+
+- **Status wynika z dat**, nie z kolumny: `date_to < dziś` to zakończone,
+  `date_from > dziś` to planowane, reszta to aktywne. Osobna flaga byłaby kolejnym
+  polem do ręcznego przestawiania.
+- **Dni bez dostawy czyta `loadNoDelivery()`** z `utils/settings.ts`, która skleja
+  zakresy ze wszystkich zamówień. Parser zakresów (`parseNoDeliveryDates`) się nie zmienił.
+- Numery zamówienia i diety są **notatką, nie konfiguracją**: import przyjmuje
+  wklejony JSON i sam z nich nie korzysta. Służą do trafienia pod właściwy adres w panelu.
 
 ## Import z hfood
 
@@ -139,10 +166,19 @@ wypełniać formularz. Wtedy:
    białko na tablicy albo w menu, to jedyna twarda liczba, użyj jej.
 2. **Skład wpisz dokładnie**, bo to po nim działają wykluczenia. Makra mogą
    być szacowane, skład nie.
-3. Zapisz przez `POST /log/meal` albo `POST /meal/:id` na produkcji.
-4. **Sprawdź kolejkę nierozpoznanych składników.** Jeśli coś doszło, dopisz
+3. **Gramatura idzie do składu, źródło liczb do `notes`.** Każdy składnik
+   z wagą albo liczbą sztuk („pierś z kurczaka 140 g", „kiwi 75 g"), a w notatce
+   skąd wzięły się makra i co przyjęto tam, gdzie nie było etykiety. Sprawdzian
+   jest jeden: **czy z samego składu da się odtworzyć wpisane makra.** Audyt
+   z 10.08 pokazał, że przy wpisach bez gramatury się nie da, a wtedy nie wiadomo
+   ani czy liczba jest dobra, ani jak ją poprawić po nowych danych.
+4. **Jeden posiłek to jedna pozycja, deser to druga.** Nie sklejać dania
+   głównego z deserem ani z kawą w jeden wiersz, nawet gdy to samo podejście.
+   Wspólne podejście oznacza się kolumną `sitting`, nie łączeniem nazw.
+5. Zapisz przez `POST /log/meal` albo `POST /meal/:id` na produkcji.
+6. **Sprawdź kolejkę nierozpoznanych składników.** Jeśli coś doszło, dopisz
    alias migracją, potem przepisz posiłek, żeby przeliczył powiązania.
-5. **Jeśli pozycja się powtarza, zrób z niej szablon.** `npm run audit` ma
+7. **Jeśli pozycja się powtarza, zrób z niej szablon.** `npm run audit` ma
    sekcję „kandydaci na szablony": wszystko wpisane ręcznie dwa razy lub
    więcej, co nie ma jeszcze pozycji jednym dotknięciem. To jest ta lista
    do cyklicznego uzupełniania, nie trzeba jej pamiętać.

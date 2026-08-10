@@ -126,6 +126,22 @@ CREATE TABLE IF NOT EXISTS coverage_rules (
 -- DZIENNIK JEDZENIA
 -- ---------------------------------------------------------------------------
 
+-- Zamowienia cateringowe. Jeden wiersz na zamowienie, bo kolejne nie moze
+-- nadpisywac poprzedniego, a dni bez dostawy naleza do konkretnego okresu,
+-- nie do kalendarza w ogolnosci. Status (aktywne, planowane, zakonczone)
+-- wynika z dat i nie ma osobnej kolumny.
+CREATE TABLE IF NOT EXISTS catering_orders (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider    TEXT NOT NULL DEFAULT 'hfood',
+  order_id    TEXT NOT NULL,
+  diet_id     TEXT,
+  date_from   TEXT NOT NULL,
+  date_to     TEXT,
+  no_delivery TEXT,   -- zakresy po przecinku, "2026-08-21..2026-08-24"
+  notes       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_catering_okres ON catering_orders(date_from, date_to);
+
 -- sitting = ktore z trzech okien jedzenia (1: ok. 09:00, 2: ok. 14:00, 3: ok. 18:30).
 -- Przerwy 4 do 5 h miedzy oknami sa jedynym narzedziem na motoryke po rezygnacji
 -- z prokinetyku, wiec sa czescia modelu, nie kosmetyka.

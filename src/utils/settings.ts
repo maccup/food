@@ -7,6 +7,18 @@ export interface Setting {
   hint: string | null;
   kind: string;
   sort: number;
+  grupa: string;
+}
+
+export interface CateringOrder {
+  id: number;
+  provider: string;
+  order_id: string;
+  diet_id: string | null;
+  date_from: string;
+  date_to: string | null;
+  no_delivery: string | null;
+  notes: string | null;
 }
 
 export async function loadSettings(db: D1Database): Promise<Map<string, string>> {
@@ -15,7 +27,14 @@ export async function loadSettings(db: D1Database): Promise<Map<string, string>>
 }
 
 export async function listSettings(db: D1Database): Promise<Setting[]> {
-  const rows = await db.prepare(`SELECT * FROM settings ORDER BY sort, key`).all<Setting>();
+  const rows = await db.prepare(`SELECT * FROM settings ORDER BY grupa, sort, key`).all<Setting>();
+  return rows.results ?? [];
+}
+
+export async function listCateringOrders(db: D1Database): Promise<CateringOrder[]> {
+  const rows = await db.prepare(
+    `SELECT * FROM catering_orders ORDER BY date_from DESC, id DESC`
+  ).all<CateringOrder>();
   return rows.results ?? [];
 }
 
@@ -59,5 +78,22 @@ export function parseNoDeliveryDates(raw: string | undefined): Set<string> {
     }
   }
 
+  return out;
+}
+
+/**
+ * Dni bez dostawy ze wszystkich zamówień naraz.
+ *
+ * Zakresy należą do zamówienia, nie do kalendarza: przerwa 21 do 24.08 dotyczy
+ * tego konkretnego okresu i po jego zakończeniu nie ma prawa oznaczać kolejnego.
+ * Skleja wszystkie, bo zamówienia się nie nakładają, a gdyby kiedyś się nałożyły,
+ * suma przerw jest właściwą odpowiedzią.
+ */
+export async function loadNoDelivery(db: D1Database): Promise<Set<string>> {
+  const orders = await listCateringOrders(db);
+  const out = new Set<string>();
+  for (const o of orders) {
+    for (const d of parseNoDeliveryDates(o.no_delivery ?? undefined)) out.add(d);
+  }
   return out;
 }

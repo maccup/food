@@ -34,6 +34,12 @@ export function todayWarsaw(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(new Date());
 }
 
+/** "14:05" na minuty od północy. Jedna kopia dla panelu, dnia i ustawień. */
+export function hhmmToMinutes(hhmm: string): number {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
 /** Aktualna godzina w Warszawie, jako minuty od północy. */
 export function nowMinutesWarsaw(): number {
   const parts = new Intl.DateTimeFormat('en-GB', {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, blockTitle, esc, pl, todayWarsaw } from '../views/ui';
-import { loadSettings, parseNoDeliveryDates } from '../utils/settings';
+import { loadNoDelivery } from '../utils/settings';
 
 const calendar = new Hono<{ Bindings: Env }>();
 
@@ -27,8 +27,7 @@ calendar.get('/kalendarz', async (c) => {
   const monthStart = `${month}-01`;
   const monthEnd = `${month}-${String(daysInMonth).padStart(2, '0')}`;
 
-  const settings = await loadSettings(db);
-  const noDelivery = parseNoDeliveryDates(settings.get('no_delivery_dates'));
+  const noDelivery = await loadNoDelivery(db);
 
   const [totals, breaches, events, phases, targets] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date BETWEEN ? AND ?`).bind(monthStart, monthEnd).all<any>(),

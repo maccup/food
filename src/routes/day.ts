@@ -2,10 +2,10 @@ import { Hono } from 'hono';
 import { Env } from '../types';
 import {
   page, card, blockTitle, emptyState, esc, pl, flag, macroBar,
-  SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween,
+  SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween, hhmmToMinutes,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
-import { loadSettings, sittingTimes, parseNoDeliveryDates } from '../utils/settings';
+import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
 import { loadDayGaps, renderGaps } from './gaps';
 
 const day = new Hono<{ Bindings: Env }>();
@@ -125,7 +125,7 @@ export async function renderDay(c: any, date: string) {
   ]);
 
   // Najblizsza przerwa w dostawach w ciagu dwoch tygodni. Planowanie, nie retrospekcja.
-  const noDelivery = parseNoDeliveryDates(settings.get('no_delivery_dates'));
+  const noDelivery = await loadNoDelivery(db);
   let nextGap: { from: string; days: number } | null = null;
   for (let i = 0; i <= 14; i++) {
     const probe = shiftDate(date, i);
@@ -176,10 +176,7 @@ export async function renderDay(c: any, date: string) {
   const progKcal = Number(settings.get('gap_kcal_prog') || 30);
   const liczySie = (m: MealRow) => m.eaten === 1 && (m.kcal ?? 0) >= progKcal;
   const domyslneTrwanie = Number(settings.get('default_meal_min') || 30);
-  const doMinut = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    return h * 60 + (m || 0);
-  };
+  const doMinut = hhmmToMinutes;
   /*
    * Przerwa liczy sie od OSTATNIEGO kesa poprzedniego posilku do poczatku
    * nastepnego. Faza III MMC wraca dopiero po oproznieniu zoladka, wiec posilek
@@ -187,23 +184,40 @@ export async function renderDay(c: any, date: string) {
    * Liczenie start-do-startu zawyzalo przerwe o czas trwania posilku.
    */
   const koniec = (m: MealRow) => doMinut(m.eaten_at!) + (m.duration_min ?? domyslneTrwanie);
+  /*
+   * Przerwa dzieli PODEJSCIA, nie wiersze. Deser i kawa po obiedzie to ten sam
+   * naplyw kalorii co danie glowne, wiec rozbicie ich na osobne pozycje nie moze
+   * produkowac przerwy zerowej z ostrzezeniem. Podejscie rozpoznaje kolumna
+   * `sitting`; wpisy poza podejsciami (0 albo NULL, np. kawa w miescie) zostaja
+   * osobnymi zdarzeniami, kazdy z wlasnym kluczem.
+   */
+  const podejscie = (m: MealRow) => (m.sitting ? `s${m.sitting}` : `m${m.id}`);
 
   const lista = meals.results ?? [];
   const wiersze: string[] = [];
-  let poprzednia: number | null = null;
+  let poprzedniKoniec: number | null = null;
+  let poprzednieId: string | null = null;
 
   for (const m of lista) {
-    if (m.eaten_at && poprzednia !== null && liczySie(m)) {
-      const przerwa = doMinut(m.eaten_at) - poprzednia;
+    const liczy = Boolean(m.eaten_at) && liczySie(m);
+
+    if (liczy && poprzedniKoniec !== null && podejscie(m) !== poprzednieId) {
+      const przerwa = doMinut(m.eaten_at!) - poprzedniKoniec;
       const h = Math.floor(przerwa / 60);
       const min = przerwa % 60;
       const zaKrotka = przerwa < minGap * 60;
       wiersze.push(`<div class="gap ${zaKrotka ? 'gap-short' : ''}">
-        <span>przerwa ${h ? `${h} h ` : ''}${min} min</span>
+        <span>${przerwa < 0 ? 'podejścia nachodzą na siebie' : `przerwa ${h ? `${h} h ` : ''}${min} min`}</span>
         ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
       </div>`);
     }
-    if (m.eaten_at && liczySie(m)) poprzednia = koniec(m);
+
+    if (liczy) {
+      // To samo podejscie przesuwa jego koniec, nie zaczyna nowego liczenia.
+      poprzedniKoniec =
+        podejscie(m) === poprzednieId ? Math.max(poprzedniKoniec ?? 0, koniec(m)) : koniec(m);
+      poprzednieId = podejscie(m);
+    }
 
     wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
   }

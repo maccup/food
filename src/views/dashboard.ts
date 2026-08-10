@@ -1,4 +1,4 @@
-import { esc, pl } from './ui';
+import { esc, pl, hhmmToMinutes as toMinutes } from './ui';
 
 export interface DashboardData {
   date: string;
@@ -18,11 +18,6 @@ export interface DashboardData {
   forbiddenToday: Array<{ food_name: string; meal_name: string }>;
   nextDeliveryGap: { from: string; days: number } | null;
   minGapHours: number;
-}
-
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + (m || 0);
 }
 
 function state(actual: number, t?: { min_value: number | null; max_value: number | null }) {

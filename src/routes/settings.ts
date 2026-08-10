@@ -1,9 +1,16 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
-import { page, card, blockTitle, esc } from '../views/ui';
-import { listSettings } from '../utils/settings';
+import { page, card, esc, todayWarsaw, hhmmToMinutes } from '../views/ui';
+import { listSettings, listCateringOrders, Setting, CateringOrder } from '../utils/settings';
 
 const settings = new Hono<{ Bindings: Env }>();
+
+/** Nazwy grup ustawień. Klucz bez wpisu tutaj ląduje w „Pozostałe", nie znika. */
+const GRUPA_LABEL: Record<string, string> = {
+  okna: 'Okna jedzenia',
+  przerwy: 'Zasady przerw',
+  inne: 'Pozostałe',
+};
 
 const METRIC_LABEL: Record<string, string> = {
   kcal: 'Kalorie', protein_g: 'Białko', fat_g: 'Tłuszcz', carbs_g: 'Węgle', fiber_g: 'Błonnik',
@@ -58,6 +65,55 @@ const sel = (options: Array<[string, string]>, current: string | null, name: str
     .map(([v, l]) => `<option value="${v}" ${String(current ?? '') === v ? 'selected' : ''}>${l}</option>`)
     .join('')}</select>`;
 
+/**
+ * Zwijana sekcja. Ten sam wzorzec co lista suplementów: <details> z nagłówkiem
+ * w <summary>, bez javascriptu. `podpis` to gotowy HTML, escapuje wywołujący.
+ */
+function blok(tytul: string, podpis: string | null, tresc: string, otwarty = false): string {
+  return `<details ${otwarty ? 'open' : ''} style="margin:14px 0">
+    <summary style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+                    min-height:48px;cursor:pointer;list-style:none;padding:6px 2px">
+      <b style="font-size:15px">${esc(tytul)}</b>
+      ${podpis ? `<span style="font-size:12px;color:var(--muted);text-align:right">${podpis}</span>` : ''}
+    </summary>
+    ${tresc}
+  </details>`;
+}
+
+/**
+ * Czy godziny okien mieszczą się w progu przerwy.
+ *
+ * Godziny podejść i próg przerwy to dwa niezależne pola, które muszą do siebie
+ * pasować, a nic tego nie sprawdzało. 09:00 / 14:00 / 18:30 mieści się w progu
+ * 4 h tylko przy posiłku 30-minutowym. Przy 45 minutach druga przerwa spada do
+ * 3 h 45 i próg pęka po cichu. To odczyt, nie blokada: pokazuje rozjazd, nie zabrania go.
+ */
+function kontrolaOkien(s: Setting[]): string {
+  const wartosc = (k: string) => s.find((x) => x.key === k)?.value ?? '';
+  const czasy = ['sitting_1_time', 'sitting_2_time', 'sitting_3_time'].map(wartosc).filter(Boolean);
+  if (czasy.length < 2) return '';
+
+  const trwanie = Number(wartosc('default_meal_min') || 30);
+  const prog = Number(wartosc('min_gap_hours') || 4) * 60;
+
+  const kawalki = czasy.slice(0, -1).map((od, i) => {
+    const minuty = hhmmToMinutes(czasy[i + 1]) - (hhmmToMinutes(od) + trwanie);
+    const ok = minuty >= prog;
+    const abs = Math.abs(minuty);
+    const tekst = `${minuty < 0 ? '−' : ''}${Math.floor(abs / 60)} h ${String(abs % 60).padStart(2, '0')}`;
+    return `<span style="color:${ok ? 'var(--ok)' : 'var(--bad)'};font-weight:600">${tekst} ${ok ? '✓' : '✗'}</span>`;
+  });
+
+  return kawalki.join(' <span style="color:var(--muted)">&middot;</span> ');
+}
+
+/** Przeszłe, aktywne, planowane. Liczone z dat, żeby nie było flagi do przestawiania. */
+function statusZamowienia(o: CateringOrder, dzis: string): { label: string; cls: string } {
+  if (o.date_to && o.date_to < dzis) return { label: 'zakończone', cls: 'forbidden' };
+  if (o.date_from > dzis) return { label: 'planowane', cls: 'limit' };
+  return { label: 'aktywne', cls: 'prefer' };
+}
+
 function toNumberOrNull(value: unknown): number | null {
   const s = String(value ?? '').replace(',', '.').trim();
   if (!s) return null;
@@ -68,7 +124,7 @@ function toNumberOrNull(value: unknown): number | null {
 settings.get('/ustawienia', async (c) => {
   const db = c.env.DB;
 
-  const [general, phases, targets, supplements, schedule, rules, templates] = await Promise.all([
+  const [general, phases, targets, supplements, schedule, rules, templates, orders] = await Promise.all([
     listSettings(db),
     db.prepare(`SELECT * FROM phases ORDER BY date_from`).all<any>(),
     db.prepare(`SELECT * FROM targets ORDER BY phase_id, metric`).all<any>(),
@@ -88,18 +144,99 @@ settings.get('/ustawienia', async (c) => {
     db.prepare(
       `SELECT * FROM meal_templates WHERE archived = 0 ORDER BY times_used DESC, name`
     ).all<any>(),
+    listCateringOrders(db),
   ]);
 
-  const generalHtml = `<form method="POST" action="/ustawienia/ogolne">
-    ${general.map((s) => `<div style="margin-bottom:14px">
+  const dzis = todayWarsaw();
+
+  /*
+   * Jeden formularz na grupe, nie jeden na wszystko. Handler /ustawienia/ogolne
+   * aktualizuje klucze obecne w ciele zadania, wiec rozbicie na grupy nie wymaga
+   * zadnej zmiany po stronie zapisu.
+   */
+  const grupy = new Map<string, Setting[]>();
+  for (const s of general) {
+    if (!grupy.has(s.grupa)) grupy.set(s.grupa, []);
+    grupy.get(s.grupa)!.push(s);
+  }
+
+  const poleUstawienia = (s: Setting) => `<div style="margin-bottom:14px">
       <label class="field-label" for="set-${esc(s.key)}">${esc(s.label)}</label>
       ${s.hint ? `<div style="font-size:12px;color:var(--muted);margin:2px 0 4px">${esc(s.hint)}</div>` : ''}
       <input type="${s.kind === 'time' ? 'time' : s.kind === 'number' ? 'number' : 'text'}"
              id="set-${esc(s.key)}" name="${esc(s.key)}" value="${esc(s.value)}"
              style="width:100%;padding:10px;font-size:15px">
-    </div>`).join('')}
-    <button type="submit" class="button button-fill">Zapisz ustawienia</button>
-  </form>`;
+    </div>`;
+
+  const grupaHtml = (klucz: string) => card(`<form method="POST" action="/ustawienia/ogolne">
+      ${(grupy.get(klucz) ?? []).map(poleUstawienia).join('')}
+      ${klucz === 'okna'
+        ? `<div style="font-size:12px;color:var(--muted);margin:-4px 0 12px">
+             Przerwy przy obecnym czasie posiłku: ${kontrolaOkien(general)}
+           </div>`
+        : ''}
+      <button type="submit" class="button button-fill">Zapisz</button>
+    </form>`);
+
+  const zamowienieHtml = (o: CateringOrder) => {
+    const st = statusZamowienia(o, dzis);
+    return card(`
+      <form method="POST" action="/ustawienia/catering">
+        <input type="hidden" name="id" value="${o.id}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+          <b>${esc(o.provider)}, zamówienie ${esc(o.order_id)}</b>
+          <span class="flag ${st.cls}">${st.label}</span>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Numer zamówienia</label>
+            <input type="text" name="order_id" value="${esc(o.order_id)}">
+          </div>
+          <div class="field">
+            <label class="field-label">Numer diety</label>
+            <input type="text" name="diet_id" value="${esc(o.diet_id ?? '')}">
+          </div>
+          <div class="field">
+            <label class="field-label">Od</label>
+            <input type="date" name="date_from" value="${esc(o.date_from)}">
+          </div>
+          <div class="field">
+            <label class="field-label">Do</label>
+            <input type="date" name="date_to" value="${esc(o.date_to ?? '')}">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Dni bez dostawy</label>
+          <input type="text" name="no_delivery" value="${esc(o.no_delivery ?? '')}"
+                 placeholder="2026-08-21..2026-08-24, 2026-09-11..2026-09-14">
+        </div>
+        <p class="hint">Zakresy po przecinku. Kalendarz oznaczy je jako przerwę w dostawie, a nie jako brak wpisu.</p>
+        <div class="field">
+          <label class="field-label">Notatka</label>
+          <input type="text" name="notes" value="${esc(o.notes ?? '')}" placeholder="opcjonalnie">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="submit" name="action" value="save" class="button button-small button-fill" style="flex:1">Zapisz</button>
+          <button type="submit" name="action" value="delete" class="button button-small" style="color:var(--bad)">Usuń</button>
+        </div>
+      </form>`);
+  };
+
+  const cateringHtml = `
+    ${(orders ?? []).map(zamowienieHtml).join('') || card('<p class="hint" style="margin:0">Brak zamówień.</p>')}
+    ${card(`
+      <form method="POST" action="/ustawienia/catering">
+        <input type="hidden" name="action" value="create">
+        <div class="field">
+          <label class="field-label" for="new-order">Nowe zamówienie</label>
+          <div style="display:grid;grid-template-columns:1fr 150px auto;gap:8px">
+            <input type="text" name="order_id" id="new-order" placeholder="numer zamówienia" required>
+            <input type="date" name="date_from" value="${dzis}" required>
+            <button type="submit" class="button button-fill">Dodaj</button>
+          </div>
+        </div>
+        <p class="hint">Numer diety, datę końca i dni bez dostawy uzupełnisz po dodaniu.</p>
+      </form>`)}`;
 
   const targetsByPhase = new Map<number, any[]>();
   for (const t of targets.results ?? []) {
@@ -238,32 +375,43 @@ settings.get('/ustawienia', async (c) => {
         </div>
       </form>`)).join('');
 
-  const content = `
-    ${blockTitle('Szablony posiłków', 'jedno dotknięcie w zakładce Dopisz')}
-    <div class="cols">${szablonyHtml}</div>
-
-    ${blockTitle('Okna jedzenia i catering')}
-    ${card(generalHtml)}
-
-    ${blockTitle('Fazy protokołu i cele makro')}
-    <div class="cols">${phasesHtml}</div>
-
-    ${blockTitle('Suplementy i rozkład dnia')}
-    ${card(`
-      <form method="POST" action="/ustawienia/suplement">
-        <input type="hidden" name="id" value="new">
-        <div class="field">
-          <label class="field-label" for="new-supp">Nazwa nowego preparatu</label>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
-            <input type="text" name="name" id="new-supp" placeholder="np. Imbir" required>
-            <button type="submit" class="button button-fill">Dodaj</button>
-          </div>
+  const nowySzablonHtml = card(`
+    <form method="POST" action="/ustawienia/szablon">
+      <input type="hidden" name="id" value="new">
+      <div class="field">
+        <label class="field-label" for="new-template">Nowy szablon</label>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+          <input type="text" name="name" id="new-template" placeholder="np. Kiwi" required>
+          <button type="submit" class="button button-fill">Dodaj</button>
         </div>
-      </form>`)}
-    <div class="cols">${suppHtml}</div>
+      </div>
+      <p class="hint">Skład i makra uzupełnisz na liście poniżej. Skład jest ważniejszy niż makra, bo to po nim działają wykluczenia.</p>
+    </form>`);
 
-    ${blockTitle('Reguły braków')}
-    <div class="cols">${rulesHtml}</div>
+  const content = `
+    ${blok('Okna jedzenia', kontrolaOkien(general), grupaHtml('okna'), true)}
+    ${blok('Zasady przerw', null, grupaHtml('przerwy'), true)}
+    ${[...grupy.keys()].filter((g) => g !== 'okna' && g !== 'przerwy')
+      .map((g) => blok(GRUPA_LABEL[g] ?? g, null, grupaHtml(g))).join('')}
+    ${blok('Catering', `${(orders ?? []).length} ${(orders ?? []).length === 1 ? 'zamówienie' : 'zamówienia'}`, cateringHtml)}
+    ${blok('Szablony posiłków', 'jedno dotknięcie w zakładce Dopisz',
+      `${nowySzablonHtml}<div class="cols">${szablonyHtml}</div>`)}
+    ${blok('Fazy protokołu i cele makro', null, `<div class="cols">${phasesHtml}</div>`)}
+
+    ${blok('Suplementy i rozkład dnia', null, `
+      ${card(`
+        <form method="POST" action="/ustawienia/suplement">
+          <input type="hidden" name="id" value="new">
+          <div class="field">
+            <label class="field-label" for="new-supp">Nazwa nowego preparatu</label>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+              <input type="text" name="name" id="new-supp" placeholder="np. Imbir" required>
+              <button type="submit" class="button button-fill">Dodaj</button>
+            </div>
+          </div>
+        </form>`)}
+      <div class="cols">${suppHtml}</div>`)}
+    ${blok('Reguły braków', null, `<div class="cols">${rulesHtml}</div>`)}
   `;
 
   return c.html(page({ title: 'Ustawienia', tab: 'settings', header: 'Ustawienia', content }));
@@ -343,8 +491,41 @@ settings.post('/ustawienia/rozklad', async (c) => {
   return c.redirect('/ustawienia');
 });
 
+settings.post('/ustawienia/catering', async (c) => {
+  const b = await c.req.parseBody();
+  const action = String(b.action || 'save');
+
+  if (action === 'delete') {
+    await c.env.DB.prepare(`DELETE FROM catering_orders WHERE id = ?`).bind(Number(b.id)).run();
+  } else if (action === 'create') {
+    // Jak przy suplementach: nowy wiersz powstaje z minimum, reszte uzupelnia
+    // sie na liscie. Formularz dodawania z dziesiecioma polami nikt nie wypelnia.
+    await c.env.DB.prepare(
+      `INSERT INTO catering_orders (order_id, date_from) VALUES (?, ?)`
+    ).bind(String(b.order_id || ''), String(b.date_from || todayWarsaw())).run();
+  } else {
+    await c.env.DB.prepare(
+      `UPDATE catering_orders SET order_id = ?, diet_id = ?, date_from = ?, date_to = ?,
+         no_delivery = ?, notes = ? WHERE id = ?`
+    ).bind(
+      String(b.order_id || ''), String(b.diet_id || '') || null,
+      String(b.date_from || todayWarsaw()), String(b.date_to || '') || null,
+      String(b.no_delivery || '') || null, String(b.notes || '') || null, Number(b.id)
+    ).run();
+  }
+
+  return c.redirect('/ustawienia');
+});
+
 settings.post('/ustawienia/szablon', async (c) => {
   const b = await c.req.parseBody();
+
+  if (String(b.id) === 'new') {
+    await c.env.DB.prepare(`INSERT INTO meal_templates (name) VALUES (?)`)
+      .bind(String(b.name || 'Bez nazwy')).run();
+    return c.redirect('/ustawienia');
+  }
+
   const id = Number(b.id);
 
   if (String(b.action) === 'delete') {
