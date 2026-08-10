@@ -75,6 +75,40 @@ Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_totals`, `v_group_cover
   `v_day_totals` liczy oba i pokazuje w UI, zamiast po cichu zaniżać sumy.
 - Dni tygodnia w `supplement_schedule.days` dopasowuje się pełnym tokenem:
   `(',' || days || ',') LIKE ('%,' || :dzien || ',%')`. `LIKE '%pon%'` to pułapka.
+- **`supplements.status` jest własnością aplikacji, nie seeda.** Wstrzymanie
+  i wznowienie preparatu robi się listą na `/suplementy`, więc status w bazie
+  jest zawsze nowszy niż w `seed.sql` i dlatego jest wyłączony z jego
+  `ON CONFLICT DO UPDATE`. Wartości statusu w seedzie działają tylko przy
+  pierwszym wstawieniu, czyli na pustej bazie. Bez tego wyłączenia `npm run db:seed`
+  po cichu cofał decyzje kliniczne: pauza TMG, karczocha i Essentiale na czas
+  antybiotyku wróciłaby do `active`, a nic w interfejsie by o tym nie powiedziało.
+  `restrictions` w `seed-foods.sql` mają to samo wyłączenie od początku.
+  Uwaga na resztę: pozostałe kolumny `supplements` oraz cały `supplement_schedule`
+  seed **nadal nadpisuje**, a Ustawienia pozwalają je edytować. Zmianę dawki, pory
+  albo okna zrobioną w interfejsie trzeba dopisać migracją i seedem, bo inaczej
+  przepadnie przy najbliższym `db:seed`.
+- **`status` i okno harmonogramu odpowiadają na dwa różne pytania. Nie mieszać ich.**
+  `supplements.status` mówi, **czy preparat jest w protokole**.
+  `supplement_schedule.date_from` i `date_to` mówią, **w jakim okresie się go bierze**.
+  Zapytania w `day.ts` i `supplements.ts` sprawdzają jedno i drugie, więc preparat
+  wchodzi na listę dnia tylko wtedy, gdy ma status inny niż `paused` i `discontinued`
+  **oraz** dany dzień mieści się w oknie.
+  - Chwilowe odstawienie to odpowiedź na pierwsze pytanie, więc siedzi **wyłącznie
+    w `status`**. Okno zostaje bezterminowe. Wtedy powrót to jedno kliknięcie na
+    `/suplementy` i nic więcej.
+  - Okno domyka się tylko wtedy, gdy preparat ma **z góry znany koniec**: kurs
+    antybiotyku do 17.08, probiotyk do 14.09, faza z inną dawką.
+  - Okno przesuwa się w przód wtedy, gdy **data powrotu jest znana**, jak TMG od 18.08.
+    Wtedy status zostaje `active`, bo preparat jest w protokole, tylko jeszcze nie teraz.
+  - Bezterminowy wiersz przy statusie `paused` **nie jest wiszący**, bo status go gatuje.
+    Zasada „nie zostawiaj wierszy bezterminowych" dotyczy okien z ustaloną datą końca,
+    nie pauz. Domknięcie okna pauzą zamienia działający przełącznik w instrukcję obsługi.
+- **`date_to` w `restrictions` to dzień włącznie.** `restrictions.ts` uznaje regułę
+  za wygasłą dopiero przy `date_to < today`, a `v_restriction_breaches` łapie
+  `m.date <= r.date_to`. Reguła, która ma przestać obowiązywać z początkiem nowej
+  fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
+  pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
+  pełną listę wykluczeń jeszcze jeden dzień.
 
 ## Import z hfood
 

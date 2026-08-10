@@ -24,7 +24,7 @@ INSERT INTO phases (id, name, date_from, date_to, diet_type, notes) VALUES
   (2, 'Low FODMAP', '2026-08-18', '2026-09-14', 'low_fodmap',
       'Miesiąc low FODMAP plus Sanprobi IBS. Bez prokinetyku, decyzja pacjenta z 09.08.'),
   (3, 'Rozszerzanie diety', '2026-09-15', NULL, 'rozszerzanie',
-      'Pojedyncze wprowadzanie produktów z obserwacją 48 h. Po kontrolnym teście oddechowym 14 do 18.09.')
+      'Pojedyncze wprowadzanie produktów z obserwacją 48 h.')
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name, date_from = excluded.date_from, date_to = excluded.date_to,
   diet_type = excluded.diet_type, notes = excluded.notes;
@@ -51,7 +51,7 @@ INSERT INTO targets (id, phase_id, metric, min_value, max_value, source) VALUES
   (12, 3, 'protein_g',  130,  160, 'Piotrowski 2026-05-21'),
   (13, 3, 'fat_g',       80,  100, 'Piotrowski 2026-05-21. Elastaza 151'),
   (14, 3, 'carbs_g',    250,  350, 'Piotrowski 2026-05-21'),
-  (15, 3, 'fiber_g',     25,   35, 'Przy rozszerzaniu górna granica rośnie')
+  (15, 3, 'fiber_g',     20,   30, 'v_day_totals liczy błonnik z jedzenia, a PHGG dokłada 5 g z góry. Własna obserwacja: więcej błonnika to więcej twardych grudek. Bez prokinetyku górnej granicy nie podnosimy automatycznie od 15.09, najwcześniej po ocenie dziennika 15.10.')
 ON CONFLICT(id) DO UPDATE SET
   phase_id = excluded.phase_id, metric = excluded.metric,
   min_value = excluded.min_value, max_value = excluded.max_value, source = excluded.source;
@@ -95,7 +95,7 @@ INSERT INTO coverage_rules (id, group_id, min_days_per_week, min_portions_per_da
   (1, 1,  5, NULL, 'critical',
       'Homocysteina 19,20 przy MTHFR compound het. Foliany z jedzenia to podstawowa droga, TMG jest tylko szlakiem pomocniczym. Zielonych liści nie było w żadnym z 6 zamówień.', '2026-08-03', NULL),
   (2, 6,  7,    2, 'critical',
-      'Jedyny produkt spożywczy z powtórzonymi badaniami klinicznymi na zaparcie, niskofermentujący. Po rezygnacji z prokinetyku 09.08 to jedno z trzech narzędzi na motorykę.', '2026-08-03', NULL),
+      'Jedyny produkt spożywczy z powtórzonymi badaniami klinicznymi na zaparcie, niskofermentujący. Po rezygnacji z prokinetyku 09.08 to jedno z dwóch narzędzi na motorykę.', '2026-08-03', NULL),
   (3, 2,  4, NULL, 'important',
       'Burak, dynia i batat wiążą wodę i zmiękczają stolec przy wolnym pasażu. Mają zastąpić kalafior i brukselkę.', '2026-08-03', NULL),
   (4, 3,  2, NULL, 'important',
@@ -120,23 +120,30 @@ INSERT INTO supplements (id, name, brand, kind, dose, purpose, status, rx, notes
   (1,  'Xifaxan 400 mg',      'Alfasigma',   'lek',       '2 tabletki', 'eradykacja przerostu metanogenów', 'active',       1, 'Kurs 14 dni, ostatnia dawka 17.08 rano', 'Sidor-Bagińska 2026-08-03'),
   (2,  'Neomycinum 250 mg',   'TZF',         'lek',       '2 tabletki', 'eradykacja przerostu metanogenów', 'active',       1, 'Odstawić przy szumie w uszach, pogorszeniu słuchu albo zawrotach głowy', 'Sidor-Bagińska 2026-08-03'),
   (3,  'FIBEgastrin',         NULL,          'blonnik',   '1 saszetka, 5 g PHGG', 'zagęszczenie stolca, odbudowa flory', 'active', 0, 'Częściowo hydrolizowana guma guar. Badanie Furnari 2010.', 'Sidor-Bagińska 2026-08-03 plus decyzja pacjenta 05.08'),
-  (4,  'TMG 1000 mg',         'NOW Foods',   'suplement', '1 tabletka', 'homocysteina, szlak BHMT', 'active',              0, 'Zastąpił B12 i cały B-complex', 'Piotrowski 2026-05-21'),
-  (5,  'Karczoch 600 mg',     'Medica Herbs','suplement', '1 kapsułka', 'trawienie tłuszczu, wzdęcia', 'active',           0, 'Druga dawka do obiadu, jeśli posiłek tłusty', 'Piotrowski 2026-05-21'),
-  (6,  'Essentiale Max',      'Sanofi',      'suplement', '1 kapsułka', 'fosfatydylocholina, emulsja tłuszczu', 'active',  0, 'Synergia z karczochem', 'Piotrowski 2026-05-21'),
+  (4,  'TMG 1000 mg',         'NOW Foods',   'suplement', '1 tabletka', 'homocysteina, szlak BHMT', 'active',              0, 'Zastąpił B12 i cały B-complex. Zapauzowane przez pacjenta na czas kursu antybiotyku 03 do 17.08.2026, żeby nie mieszać zmiennych w trakcie leczenia. Wraca 18.08 i zostaje na stałe: odstawienie B-complexu w maju podniosło homocysteinę z 13,70 na 19,20, a TMG nie było tego przyczyną.', 'Piotrowski 2026-05-21'),
+  (5,  'Karczoch 600 mg',     'Medica Herbs','suplement', '1 kapsułka', 'trawienie tłuszczu, wzdęcia', 'paused',           0, 'Druga dawka do obiadu, jeśli posiłek tłusty. Zapauzowane przez pacjenta na czas kursu antybiotyku 03 do 17.08.2026, żeby nie mieszać zmiennych w trakcie leczenia. Decyzja o powrocie przypada na 18.08 i należy do Macieja: brak wskazania przy ALT 23, GGT 11, ALP 68 i bilirubinie 0,90, a przyczyną gazów okazał się 02.08 przerost metanogenów, który leczy antybiotyk.', 'Piotrowski 2026-05-21'),
+  (6,  'Essentiale Max',      'Sanofi',      'suplement', '1 kapsułka', 'fosfatydylocholina, emulsja tłuszczu', 'paused',  0, 'Synergia z karczochem. Zapauzowane przez pacjenta na czas kursu antybiotyku 03 do 17.08.2026, żeby nie mieszać zmiennych w trakcie leczenia. Decyzja o powrocie przypada na 18.08 i należy do Macieja: brak wskazania przy ALT 23, GGT 11, ALP 68 i bilirubinie 0,90, a przyczyną gazów okazał się 02.08 przerost metanogenów, który leczy antybiotyk.', 'Piotrowski 2026-05-21'),
   (7,  'Super Omega 2900 mg', 'Osavi',       'suplement', '2 łyżeczki', 'omega-3 EPA i DHA', 'active',                     0, 'Postać płynna, cytrynowa', 'Piotrowski 2026-05-21'),
   (8,  'Witamina D3 + K2',    'Nutri-Well',  'suplement', '1 tabletka', 'witamina D 5000 IU', 'active',                    0, 'Dawki nie obniżamy, pacjent unika słońca', 'protokół własny'),
-  (9,  'Kreatyna',            NULL,          'suplement', '10 g',       'siła, masa mięśniowa', 'active',                  0, 'Na czczo. Hamuje syntezę endogenną, czyli działa w kierunku obniżenia homocysteiny', 'protokół własny'),
+  (9,  'Kreatyna',            NULL,          'suplement', '2 x 5 g',    'siła, masa mięśniowa', 'active',                  0, 'Pierwsza porcja na czczo, druga do obiadu. Hamuje syntezę endogenną, czyli działa w kierunku obniżenia homocysteiny. Dawki nie obniżamy, tylko dzielimy: przy 10 g naraz biegunka u 55,6%, przy 2 x 5 g u 28,6% (Ostojic i Ahmetovic 2008, Res Sports Med).', 'protokół własny'),
   (10, 'Codeage Methylfolate B Complex+', 'Codeage', 'suplement', '1 kapsułka', 'metylofolian, B12, B6', 'active',         0, 'Wznowiony 03.08 po skoku homocysteiny z 13,70 na 19,20. Pół dawki, bo powodem odstawienia była wysoka B12.', 'Analiza panelu 2026-08-03'),
   (11, 'Clomid 25 mg',        NULL,          'lek',       '1 tabletka', 'oś podwzgórze, przysadka, jądra', 'active',       1, 'Poniedziałek do soboty, niedziela wolna. Przesunięty na 22:30 na czas antybiotyku.', 'protokół własny'),
   (12, 'Sanprobi IBS',        'Sanprobi',    'probiotyk', '1 kapsułka', 'odbudowa flory po antybiotyku', 'planned',        0, 'Start 18.08, cztery tygodnie. Nie zaczynać w trakcie antybiotyku, neomycyna go zabije. Opakowanie to 20 kapsułek, czyli dokupić do 05.09.', 'Sidor-Bagińska 2026-08-03'),
   (13, 'Forlax 10 g',         'Ipsen',       'lek',       '1 saszetka', 'makrogol, zmiękczenie stolca', 'paused',          0, 'Wyłącznie ratunkowo: dwa dni bez wypróżnienia albo wyraźnie twardszy stolec przez dwa dni z rzędu', 'Sidor-Bagińska 2026-08-03, korekta 03.08'),
-  (14, 'Prukalopryd (Resolor)', NULL,        'lek',       '2 mg',       'prokinetyk, pasaż jelita', 'discontinued',        1, 'Decyzja pacjenta z 09.08: recepty nie będzie. Temat wraca tylko przy dodatnim teście kontrolnym 14 do 18.09.', 'Decyzja pacjenta 2026-08-09'),
-  (15, 'Predox (itopryd)',    NULL,          'lek',       '50 mg',      'prokinetyk żołądkowy', 'discontinued',            1, 'Nie brać. Zły odcinek przewodu pokarmowego, podnosi prolaktynę.', 'Analiza 2026-08-03'),
-  (16, 'Magnez cytrynian',    'NOW Foods',   'suplement', '400 mg',     'motoryka jelit, sen', 'paused',                   0, 'Wraca tylko wtedy, gdy po 25.08 stolec będzie twardy (Bristol 1 do 2) przez trzy dni z rzędu', 'Analiza 2026-08-09'),
+  (14, 'Prukalopryd (Resolor)', NULL,        'lek',       '2 mg',       'prokinetyk, pasaż jelita', 'discontinued',        1, 'Decyzja pacjenta z 09.08: recepty nie będzie. Temat wraca przy ocenie dziennika 15.10.2026, jeśli objawy się nie ruszą.', 'Decyzja pacjenta 2026-08-09'),
+  (15, 'Predox (itopryd)',    NULL,          'lek',       '50 mg',      'prokinetyk żołądkowy', 'discontinued',            1, 'Nie brać, odrzucony decyzją pacjenta z 09.08.2026, a to, że leży kupiony, nie jest argumentem. Dwa powody: zły odcinek przewodu pokarmowego, bo działa na opróżnianie żołądka, a nie na pasaż jelita grubego, oraz podnoszenie prolaktyny, która 03.08 wyszła 601 mIU/l.', 'Analiza 2026-08-03'),
+  (16, 'Tlenek magnezu',      NULL,          'suplement', '500 mg 3x dziennie', 'motoryka jelit, sen', 'paused',           0, 'Włączyć tylko wtedy, gdy w oknie 25 do 31.08.2026, przy PHGG 10 g dziennie, stolec nadal będzie w przewadze Bristol 1 do 2, wtedy start 01.09. Kontrola nerek niepotrzebna, kreatynina 1,05 mg/dl i eGFR powyżej 90 w 04.2026, ostrożność dotyczy niewydolności nerek i wieku podeszłego.', 'Mori 2019, J Neurogastroenterol Motil'),
   (17, 'Babka jajowata',      'Zielarnia',   'blonnik',   '1 łyżeczka, ok. 5 g', 'błonnik żelujący', 'planned',            0, 'Zalecona 25.03.2026, nigdy nie kupiona. Przy FIBEgastrinie 10 g dziennie na razie zbędna.', 'Piotrowski 2026-03-25')
+-- status CELOWO poza lista aktualizowanych kolumn. Wstrzymanie i wznowienie
+-- preparatu robi sie w aplikacji (POST /suplementy/status), wiec status w bazie
+-- jest zawsze nowszy niz w tym pliku. Gdy tu byl, kazde db:seed po cichu
+-- cofalo decyzje kliniczna: pauza TMG, karczocha i Essentiale na czas
+-- antybiotyku wrocilaby do 'active'. restrictions w seed-foods.sql maja
+-- to samo wylaczenie od poczatku. Wartosci status ponizej dzialaja tylko
+-- przy pierwszym wstawieniu, czyli na pustej bazie.
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name, brand = excluded.brand, kind = excluded.kind, dose = excluded.dose,
-  purpose = excluded.purpose, status = excluded.status, rx = excluded.rx,
+  purpose = excluded.purpose, rx = excluded.rx,
   notes = excluded.notes, source = excluded.source;
 
 -- ---------------------------------------------------------------------------
@@ -146,24 +153,27 @@ ON CONFLICT(id) DO UPDATE SET
 -- ---------------------------------------------------------------------------
 
 INSERT INTO supplement_schedule (id, supplement_id, time_of_day, with_meal, days, amount, date_from, date_to, notes) VALUES
-  (1,  9,  '07:00', 'na_czczo',  'daily', '10 g',        '2026-08-03', NULL,         NULL),
+  (1,  9,  '07:00', 'na_czczo',  'daily', '5 g',         '2026-08-03', NULL,         NULL),
   (2,  1,  '08:00', NULL,        'daily', '2 tabletki',  '2026-08-03', '2026-08-17', 'Odstęp 30 minut do neomycyny'),
   (3,  2,  '08:30', NULL,        'daily', '2 tabletki',  '2026-08-03', '2026-08-17', 'Posiłek 15 do 30 minut później'),
   (4,  3,  '09:00', 'sniadanie', 'daily', '1 saszetka',  '2026-08-05', '2026-08-17', 'W 200 do 250 ml wody, popić drugą szklanką'),
   (5,  10, '09:00', 'sniadanie', 'daily', '1 kapsułka',  '2026-08-03', NULL,         NULL),
   (6,  8,  '09:00', 'sniadanie', 'daily', '1 tabletka',  '2026-08-03', NULL,         'Z tłuszczem'),
   (7,  7,  '09:00', 'sniadanie', 'daily', '2 łyżeczki',  '2026-08-03', NULL,         NULL),
+  -- Karczoch i Essentiale sa wstrzymane, ale bezterminowo, bo pauza siedzi
+  -- w supplements.status. Domkniecie okna zablokowaloby powrot jednym klikiem.
   (8,  5,  '09:00', 'sniadanie', 'daily', '1 kapsułka',  '2026-08-03', NULL,         NULL),
   (9,  6,  '09:00', 'sniadanie', 'daily', '1 kapsułka',  '2026-08-03', NULL,         NULL),
   (10, 5,  '14:00', 'obiad',     'daily', '1 kapsułka',  '2026-08-03', NULL,         'Tylko jeśli posiłek tłusty'),
-  (11, 4,  '18:30', 'kolacja',   'daily', '1 tabletka',  '2026-08-03', NULL,         NULL),
+  (11, 4,  '18:30', 'kolacja',   'daily', '1 tabletka',  '2026-08-18', NULL,         'TMG wraca po kursie antybiotyku. Do 17.08 zapauzowane przez pacjenta.'),
   (12, 1,  '20:00', NULL,        'daily', '2 tabletki',  '2026-08-03', '2026-08-17', NULL),
   (13, 2,  '20:30', NULL,        'daily', '2 tabletki',  '2026-08-03', '2026-08-17', NULL),
   (14, 11, '22:30', NULL,        'pon,wt,sr,czw,pt,sob', '1 tabletka', '2026-08-03', NULL, 'Niedziela wolna. Odstęp 2 h od neomycyny.'),
   (15, 3,  '09:00', 'sniadanie', 'daily', '1 saszetka',  '2026-08-18', '2026-09-14', 'Faza 2: dwie saszetki dziennie, rano i wieczorem'),
   (16, 3,  '18:30', 'kolacja',   'daily', '1 saszetka',  '2026-08-18', '2026-09-14', 'Faza 2: druga saszetka. Przy nasileniu gazów zostać przy jednej.'),
   (17, 12, '09:00', 'sniadanie', 'daily', '1 kapsułka',  '2026-08-18', '2026-09-14', 'Cztery tygodnie'),
-  (18, 3,  '09:00', 'sniadanie', 'daily', '1 saszetka',  '2026-09-15', NULL,         'Przewlekle, zalecenie lekarki')
+  (18, 3,  '09:00', 'sniadanie', 'daily', '1 saszetka',  '2026-09-15', NULL,         'Przewlekle, zalecenie lekarki'),
+  (19, 9,  '14:00', 'obiad',     'daily', '5 g',         '2026-08-10', NULL,         'Druga porcja tej samej dawki, doczepiona do drugiego podejścia do jedzenia, nie jako osobne zdarzenie.')
 ON CONFLICT(id) DO UPDATE SET
   supplement_id = excluded.supplement_id, time_of_day = excluded.time_of_day,
   with_meal = excluded.with_meal, days = excluded.days, amount = excluded.amount,
