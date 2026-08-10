@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import { Env } from '../types';
 import {
   page, card, blockTitle, emptyState, esc, pl, flag, macroBar,
-  SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween, hhmmToMinutes,
+  SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
+import { przerwyDnia } from '../utils/gaps-stats';
 import { loadDayGaps, renderGaps } from './gaps';
 
 const day = new Hono<{ Bindings: Env }>();
@@ -119,9 +120,9 @@ export async function renderDay(c: any, date: string) {
   // Poniedzialek biezacego tygodnia, bo reguly braków sa tygodniowe.
   const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
   const weekStart = shiftDate(date, -dow);
-  const [dayGaps, shoppingOpen] = await Promise.all([
+  const [dayGaps, doKupienia] = await Promise.all([
     loadDayGaps(db, date, weekStart),
-    db.prepare(`SELECT id, label, note FROM shopping WHERE bought = 0 ORDER BY added_on, id`).all<any>(),
+    db.prepare(`SELECT COUNT(*) AS n FROM shopping WHERE bought = 0`).first<{ n: number }>(),
   ]);
 
   // Najblizsza przerwa w dostawach w ciagu dwoch tygodni. Planowanie, nie retrospekcja.
@@ -174,35 +175,17 @@ export async function renderDay(c: any, date: string) {
   // samego przelkniecia. Woda i czarne espresso jej nie przerywaja, kawa
   // z mlekiem juz tak. Prog do zmiany w ustawieniach.
   const progKcal = Number(settings.get('gap_kcal_prog') || 30);
-  const liczySie = (m: MealRow) => m.eaten === 1 && (m.kcal ?? 0) >= progKcal;
   const domyslneTrwanie = Number(settings.get('default_meal_min') || 30);
-  const doMinut = hhmmToMinutes;
-  /*
-   * Przerwa liczy sie od OSTATNIEGO kesa poprzedniego posilku do poczatku
-   * nastepnego. Faza III MMC wraca dopiero po oproznieniu zoladka, wiec posilek
-   * jedzony godzine to dla jelita godzinny wlew, a nie zdarzenie punktowe.
-   * Liczenie start-do-startu zawyzalo przerwe o czas trwania posilku.
-   */
-  const koniec = (m: MealRow) => doMinut(m.eaten_at!) + (m.duration_min ?? domyslneTrwanie);
-  /*
-   * Przerwa dzieli PODEJSCIA, nie wiersze. Deser i kawa po obiedzie to ten sam
-   * naplyw kalorii co danie glowne, wiec rozbicie ich na osobne pozycje nie moze
-   * produkowac przerwy zerowej z ostrzezeniem. Podejscie rozpoznaje kolumna
-   * `sitting`; wpisy poza podejsciami (0 albo NULL, np. kawa w miescie) zostaja
-   * osobnymi zdarzeniami, kazdy z wlasnym kluczem.
-   */
-  const podejscie = (m: MealRow) => (m.sitting ? `s${m.sitting}` : `m${m.id}`);
 
   const lista = meals.results ?? [];
+  // Ten sam algorytm co w statystykach, patrz utils/gaps-stats.ts.
+  const przerwy = przerwyDnia(lista, { progKcal, domyslneTrwanie });
   const wiersze: string[] = [];
-  let poprzedniKoniec: number | null = null;
-  let poprzednieId: string | null = null;
 
   for (const m of lista) {
-    const liczy = Boolean(m.eaten_at) && liczySie(m);
+    const przerwa = przerwy.get(m.id);
 
-    if (liczy && poprzedniKoniec !== null && podejscie(m) !== poprzednieId) {
-      const przerwa = doMinut(m.eaten_at!) - poprzedniKoniec;
+    if (przerwa !== undefined) {
       const h = Math.floor(przerwa / 60);
       const min = przerwa % 60;
       const zaKrotka = przerwa < minGap * 60;
@@ -210,13 +193,6 @@ export async function renderDay(c: any, date: string) {
         <span>${przerwa < 0 ? 'podejścia nachodzą na siebie' : `przerwa ${h ? `${h} h ` : ''}${min} min`}</span>
         ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
       </div>`);
-    }
-
-    if (liczy) {
-      // To samo podejscie przesuwa jego koniec, nie zaczyna nowego liczenia.
-      poprzedniKoniec =
-        podejscie(m) === poprzednieId ? Math.max(poprzedniKoniec ?? 0, koniec(m)) : koniec(m);
-      poprzednieId = podejscie(m);
     }
 
     wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
@@ -259,7 +235,7 @@ export async function renderDay(c: any, date: string) {
     ${mealsHtml}
 
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
-    ${renderGaps(dayGaps, date, shoppingOpen.results ?? [])}
+    ${renderGaps(dayGaps, date, doKupienia?.n ?? 0)}
 
     ${blockTitle('Objawy i stolec')}
     ${eventsHtml}

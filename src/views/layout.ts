@@ -1,14 +1,37 @@
 import { ASSET_V } from './assets';
 
-const NAV: Array<{ href: string; icon: string; label: string; key: string; tab: boolean }> = [
+/**
+ * Jedna lista, trzy zastosowania.
+ *
+ * `tab` to pasek na telefonie i ma dokladnie piec miejsc, bo tyle mieszcza sie
+ * bez sciskania pol dotyku (`grid-template-columns: repeat(5, 1fr)` w arkuszu).
+ * Reszta siedzi za pozycja „Więcej". Do paska trafia to, co otwiera sie w biegu:
+ * zakupy robi sie stojac w sklepie, kalendarz i statystyki czyta sie na spokojnie.
+ *
+ * `hub` oznacza sama pozycje „Więcej". Na duzym ekranie menu boczne pokazuje
+ * wszystko naraz, wiec hub jest tam zbedny i jest z niego wylaczony.
+ */
+const NAV: Array<{
+  href: string; icon: string; label: string; key: string;
+  tab: boolean; hub?: boolean; opis?: string;
+}> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today', tab: true },
-  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: true },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log', tab: true },
+  { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: true },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements', tab: true },
-  { href: '/week', icon: '📊', label: 'Tydzień', key: 'week', tab: true },
-  { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions', tab: false },
-  { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings', tab: false },
+  { href: '/wiecej', icon: '☰', label: 'Więcej', key: 'more', tab: true, hub: true },
+  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: false,
+    opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
+  { href: '/statystyki', icon: '📊', label: 'Statystyki', key: 'stats', tab: false,
+    opis: 'Dowolny zakres dat: makro, przerwy między podejściami, objawy' },
+  { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions', tab: false,
+    opis: 'Zakazy, limity i kolejka nierozpoznanych składników' },
+  { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings', tab: false,
+    opis: 'Okna jedzenia, zasady przerw, catering, szablony, suplementy' },
 ];
+
+/** Pozycje spoza paska, czyli zawartosc ekranu „Więcej" i dolnej czesci menu bocznego. */
+export const NAV_POZA_PASKIEM = NAV.filter((n) => !n.tab);
 
 /**
  * Jedna aplikacja, dwa układy.
@@ -99,9 +122,9 @@ export function sidenav(active?: string): string {
 
   return `<aside class="sidenav">
     <div class="sidenav-brand"><span aria-hidden="true">🍽️</span><span>Food</span></div>
-    ${NAV.filter((n) => n.tab).map(item).join('')}
+    ${NAV.filter((n) => n.tab && !n.hub).map(item).join('')}
     <div class="sidenav-sep"></div>
-    ${NAV.filter((n) => !n.tab).map(item).join('')}
+    ${NAV_POZA_PASKIEM.map(item).join('')}
   </aside>`;
 }
 

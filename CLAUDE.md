@@ -27,6 +27,38 @@ aplikacji na telefonie i to ona blokowała sensowny widok na dużym ekranie.
 Klasy w widokach (`.card`, `.list`, `.block-title`, `.item-content`) zostały
 te same, definiuje je teraz `public/css/food-theme.css`. Nie dodawać jej z powrotem.
 
+## Nawigacja
+
+Jedna lista `NAV` w `src/views/layout.ts` obsługuje trzy miejsca: pasek na telefonie,
+menu boczne i ekran „Więcej".
+
+| | Co |
+|---|---|
+| Pasek na telefonie (`tab: true`) | Dziś, Dopisz, Zakupy, Suple, **Więcej** |
+| Za „Więcej" (`tab: false`) | Kalendarz, Statystyki, Wykluczenia, Ustawienia |
+| Menu boczne od 1024 px | wszystko naraz, **bez** pozycji „Więcej" (`hub: true`) |
+
+**Pasek ma dokładnie pięć miejsc** i to nie jest przypadek: `grid-template-columns: repeat(5, 1fr)`
+w `food-theme.css`. Szósta ikona ściska pola dotyku poniżej progu używalności, więc rozrost
+nawigacji idzie do `NAV_POZA_PASKIEM`, nie do paska.
+
+O tym, co trafia do paska, decyduje **gdzie ekran się otwiera**, nie jak często: zakupy robi się
+stojąc w sklepie z telefonem w ręku, kalendarz i statystyki czyta się na spokojnie.
+
+## Statystyki
+
+`/statystyki` zastąpiło `/week`, które liczyło na sztywno siedem dni wstecz. `/week`
+przekierowuje, żeby nie psuć zakładek.
+
+- Zakres siedzi w adresie (`?zakres=7|30|miesiac|rok` albo `?od=&do=`), więc da się go wysłać i zapisać.
+- **Do 14 dni tabela idzie dzień po dniu, powyżej zwija się w tygodnie.** 365 wierszy nikt nie
+  czyta, a średnia tygodniowa jest właściwą jednostką, bo reguły pokrycia grup są tygodniowe.
+- **Pierwsza liczba na ekranie to kompletność danych** („2 z 4 dni"). Średnia z trzech dni wygląda
+  identycznie jak średnia z trzydziestu, więc bez tej liczby reszta ekranu wprowadza w błąd.
+- Przerwy liczy `statystykaPrzerw()` z `utils/gaps-stats.ts`, ta sama funkcja co widok dnia.
+  **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
+  zakłamałaby ją całkowicie.
+
 ## Układ responsywny
 
 Jeden HTML, dwa układy, decyduje CSS:
@@ -109,11 +141,13 @@ Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_totals`, `v_group_cover
   fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
   pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
   pełną listę wykluczeń jeszcze jeden dzień.
-- **Przerwa dzieli podejścia, nie wiersze.** `day.ts` grupuje posiłki po kolumnie
-  `sitting` i liczy przerwę od końca ostatniego liczącego się posiłku poprzedniego
-  podejścia. Deser i kawa po obiedzie to osobne pozycje w tym samym podejściu,
+- **Przerwa dzieli podejścia, nie wiersze.** `przerwyDnia()` w `utils/gaps-stats.ts` grupuje
+  posiłki po kolumnie `sitting` i liczy przerwę od końca ostatniego liczącego się posiłku
+  poprzedniego podejścia. Deser i kawa po obiedzie to osobne pozycje w tym samym podejściu,
   więc nie mogą produkować przerwy zerowej z ostrzeżeniem. Wpisy poza podejściami
   (`sitting` 0 albo NULL) zostają osobnymi zdarzeniami, każdy z własnym kluczem.
+  **Ta funkcja ma jedną kopię** i korzystają z niej widok dnia oraz statystyki: dwie
+  implementacje rozjechałyby się przy pierwszej zmianie reguł, a to najważniejsza liczba w bazie.
 - **Ustawienia mają grupy, nie jedną płaską listę.** `settings.grupa` decyduje,
   w którym zwijanym bloku pole się pojawi (`okna`, `przerwy`). Nowy klucz bez
   przypisania trafia do bloku „Pozostałe" i nie znika z ekranu.

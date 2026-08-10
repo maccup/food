@@ -59,7 +59,7 @@ export async function loadDayGaps(db: D1Database, date: string, weekStart: strin
   }));
 }
 
-export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): string {
+export function renderGaps(list: DayGap[], date: string, doKupienia: number): string {
   const missing = list.filter((g) => !g.todayCovered);
   const done = list.filter((g) => g.todayCovered);
 
@@ -99,26 +99,6 @@ export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): s
     </li>`;
   };
 
-  const shoppingHtml = shoppingOpen.length
-    ? `<div class="list" style="margin:0"><ul>
-        ${shoppingOpen.map((s: any) => `<li>
-          <div class="item-content"><div class="item-inner" style="padding:6px 0">
-            <form method="POST" action="/zakupy/kupione">
-              <input type="hidden" name="id" value="${s.id}">
-              <input type="hidden" name="date" value="${date}">
-              <label class="check" style="min-height:48px">
-                <input type="checkbox" name="bought" value="1" onchange="this.form.submit()">
-                <span>
-                  <b>${esc(s.label)}</b>
-                  ${s.note ? `<span style="display:block;font-size:12px;color:var(--muted)">${esc(s.note)}</span>` : ''}
-                </span>
-              </label>
-            </form>
-          </div></div>
-        </li>`).join('')}
-      </ul></div>`
-    : '';
-
   return `
     ${
       missing.length
@@ -134,18 +114,11 @@ export function renderGaps(list: DayGap[], date: string, shoppingOpen: any[]): s
            </div>`
         : ''
     }
-    ${shoppingHtml ? `<div style="padding:16px 16px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Do kupienia</div>${shoppingHtml}` : ''}
-    <div class="block">
-      <form method="POST" action="/zakupy/dodaj">
-        <input type="hidden" name="date" value="${date}">
-        <div class="field">
-          <label class="field-label" for="shop-add">Dopisz do listy zakupów</label>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
-            <input type="text" name="label" id="shop-add" placeholder="np. kiwi zielone" required>
-            <button type="submit" class="button">Dodaj</button>
-          </div>
-        </div>
-      </form>
+    <div class="block" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <span style="font-size:13px;color:var(--muted)">
+        ${doKupienia ? `Na liście zakupów: ${doKupienia} ${doKupienia === 1 ? 'pozycja' : 'pozycji'}` : 'Lista zakupów pusta'}
+      </span>
+      <a href="/zakupy" class="button button-small">Zakupy ›</a>
     </div>`;
 }
 
@@ -185,39 +158,6 @@ gaps.post('/braki/zjedzone', async (c) => {
     await c.env.DB.prepare(`INSERT OR IGNORE INTO meal_foods (meal_id, food_id) VALUES (?, ?)`)
       .bind(inserted.id, food.id).run();
   }
-
-  return c.redirect(`/day/${date}`);
-});
-
-gaps.post('/zakupy/dodaj', async (c) => {
-  const b = await c.req.parseBody();
-  const date = String(b.date || todayWarsaw());
-  const groupId = b.group_id ? Number(b.group_id) : null;
-
-  if (groupId) {
-    const g = await c.env.DB.prepare(`SELECT name, examples FROM food_groups WHERE id = ?`)
-      .bind(groupId).first<{ name: string; examples: string | null }>();
-    const food = await c.env.DB.prepare(`SELECT id FROM foods WHERE group_id = ? ORDER BY id LIMIT 1`)
-      .bind(groupId).first<{ id: number }>();
-
-    await c.env.DB.prepare(`INSERT INTO shopping (food_id, label, note) VALUES (?, ?, ?)`)
-      .bind(food?.id ?? null, g?.name ?? 'Do kupienia', g?.examples ?? null).run();
-  } else {
-    const label = String(b.label || '').trim();
-    if (label) {
-      await c.env.DB.prepare(`INSERT INTO shopping (label) VALUES (?)`).bind(label).run();
-    }
-  }
-
-  return c.redirect(`/day/${date}`);
-});
-
-gaps.post('/zakupy/kupione', async (c) => {
-  const b = await c.req.parseBody();
-  const date = String(b.date || todayWarsaw());
-
-  await c.env.DB.prepare(`UPDATE shopping SET bought = 1, bought_on = date('now') WHERE id = ?`)
-    .bind(Number(b.id)).run();
 
   return c.redirect(`/day/${date}`);
 });
