@@ -88,6 +88,7 @@ export interface Meal {
   id: number;
   date: string;
   eaten_at: string | null;
+  duration_min: number | null;
   slot: MealSlot;
   sitting: number | null;
   source: MealSource;

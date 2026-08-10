@@ -67,10 +67,15 @@ meal.get('/meal/:id/edit', async (c) => {
             <input type="date" id="e-date" name="date" value="${esc(m.date)}">
           </div>
           <div class="field">
-            <label class="field-label" for="e-time">Godzina</label>
+            <label class="field-label" for="e-time">Początek</label>
             <input type="time" id="e-time" name="eaten_at" value="${esc(m.eaten_at ?? '')}">
           </div>
+          <div class="field">
+            <label class="field-label" for="e-dur">Ile trwał, min</label>
+            <input type="text" inputmode="numeric" id="e-dur" name="duration_min" value="${m.duration_min ?? ''}" placeholder="30">
+          </div>
         </div>
+        <p class="hint">Przerwa liczy się od ostatniego kęsa, nie od pierwszego. Puste pole znaczy 30 minut.</p>
 
         <div class="subhead">Makra</div>
         <div class="grid-5">
@@ -135,13 +140,14 @@ meal.post('/meal/:id', async (c) => {
   const ingredients = String(b.ingredients || '').trim() || null;
 
   await c.env.DB.prepare(
-    `UPDATE meals SET date = ?, eaten_at = ?, slot = ?, sitting = ?, source = ?, name = ?,
+    `UPDATE meals SET date = ?, eaten_at = ?, duration_min = ?, slot = ?, sitting = ?, source = ?, name = ?,
        ingredients_raw = ?, kcal = ?, protein_g = ?, fat_g = ?, carbs_g = ?, fiber_g = ?,
        eaten = ?, eaten_fraction = ?, estimated = ?, notes = ?
      WHERE id = ?`
   ).bind(
     date,
     String(b.eaten_at || '') || null,
+    numOrNull(b.duration_min),
     slot,
     SITTING_BY_SLOT[slot] ?? 0,
     String(b.source || 'dom'),

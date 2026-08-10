@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS coverage_rules (
 CREATE TABLE IF NOT EXISTS meals (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   date            TEXT NOT NULL,
-  eaten_at        TEXT,
+  eaten_at        TEXT,            -- godzina POCZATKU jedzenia
+  duration_min    INTEGER,         -- ile trwalo. NULL = nieznane, przerwa liczy sie wtedy z default_meal_min
   slot            TEXT NOT NULL,   -- sniadanie | ii_sniadanie | obiad | podwieczorek | kolacja | inne
   sitting         INTEGER,
   source          TEXT NOT NULL,   -- hfood | dom | restauracja

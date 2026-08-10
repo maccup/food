@@ -19,7 +19,7 @@ const MACROS = [
 ];
 
 interface MealRow {
-  id: number; slot: string; sitting: number | null; source: string; name: string; eaten_at: string | null;
+  id: number; slot: string; sitting: number | null; source: string; name: string; eaten_at: string | null; duration_min: number | null;
   kcal: number | null; protein_g: number | null; fat_g: number | null;
   carbs_g: number | null; fiber_g: number | null; fiber: number | null;
   eaten: number; eaten_fraction: number; estimated: number; notes: string | null;
@@ -34,7 +34,7 @@ export async function renderDay(c: any, date: string) {
       `SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`
     ).bind(date, date).first<any>(),
     db.prepare(
-      `SELECT id, slot, sitting, source, name, eaten_at, kcal, protein_g, fat_g, carbs_g, fiber_g,
+      `SELECT id, slot, sitting, source, name, eaten_at, duration_min, kcal, protein_g, fat_g, carbs_g, fiber_g,
               eaten, eaten_fraction, estimated, notes
        FROM meals WHERE date = ?
        ORDER BY COALESCE(eaten_at, '99:99'),
@@ -175,10 +175,18 @@ export async function renderDay(c: any, date: string) {
   // z mlekiem juz tak. Prog do zmiany w ustawieniach.
   const progKcal = Number(settings.get('gap_kcal_prog') || 30);
   const liczySie = (m: MealRow) => m.eaten === 1 && (m.kcal ?? 0) >= progKcal;
+  const domyslneTrwanie = Number(settings.get('default_meal_min') || 30);
   const doMinut = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + (m || 0);
   };
+  /*
+   * Przerwa liczy sie od OSTATNIEGO kesa poprzedniego posilku do poczatku
+   * nastepnego. Faza III MMC wraca dopiero po oproznieniu zoladka, wiec posilek
+   * jedzony godzine to dla jelita godzinny wlew, a nie zdarzenie punktowe.
+   * Liczenie start-do-startu zawyzalo przerwe o czas trwania posilku.
+   */
+  const koniec = (m: MealRow) => doMinut(m.eaten_at!) + (m.duration_min ?? domyslneTrwanie);
 
   const lista = meals.results ?? [];
   const wiersze: string[] = [];
@@ -195,7 +203,7 @@ export async function renderDay(c: any, date: string) {
         ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
       </div>`);
     }
-    if (m.eaten_at && liczySie(m)) poprzednia = doMinut(m.eaten_at);
+    if (m.eaten_at && liczySie(m)) poprzednia = koniec(m);
 
     wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
   }
@@ -279,7 +287,7 @@ function mealItem(m: MealRow, breaches: any[]): string {
     <div class="item-content">
       <div class="item-inner" style="display:block;padding-top:10px;padding-bottom:10px">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
-          ${m.eaten_at ? `<b style="color:var(--text);font-size:13px">${esc(m.eaten_at)}</b> &middot; ` : ''}${esc(SLOT_LABEL[m.slot] ?? m.slot)}
+          ${m.eaten_at ? `<b style="color:var(--text);font-size:13px">${esc(m.eaten_at)}</b>${m.duration_min ? ` <span style="text-transform:none">+ ${m.duration_min} min</span>` : ''} &middot; ` : ''}${esc(SLOT_LABEL[m.slot] ?? m.slot)}
         </div>
         <div class="item-title" style="white-space:normal;font-weight:600;line-height:1.35">${esc(m.name)}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px">${macros}</div>

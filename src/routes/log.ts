@@ -103,10 +103,15 @@ log.get('/log', async (c) => {
             </select>
           </div>
           <div class="field">
-            <label class="field-label" for="meal-time">Godzina</label>
+            <label class="field-label" for="meal-time">Początek</label>
             <input type="time" id="meal-time" name="time">
           </div>
+          <div class="field">
+            <label class="field-label" for="meal-dur">Ile trwał, min</label>
+            <input type="text" inputmode="numeric" id="meal-dur" name="duration_min" placeholder="30">
+          </div>
         </div>
+        <p class="hint">Przerwa liczy się od ostatniego kęsa, nie od pierwszego, bo fala oczyszczająca rusza dopiero po opróżnieniu żołądka. Puste pole znaczy 30 minut.</p>
 
         <div class="subhead">Makra, jeśli je znasz albo chcesz strzelić</div>
         <div class="grid-5">
@@ -207,13 +212,14 @@ log.post('/log/meal', async (c) => {
   const ingredients = String(b.ingredients || '').trim() || null;
 
   const inserted = await c.env.DB.prepare(
-    `INSERT INTO meals (date, eaten_at, slot, sitting, source, name, ingredients_raw,
+    `INSERT INTO meals (date, eaten_at, duration_min, slot, sitting, source, name, ingredients_raw,
        kcal, protein_g, fat_g, carbs_g, fiber_g, estimated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
   )
     .bind(
       date,
       String(b.time || '') || null,
+      numOrNull(b.duration_min),
       slot,
       SITTING_BY_SLOT[slot] ?? 0,
       String(b.source || 'dom'),
