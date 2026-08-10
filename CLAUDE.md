@@ -193,6 +193,12 @@ Nie z pamięci. Źródła w repo `Longevity Agent`:
 `food_list.md` (czarna lista), `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md`
 (kryteria doboru posiłków).
 
+**Współpraca z dietetykiem zakończona w sierpniu 2026.**
+`Konsultacje/2026-05-21_Piotrowski.md` zostaje ważnym źródłem celów makro i tak
+zostaje zapisany w `targets.source` oraz `supplements.source`, bo pochodzenie
+liczby się nie zmienia. Nie ma natomiast nikogo, do kogo odsyła się otwarte
+pytania dietetyczne, więc nie generować zadań w rodzaju „dopytać dietetyka".
+
 ## Komendy
 
 ```bash
