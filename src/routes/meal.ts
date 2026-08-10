@@ -3,6 +3,7 @@ import { Env } from '../types';
 import { page, card, blockTitle, esc, todayWarsaw, prettyDate, SLOT_LABEL } from '../views/ui';
 import { stripHtml } from '../utils/ingredients';
 import { linkMealFoods } from '../utils/link-foods';
+import { STANY } from './day';
 
 const meal = new Hono<{ Bindings: Env }>();
 
@@ -90,12 +91,14 @@ meal.get('/meal/:id/edit', async (c) => {
           <input type="checkbox" name="estimated" value="1" ${m.estimated ? 'checked' : ''}>
           Makra podane na oko
         </label>
-        <label class="check">
-          <input type="checkbox" name="eaten" value="1" ${m.eaten ? 'checked' : ''}>
-          Zjedzone
-        </label>
-
         <div class="field" style="margin-top:14px">
+          <label class="field-label" for="e-stan">Stan</label>
+          <select id="e-stan" name="stan">
+            ${STANY.map(([v, l]) => `<option value="${v}" ${m.stan === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="field">
           <label class="field-label" for="e-frac">Ile zjedzone</label>
           <select id="e-frac" name="eaten_fraction">
             ${[1, 0.75, 0.5, 0.25].map((f) =>
@@ -114,7 +117,7 @@ meal.get('/meal/:id/edit', async (c) => {
 
     ${m.source === 'hfood' ? `<div class="block"><p class="hint" style="margin:0">
       To pudełko z cateringu. Kolejny import menu nadpisze nazwę, skład i makra,
-      ale zostawi to, czy zjedzone, w jakiej części i notatkę.
+      ale zostawi stan, zjedzoną część i notatkę.
     </p></div>` : ''}
 
     ${blockTitle('Usuń')}
@@ -142,7 +145,7 @@ meal.post('/meal/:id', async (c) => {
   await c.env.DB.prepare(
     `UPDATE meals SET date = ?, eaten_at = ?, duration_min = ?, slot = ?, sitting = ?, source = ?, name = ?,
        ingredients_raw = ?, kcal = ?, protein_g = ?, fat_g = ?, carbs_g = ?, fiber_g = ?,
-       eaten = ?, eaten_fraction = ?, estimated = ?, notes = ?
+       stan = ?, eaten_fraction = ?, estimated = ?, notes = ?
      WHERE id = ?`
   ).bind(
     date,
@@ -155,7 +158,7 @@ meal.post('/meal/:id', async (c) => {
     ingredients,
     numOrNull(b.kcal), numOrNull(b.protein_g), numOrNull(b.fat_g),
     numOrNull(b.carbs_g), numOrNull(b.fiber_g),
-    b.eaten === '1' ? 1 : 0,
+    STANY.some(([v]) => v === b.stan) ? String(b.stan) : 'zjedzony',
     Number(b.eaten_fraction ?? 1) || 1,
     b.estimated === '1' ? 1 : 0,
     String(b.notes || '') || null,

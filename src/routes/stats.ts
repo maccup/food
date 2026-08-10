@@ -69,11 +69,11 @@ stats.get('/statystyki', async (c) => {
     ).bind(o.do, o.od).all<any>(),
     db.prepare(
       `SELECT food_name, level, COUNT(*) AS n FROM v_restriction_breaches
-       WHERE date BETWEEN ? AND ? AND eaten = 1
+       WHERE date BETWEEN ? AND ? AND stan = 'zjedzony'
        GROUP BY food_name, level ORDER BY level DESC, n DESC`
     ).bind(o.od, o.do).all<any>(),
     db.prepare(
-      `SELECT id, date, sitting, eaten_at, duration_min, kcal, eaten FROM meals
+      `SELECT id, date, sitting, eaten_at, duration_min, kcal, stan FROM meals
        WHERE date BETWEEN ? AND ? ORDER BY date, COALESCE(eaten_at, '99:99'), id`
     ).bind(o.od, o.do).all<PosilekDoPrzerw & { date: string }>(),
     db.prepare(

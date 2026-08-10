@@ -14,7 +14,7 @@ const WRANGLER = './node_modules/.bin/wrangler';
 const QUERIES = {
   'food_meals.csv': `
     SELECT m.date, m.slot, m.sitting, m.source, m.name, m.kcal, m.protein_g, m.fat_g,
-           m.carbs_g, m.fiber_g, m.weight_g, m.eaten, m.eaten_fraction, m.estimated,
+           m.carbs_g, m.fiber_g, m.weight_g, m.stan, m.eaten_fraction, m.estimated,
            m.eaten_at, m.notes, m.ingredients_raw
     FROM meals m ORDER BY m.date, m.sitting, m.slot`,
   'food_day_totals.csv': `
@@ -46,7 +46,7 @@ const QUERIES = {
     ORDER BY COALESCE(t.tested_date, t.planned_date)`,
   'food_breaches.csv': `
     SELECT date, slot, meal_name, food_name, level, reason
-    FROM v_restriction_breaches WHERE eaten = 1 ORDER BY date, slot`,
+    FROM v_restriction_breaches WHERE stan = 'zjedzony' ORDER BY date, slot`,
   'food_supplements.csv': `
     SELECT s.name, s.brand, s.kind, s.dose, s.purpose, s.status, s.rx,
            sc.time_of_day, sc.with_meal, sc.days, sc.amount, sc.date_from, sc.date_to

@@ -146,8 +146,11 @@ CREATE INDEX IF NOT EXISTS idx_catering_okres ON catering_orders(date_from, date
 -- Przerwy 4 do 5 h miedzy oknami sa jedynym narzedziem na motoryke po rezygnacji
 -- z prokinetyku, wiec sa czescia modelu, nie kosmetyka.
 --
--- eaten = 1 domyslnie. Pudelko przychodzi, wiec zakladamy zjedzone,
--- ale musi byc mozliwosc odznaczenia.
+-- stan: plan | zjedzony | pominiety. Domyslnie 'zjedzony', bo wpis robiony
+-- recznie albo przez czat powstaje po jedzeniu. Catering wpisywany z gory
+-- dostaje 'plan' i przechodzi w 'zjedzony' odhaczeniem w widoku dnia.
+-- Jedna flaga boolowska tego nie unosla: "pominalem" i "dopiero bedzie"
+-- to dwa rozne stany, a mialy tam ta sama wartosc. Patrz migracja 019.
 CREATE TABLE IF NOT EXISTS meals (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   date            TEXT NOT NULL,
@@ -165,7 +168,8 @@ CREATE TABLE IF NOT EXISTS meals (
   carbs_g         REAL,
   fiber_g         REAL,
   weight_g        REAL,
-  eaten           INTEGER NOT NULL DEFAULT 1,
+  stan            TEXT NOT NULL DEFAULT 'zjedzony'
+                    CHECK (stan IN ('plan', 'zjedzony', 'pominiety')),
   eaten_fraction  REAL NOT NULL DEFAULT 1.0,
   -- 1 = makra podane na oko, np. posilek w restauracji opisany z pamieci
   estimated       INTEGER NOT NULL DEFAULT 0,
@@ -285,10 +289,13 @@ CREATE INDEX IF NOT EXISTS idx_supp_log_date ON supplement_log(date);
 -- WIDOKI: jedno miejsce liczenia, zeby UI i eksport CSV nie rozjechaly sie
 -- ---------------------------------------------------------------------------
 
-DROP VIEW IF EXISTS v_day_totals;
-CREATE VIEW v_day_totals AS
+-- Makra dnia w rozbiciu na stan. Kalendarz pokazuje tez plan, reszta aplikacji
+-- tylko fakty, ale liczone musi byc w jednym miejscu, inaczej sie rozjedzie.
+DROP VIEW IF EXISTS v_day_macros;
+CREATE VIEW v_day_macros AS
 SELECT
   m.date,
+  m.stan,
   ROUND(SUM(COALESCE(m.kcal, 0)      * m.eaten_fraction), 1) AS kcal,
   ROUND(SUM(COALESCE(m.protein_g, 0) * m.eaten_fraction), 1) AS protein_g,
   ROUND(SUM(COALESCE(m.fat_g, 0)     * m.eaten_fraction), 1) AS fat_g,
@@ -298,8 +305,14 @@ SELECT
   SUM(CASE WHEN m.estimated = 1 THEN 1 ELSE 0 END) AS meals_estimated,
   SUM(CASE WHEN m.kcal IS NULL THEN 1 ELSE 0 END)  AS meals_without_macros
 FROM meals m
-WHERE m.eaten = 1
-GROUP BY m.date;
+GROUP BY m.date, m.stan;
+
+DROP VIEW IF EXISTS v_day_totals;
+CREATE VIEW v_day_totals AS
+SELECT date, kcal, protein_g, fat_g, carbs_g, fiber_g,
+       meals_count, meals_estimated, meals_without_macros
+FROM v_day_macros
+WHERE stan = 'zjedzony';
 
 -- Ktora grupa produktow pojawila sie ktorego dnia i ile razy.
 DROP VIEW IF EXISTS v_group_coverage;
@@ -315,7 +328,7 @@ FROM meals m
 JOIN meal_foods mf ON mf.meal_id = m.id
 JOIN foods f       ON f.id = mf.food_id
 JOIN food_groups g ON g.id = f.group_id
-WHERE m.eaten = 1
+WHERE m.stan = 'zjedzony'
 GROUP BY m.date, g.id;
 
 -- Posilki naruszajace aktywne wykluczenie albo limit, z powodem.
@@ -332,7 +345,7 @@ SELECT
   r.reason,
   r.source,
   r.max_amount,
-  m.eaten
+  m.stan
 FROM meals m
 JOIN meal_foods mf  ON mf.meal_id = m.id
 JOIN foods f        ON f.id = mf.food_id

@@ -31,9 +31,30 @@ export async function resolveAlias(
 
   let row = await szukaj(alias);
 
-  if (!row) {
+  /*
+   * Trafienie bez produktu nie konczy szukania. "chleb bialkowy 70 g" mogl
+   * wpasc do kolejki nierozpoznanych, zanim ktokolwiek dodal do slownika
+   * "chleb bialkowy". Od tego momentu dopasowanie doslowne zawsze konczylo
+   * sie pustym wierszem i wersja bez ilosci nigdy sie nie odpalala, wiec
+   * produkt zostawal niepodpiety na zawsze, a wykluczenie nie dzialalo.
+   * Znalezione 10.08.2026 na trzech kromkach chleba na limicie jednej.
+   */
+  if (!row || row.food_id === null) {
     const bezIlosci = stripQuantity(alias);
-    if (bezIlosci && bezIlosci !== alias) row = await szukaj(bezIlosci);
+    if (bezIlosci && bezIlosci !== alias) {
+      const bez = await szukaj(bezIlosci);
+      if (bez?.food_id != null) {
+        // Kolejka sama sie leczy: alias z gramatura dostaje produkt, wiec
+        // nie wraca na liste do przejrzenia przy kazdym kolejnym posilku.
+        if (row) {
+          await db.prepare(`UPDATE food_aliases SET food_id = ? WHERE alias = ?`)
+            .bind(bez.food_id, row.alias).run();
+        }
+        row = bez;
+      } else if (!row) {
+        row = bez;
+      }
+    }
   }
 
   if (!row) {

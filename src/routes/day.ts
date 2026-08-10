@@ -19,11 +19,19 @@ const MACROS = [
   { key: 'fiber_g', label: 'Błonnik', unit: 'g' },
 ];
 
+// Trzy stany zamiast jednej flagi: "dopiero bedzie" i "nie zjadlem" mialy
+// wczesniej ta sama wartosc, przez co plan znikal z kalendarza. Patrz 019.
+export const STANY: [string, string][] = [
+  ['plan', 'zaplanowane'],
+  ['zjedzony', 'zjedzone'],
+  ['pominiety', 'pominięte'],
+];
+
 interface MealRow {
   id: number; slot: string; sitting: number | null; source: string; name: string; eaten_at: string | null; duration_min: number | null;
   kcal: number | null; protein_g: number | null; fat_g: number | null;
   carbs_g: number | null; fiber_g: number | null; fiber: number | null;
-  eaten: number; eaten_fraction: number; estimated: number; notes: string | null;
+  stan: string; eaten_fraction: number; estimated: number; notes: string | null;
 }
 
 export async function renderDay(c: any, date: string) {
@@ -36,7 +44,7 @@ export async function renderDay(c: any, date: string) {
     ).bind(date, date).first<any>(),
     db.prepare(
       `SELECT id, slot, sitting, source, name, eaten_at, duration_min, kcal, protein_g, fat_g, carbs_g, fiber_g,
-              eaten, eaten_fraction, estimated, notes
+              stan, eaten_fraction, estimated, notes
        FROM meals WHERE date = ?
        ORDER BY COALESCE(eaten_at, '99:99'),
          CASE slot WHEN 'sniadanie' THEN 1 WHEN 'ii_sniadanie' THEN 2 WHEN 'obiad' THEN 3
@@ -149,7 +157,7 @@ export async function renderDay(c: any, date: string) {
     mealsBySitting: new Map(
       [...bySitting.entries()].map(([s, list]) => [
         s,
-        { total: list.length, eaten: list.filter((m) => m.eaten).length },
+        { total: list.length, eaten: list.filter((m) => m.stan === 'zjedzony').length },
       ])
     ),
     supplementsTotal: suppRows.length,
@@ -263,7 +271,9 @@ function mealItem(m: MealRow, breaches: any[]): string {
     ...limits.map((b) => flag('limit', b.food_name)),
     m.estimated ? flag('info', 'na oko') : '',
     m.source !== 'hfood' ? flag('info', m.source) : '',  // catering nie potrzebuje znacznika, ma swoje makra
-    m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
+    m.stan === 'plan' ? flag('info', 'zaplanowane') : '',
+    m.stan === 'pominiety' ? flag('limit', 'pominięte') : '',
+    m.stan === 'zjedzony' && m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
     (m.kcal ?? 0) > 0 && (m.kcal ?? 0) < 30 ? flag('info', 'nie przerywa przerwy') : '',
   ]
     .filter(Boolean)
@@ -273,7 +283,7 @@ function mealItem(m: MealRow, breaches: any[]): string {
     ? '<span style="color:var(--warn)">bez makr</span>'
     : `${pl(m.kcal, 0)} kcal &middot; B ${pl(m.protein_g)} &middot; T ${pl(m.fat_g)} &middot; W ${pl(m.carbs_g)} &middot; bł ${pl(m.fiber_g)}`;
 
-  return `<li class="${m.eaten ? '' : 'meal-skipped'}">
+  return `<li class="${m.stan === 'pominiety' ? 'meal-skipped' : m.stan === 'plan' ? 'meal-plan' : ''}">
     <div class="item-content">
       <div class="item-inner" style="display:block;padding-top:10px;padding-bottom:10px">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
@@ -283,16 +293,17 @@ function mealItem(m: MealRow, breaches: any[]): string {
         <div style="font-size:12px;color:var(--muted);margin-top:4px">${macros}</div>
         ${chips ? `<div style="margin-top:6px">${chips}</div>` : ''}
         <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
-          <form method="POST" action="/meal/${m.id}/eaten" style="display:flex;gap:8px;align-items:center;margin:0">
-            <label class="check" style="min-height:40px">
-              <input type="checkbox" name="eaten" value="1" ${m.eaten ? 'checked' : ''} onchange="this.form.submit()">
-              zjedzone
-            </label>
-            <select name="fraction" onchange="this.form.submit()" style="min-height:36px;width:auto;font-size:13px;padding:4px 8px">
+          <form method="POST" action="/meal/${m.id}/stan" style="display:flex;gap:8px;align-items:center;margin:0">
+            <select name="stan" onchange="this.form.submit()" style="min-height:36px;width:auto;font-size:13px;padding:4px 8px">
+              ${STANY.map(([v, l]) =>
+                `<option value="${v}" ${m.stan === v ? 'selected' : ''}>${l}</option>`
+              ).join('')}
+            </select>
+            ${m.stan === 'zjedzony' ? `<select name="fraction" onchange="this.form.submit()" style="min-height:36px;width:auto;font-size:13px;padding:4px 8px">
               ${[1, 0.75, 0.5, 0.25].map((f) =>
                 `<option value="${f}" ${Math.abs(m.eaten_fraction - f) < 0.01 ? 'selected' : ''}>${f === 1 ? 'całość' : `${f * 100}%`}</option>`
               ).join('')}
-            </select>
+            </select>` : `<input type="hidden" name="fraction" value="${m.eaten_fraction}">`}
           </form>
           <a href="/meal/${m.id}/edit" class="button button-small" style="margin-left:auto">Edytuj</a>
         </div>
@@ -309,29 +320,29 @@ day.get('/day/:date', async (c) => {
   return c.html(await renderDay(c, date));
 });
 
-day.post('/meal/:id/eaten', async (c) => {
+day.post('/meal/:id/stan', async (c) => {
   const id = Number(c.req.param('id'));
   const body = await c.req.parseBody();
-  const eaten = body.eaten === '1' ? 1 : 0;
+  const stan = STANY.some(([v]) => v === body.stan) ? String(body.stan) : 'zjedzony';
   const fraction = Number(body.fraction ?? 1) || 1;
 
   const row = await c.env.DB.prepare(`SELECT date, eaten_at FROM meals WHERE id = ?`)
     .bind(id).first<{ date: string; eaten_at: string | null }>();
 
-  // Odhaczenie stempluje godzine, jesli jeszcze jej nie ma i chodzi o dzisiaj.
-  // Bez tego pudelka z cateringu nigdy nie maja godziny, a wtedy nie da sie
-  // policzyc przerw miedzy posilkami, czyli jedynej rzeczy, ktora tu realnie
-  // pracuje na motoryke. Godzine mozna potem poprawic w edycji posilku.
+  // Przejscie w "zjedzone" stempluje godzine, jesli jeszcze jej nie ma i chodzi
+  // o dzisiaj. Bez tego pudelka z cateringu nigdy nie maja godziny, a wtedy nie
+  // da sie policzyc przerw miedzy posilkami, czyli jedynej rzeczy, ktora tu
+  // realnie pracuje na motoryke. Godzine mozna potem poprawic w edycji posilku.
   const stempel =
-    eaten === 1 && !row?.eaten_at && row?.date === todayWarsaw()
+    stan === 'zjedzony' && !row?.eaten_at && row?.date === todayWarsaw()
       ? new Intl.DateTimeFormat('en-GB', {
           timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
         }).format(new Date())
       : null;
 
   await c.env.DB.prepare(
-    `UPDATE meals SET eaten = ?, eaten_fraction = ?, eaten_at = COALESCE(?, eaten_at) WHERE id = ?`
-  ).bind(eaten, fraction, stempel, id).run();
+    `UPDATE meals SET stan = ?, eaten_fraction = ?, eaten_at = COALESCE(?, eaten_at) WHERE id = ?`
+  ).bind(stan, fraction, stempel, id).run();
 
   return c.redirect(`/day/${row?.date ?? todayWarsaw()}`);
 });

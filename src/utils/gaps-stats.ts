@@ -15,7 +15,7 @@ export interface PosilekDoPrzerw {
   eaten_at: string | null;
   duration_min: number | null;
   kcal: number | null;
-  eaten: number;
+  stan: string;
 }
 
 export interface RegulyPrzerw {
@@ -40,7 +40,7 @@ export function przerwyDnia(
   reguly: RegulyPrzerw
 ): Map<number, number> {
   const liczySie = (m: PosilekDoPrzerw) =>
-    Boolean(m.eaten_at) && m.eaten === 1 && (m.kcal ?? 0) >= reguly.progKcal;
+    Boolean(m.eaten_at) && m.stan === 'zjedzony' && (m.kcal ?? 0) >= reguly.progKcal;
   const podejscie = (m: PosilekDoPrzerw) => (m.sitting ? `s${m.sitting}` : `m${m.id}`);
   const koniec = (m: PosilekDoPrzerw) =>
     hhmmToMinutes(m.eaten_at!) + (m.duration_min ?? reguly.domyslneTrwanie);

@@ -90,19 +90,47 @@ symptoms, stools                       objawy
 supplements ──< supplement_schedule ──< supplement_log
 ```
 
-Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_totals`, `v_group_coverage`,
-`v_restriction_breaches`, `v_day_vs_targets`. UI i eksport CSV czytają z nich,
-żeby nie mogły się rozjechać.
+Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_macros`, `v_day_totals`,
+`v_group_coverage`, `v_restriction_breaches`, `v_day_vs_targets`. UI i eksport CSV
+czytają z nich, żeby nie mogły się rozjechać. `v_day_totals` stoi na `v_day_macros`
+i różni się od niego jednym warunkiem: bierze tylko posiłki zjedzone.
+
+### Stan posiłku
+
+`meals.stan` ma trzy wartości i to jest model, nie flaga:
+
+| Stan | Znaczy | Liczy się do sum |
+|---|---|---|
+| `plan` | pudełko zamówione, dzień jeszcze nie nastąpił | nie |
+| `zjedzony` | faktycznie zjedzone | tak, wszędzie |
+| `pominiety` | pudełko przyszło, nie zjadł | nie |
+
+Wcześniej była tu jedna flaga `eaten` i obsługiwała dwie różne rzeczy naraz.
+Przy cateringu wpisanym na siedem dni naprzód każde ustawienie było złe:
+`eaten = 1` kazało statystykom liczyć przyszłość jako przeżytą, `eaten = 0`
+kasowało te dni z kalendarza. Migracja `019`. **Nie dokładać czwartej wartości
+ani drugiej flagi obok**: jeśli pojawia się nowy przypadek, nazwać go stanem.
+
+Kalendarz jest jedynym ekranem, który pokazuje `plan`: dzień z samym planem
+dostaje `cal-plan` i kalorie z planu. Średnia miesiąca i „dni z wpisami"
+liczą wyłącznie `zjedzony`.
 
 ### Rzeczy, które łatwo zepsuć
 
 - `food_aliases.food_id IS NULL AND ignored = 0` to kolejka nierozpoznanych składników.
   Widać ją na `/restrictions`. **Bez niej silnik wykluczeń po cichu przepuszcza
   każdy nowy składnik z cateringu.** Po każdym imporcie sprawdzić, czy jest pusta.
+- **Produkt bez ani jednego aliasu jest dla silnika wykluczeń niewidzialny.**
+  Dopasowanie idzie wyłącznie przez `food_aliases`, nazwa z `foods` nie jest
+  sprawdzana. 10.08.2026 okazało się, że 15 produktów zakazanych (czosnek, cebula,
+  kalafior, szparagi, groszek i dalej) nie miało aliasu, więc nigdy nie mogły zostać
+  zgłoszone. Każdy produkt ma teraz alias równy swojej nazwie. Po dodaniu produktu
+  do `foods` dodać alias, inaczej wykluczenie jest martwe.
 - Indeks `idx_meals_hfood` jest na `(date, slot)` bez `external_id`. Po wymianie
   dania w panelu identyfikator się zmienia, a import ma **nadpisać** wiersz, nie dołożyć drugi.
-- Import nie rusza `eaten`, `eaten_fraction` ani `notes`. To wpisy użytkownika,
-  nie dane z cateringu.
+- Import nie rusza `stan`, `eaten_fraction` ani `notes` przy aktualizacji istniejącego
+  wiersza. To wpisy użytkownika, nie dane z cateringu. Nowy wiersz na dzień z przyszłości
+  dostaje `stan = 'plan'`, bo domyślne `zjedzony` byłoby wtedy kłamstwem.
 - `estimated = 1` oznacza makra na oko. `kcal IS NULL` oznacza brak makr.
   `v_day_totals` liczy oba i pokazuje w UI, zamiast po cichu zaniżać sumy.
 - Dni tygodnia w `supplement_schedule.days` dopasowuje się pełnym tokenem:
@@ -281,7 +309,16 @@ npm run export         # 7 plików CSV do Longevity Agent/CSV_Analysis
 ```
 
 Migracje SQL: `src/db/migrations/`, uruchamiane ręcznie przez
-`wrangler d1 execute food --remote --file=...`.
+`wrangler d1 execute food --remote --file=...`. Wariant `--file` bywa odrzucany
+przez API (błąd uwierzytelnienia 10000), wtedy treść migracji idzie w `--command`.
+
+**Wdrożenia tej aplikacji nie wymagają pytania.** Decyzja Maćka z 10.08.2026:
+„wdrażaj, nie pytaj, odpowiadasz za poprawne działanie produkcji". Dotyczy wyłącznie
+tego repozytorium, globalna zasada „żadnego wdrożenia bez zgody" obowiązuje wszędzie
+indziej bez zmian. Warunek jest jeden i twardy: **każde wdrożenie sprawdzone na żywym
+adresie**, nie w logach i nie na kodzie. Migracja bazy idzie zaraz po wdrożeniu kodu,
+nie przed, bo stary kod pracuje do przełączenia deploymentu i wtedy przerwa jest
+sekundowa zamiast kilkudziesięciosekundowej.
 
 Hasło: `wrangler pages secret put PASSWORD --project-name=food` oraz `.dev.vars` lokalnie.
 

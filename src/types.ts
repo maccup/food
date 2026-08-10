@@ -12,6 +12,8 @@ export type MealSlot =
   | 'inne';
 
 export type MealSource = 'hfood' | 'dom' | 'restauracja';
+/** plan: dopiero bedzie. zjedzony: liczy sie do sum. pominiety: przyszlo, nie zjadl. */
+export type MealStan = 'plan' | 'zjedzony' | 'pominiety';
 
 export type RestrictionLevel = 'forbidden' | 'limit' | 'prefer';
 
@@ -101,7 +103,7 @@ export interface Meal {
   carbs_g: number | null;
   fiber_g: number | null;
   weight_g: number | null;
-  eaten: number;
+  stan: MealStan;
   eaten_fraction: number;
   notes: string | null;
 }

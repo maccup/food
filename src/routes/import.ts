@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env, MealSlot } from '../types';
 import { linkMealFoods } from '../utils/link-foods';
+import { todayWarsaw } from '../views/ui';
 
 const importRoutes = new Hono<{ Bindings: Env }>();
 
@@ -136,8 +137,8 @@ importRoutes.post('/api/import/hfood', async (c) => {
       let mealId: number;
 
       if (existing) {
-        // eaten, eaten_fraction i notes celowo nietkniete: to sa jego wpisy,
-        // a nie dane z cateringu.
+        // stan, eaten_fraction i notes celowo nietkniete: to sa jego wpisy,
+        // a nie dane z cateringu. Wymiana dania w panelu nie cofa odhaczenia.
         await c.env.DB.prepare(
           `UPDATE meals SET name = ?, ingredients_raw = ?, kcal = ?, protein_g = ?,
              fat_g = ?, carbs_g = ?, fiber_g = ?, weight_g = ?, external_id = ?
@@ -148,10 +149,13 @@ importRoutes.post('/api/import/hfood', async (c) => {
         mealId = existing.id;
         stats.mealsUpdated++;
       } else {
+        // Menu importuje sie na kilka dni naprzod, wiec pudelko na jutro jest
+        // planem, nie faktem. Domyslne 'zjedzony' z kolumny dotyczy wpisow
+        // robionych po jedzeniu i tutaj byloby klamstwem.
         const inserted = await c.env.DB.prepare(
           `INSERT INTO meals (date, slot, sitting, source, name, ingredients_raw,
-             kcal, protein_g, fat_g, carbs_g, fiber_g, weight_g, external_id)
-           VALUES (?, ?, ?, 'hfood', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             kcal, protein_g, fat_g, carbs_g, fiber_g, weight_g, external_id, stan)
+           VALUES (?, ?, ?, 'hfood', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            RETURNING id`
         )
           .bind(
@@ -166,7 +170,8 @@ importRoutes.post('/api/import/hfood', async (c) => {
             values[5],
             values[6],
             values[7],
-            values[8]
+            values[8],
+            date > todayWarsaw() ? 'plan' : 'zjedzony'
           )
           .first<{ id: number }>();
 

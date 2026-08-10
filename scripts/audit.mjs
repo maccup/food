@@ -55,14 +55,14 @@ const dane = {
   //    bo makra sa szacowane, a sklad wpisywany wlasnym slownictwem.
   wpisane_recznie: q(`
     SELECT id, date, eaten_at, slot, source, name, kcal, protein_g, fat_g, carbs_g, fiber_g,
-           estimated, eaten, eaten_fraction, notes, ingredients_raw
+           estimated, stan, eaten_fraction, notes, ingredients_raw
     FROM meals WHERE source != 'hfood' AND date >= ${OD}
     ORDER BY date DESC, COALESCE(eaten_at, '99:99')`),
 
   // 4. Co zjedzone wbrew wykluczeniom.
   naruszenia: q(`
     SELECT date, slot, meal_name, food_name, level, reason
-    FROM v_restriction_breaches WHERE date >= ${OD} AND eaten = 1
+    FROM v_restriction_breaches WHERE date >= ${OD} AND stan = 'zjedzony'
     ORDER BY date DESC, level DESC`),
 
   // 5. Pokrycie grup wobec regul. Bierze caly zakres, wiec przy 14 dniach

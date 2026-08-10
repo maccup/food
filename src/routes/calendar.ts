@@ -30,10 +30,10 @@ calendar.get('/kalendarz', async (c) => {
   const noDelivery = await loadNoDelivery(db);
 
   const [totals, breaches, events, phases, targets] = await Promise.all([
-    db.prepare(`SELECT * FROM v_day_totals WHERE date BETWEEN ? AND ?`).bind(monthStart, monthEnd).all<any>(),
+    db.prepare(`SELECT * FROM v_day_macros WHERE date BETWEEN ? AND ?`).bind(monthStart, monthEnd).all<any>(),
     db.prepare(
       `SELECT date, SUM(CASE WHEN level = 'forbidden' THEN 1 ELSE 0 END) AS forbidden, COUNT(*) AS total
-       FROM v_restriction_breaches WHERE date BETWEEN ? AND ? AND eaten = 1 GROUP BY date`
+       FROM v_restriction_breaches WHERE date BETWEEN ? AND ? AND stan = 'zjedzony' GROUP BY date`
     ).bind(monthStart, monthEnd).all<any>(),
     db.prepare(
       `SELECT date, COUNT(*) AS n FROM (
@@ -45,7 +45,15 @@ calendar.get('/kalendarz', async (c) => {
     db.prepare(`SELECT phase_id, metric, min_value, max_value FROM targets`).all<any>(),
   ]);
 
-  const totalsBy = new Map<string, any>((totals.results ?? []).map((t: any) => [t.date, t]));
+  // Zjedzone i zaplanowane to dwie rozne warstwy tego samego dnia: pierwsza
+  // mowi, co faktycznie weszlo, druga co dopiero ma wejsc. Dzien z samym planem
+  // ma sie roznic od dnia pustego, inaczej catering wpisany z gory jest niewidoczny.
+  const totalsBy = new Map<string, any>(
+    (totals.results ?? []).filter((t: any) => t.stan === 'zjedzony').map((t: any) => [t.date, t])
+  );
+  const planBy = new Map<string, any>(
+    (totals.results ?? []).filter((t: any) => t.stan === 'plan').map((t: any) => [t.date, t])
+  );
   const breachBy = new Map<string, any>((breaches.results ?? []).map((b: any) => [b.date, b]));
   const eventBy = new Map<string, number>((events.results ?? []).map((e: any) => [e.date, e.n]));
 
@@ -64,6 +72,7 @@ calendar.get('/kalendarz', async (c) => {
   for (let d = 1; d <= daysInMonth; d++) {
     const date = `${month}-${String(d).padStart(2, '0')}`;
     const t = totalsBy.get(date);
+    const plan = planBy.get(date);
     const b = breachBy.get(date);
     const ev = eventBy.get(date) ?? 0;
     const phase = phaseFor(date);
@@ -86,19 +95,26 @@ calendar.get('/kalendarz', async (c) => {
       if (b?.forbidden > 0) { cls = 'cal-bad'; hint = `${b.forbidden} zakazane`; }
       else if (outside) { cls = 'cal-warn'; hint = 'makro poza pasmem'; }
       else { cls = 'cal-ok'; hint = 'w normie'; }
+    } else if (plan) {
+      cls = 'cal-plan';
+      hint = `zaplanowane, ${pl(plan.kcal, 0)} kcal`;
     } else if (isFuture) {
       cls = 'cal-future';
       hint = 'jeszcze przed nami';
     }
 
+    const kcal = t ?? plan;
+
     cells.push(`<a href="/day/${date}" class="cal-cell ${cls} ${isToday ? 'cal-today' : ''}" title="${esc(hint)}">
       <span class="cal-num">${d}</span>
-      ${t ? `<span class="cal-kcal">${pl(t.kcal, 0)}</span>` : '<span class="cal-kcal">&nbsp;</span>'}
+      ${kcal ? `<span class="cal-kcal">${pl(kcal.kcal, 0)}</span>` : '<span class="cal-kcal">&nbsp;</span>'}
       <span class="cal-dots">${b?.forbidden ? '<i class="dot bad"></i>' : ''}${ev ? '<i class="dot ev"></i>' : ''}</span>
     </a>`);
   }
 
-  const monthTotals = (totals.results ?? []);
+  // Srednia miesiaca liczy sie z tego, co zjedzone. Plan do niej nie wchodzi,
+  // bo inaczej catering wpisany na dwa tygodnie naprzod ustawialby wynik miesiaca.
+  const monthTotals = [...totalsBy.values()];
   const avg = (k: string) =>
     monthTotals.length ? monthTotals.reduce((a: number, x: any) => a + Number(x[k]), 0) / monthTotals.length : 0;
 
@@ -126,6 +142,7 @@ calendar.get('/kalendarz', async (c) => {
         <span><i class="sw cal-ok"></i> w normie</span>
         <span><i class="sw cal-warn"></i> makro poza pasmem</span>
         <span><i class="sw cal-bad"></i> coś zakazanego</span>
+        <span><i class="sw cal-plan"></i> zaplanowane</span>
         <span><i class="sw cal-gap"></i> przerwa w dostawach</span>
         <span><i class="sw cal-none"></i> brak wpisów</span>
       </div>
