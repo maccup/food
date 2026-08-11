@@ -351,8 +351,21 @@ i może ich być kilka dziennie, stres jest oceną całej doby. Zmieszanie ich
 zafałszowałoby każdą statystykę objawów, bo „ile razy bolał brzuch" zaczęłoby
 zawierać dni bez żadnego objawu jelitowego.
 
-Statystyki zestawiają każdy dzień ze stolcami **tego dnia i następnego**, bo
-napięcie z poniedziałku widać często dopiero we wtorek rano. Porównanie grup
+Statystyki zestawiają każdy dzień ze stolcami przy **czterech przesunięciach**:
+dzień przed, tego dnia, nazajutrz, dwa dni po. Jedna kolumna musiałaby coś
+przegapić, bo stres uderza w jelito dwiema drogami o różnym czasie reakcji.
+Przyspieszenie okrężnicy idzie przez CRF w skali godzin i widać je tego samego
+dnia. Twardość powstaje inaczej: stolec oddany dziś to jedzenie sprzed jednej do
+trzech dób, a ile stracił wody, zależy od całego czasu w okrężnicy, więc zaparcie
+po napiętym dniu wychodzi nazajutrz albo dwa dni później.
+
+Kolumna „dzień przed" jest **kontrolą i nie wolno jej usuwać jako zbędnej**.
+Jeśli odzywa się tak samo mocno jak „nazajutrz", zależność jest pozorna albo
+działa odwrotnie, czyli zły dzień jelitowy nakręca stres. Osobno istnieje
+napięcie wyprzedzające, gdy jelito reaguje na dzień, który dopiero ma nadejść,
+i wtedy ta kolumna też się odezwie.
+
+Porównanie grup
 (6 do 10 kontra 0 do 3) pokazuje się dopiero przy trzech dniach po każdej stronie,
 wcześniej ekran mówi wprost, ilu brakuje, i pokazuje wyłącznie surowe dni. Środek
 skali, 4 i 5, nie wchodzi do żadnej grupy: dzień przeciętny rozmyłby obie strony.
