@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
-import { page, card, blockTitle, esc, todayWarsaw, SLOT_LABEL } from '../views/ui';
+import { page, card, blockTitle, esc, todayWarsaw, godzinaWpisu, terazWarsaw, SLOT_LABEL } from '../views/ui';
 import { linkMealFoods } from '../utils/link-foods';
 
 const log = new Hono<{ Bindings: Env }>();
@@ -218,7 +218,7 @@ log.post('/log/meal', async (c) => {
   )
     .bind(
       date,
-      String(b.time || '') || null,
+      godzinaWpisu(b.time, date),
       numOrNull(b.duration_min),
       slot,
       SITTING_BY_SLOT[slot] ?? 0,
@@ -265,16 +265,12 @@ log.post('/log/szablon/:id', async (c) => {
   const t = await c.env.DB.prepare(`SELECT * FROM meal_templates WHERE id = ?`).bind(id).first<any>();
   if (!t) return c.redirect(`/log?date=${date}`);
 
-  const teraz = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(new Date());
-
   const wstawiony = await c.env.DB.prepare(
     `INSERT INTO meals (date, eaten_at, slot, sitting, source, name, ingredients_raw,
        kcal, protein_g, fat_g, carbs_g, fiber_g, estimated)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
   ).bind(
-    date, teraz, t.slot, SITTING_BY_SLOT[t.slot] ?? 0, t.source, t.name, t.ingredients,
+    date, terazWarsaw(), t.slot, SITTING_BY_SLOT[t.slot] ?? 0, t.source, t.name, t.ingredients,
     t.kcal, t.protein_g, t.fat_g, t.carbs_g, t.fiber_g, t.estimated
   ).first<{ id: number }>();
 
@@ -293,7 +289,7 @@ log.post('/log/symptom', async (c) => {
   const b = await c.req.parseBody();
   const date = String(b.date || todayWarsaw());
   await c.env.DB.prepare(`INSERT INTO symptoms (date, time, kind, severity, notes) VALUES (?, ?, ?, ?, ?)`)
-    .bind(date, String(b.time || '') || null, String(b.kind || 'inne'), numOrNull(b.severity), String(b.notes || '') || null)
+    .bind(date, godzinaWpisu(b.time, date), String(b.kind || 'inne'), numOrNull(b.severity), String(b.notes || '') || null)
     .run();
   return c.redirect(`/day/${date}`);
 });
@@ -304,7 +300,7 @@ log.post('/log/stool', async (c) => {
   await c.env.DB.prepare(
     `INSERT INTO stools (date, time, bristol, straining, incomplete, floating) VALUES (?, ?, ?, ?, ?, ?)`
   )
-    .bind(date, String(b.time || '') || null, Number(b.bristol || 4),
+    .bind(date, godzinaWpisu(b.time, date), Number(b.bristol || 4),
       b.straining === '1' ? 1 : 0, b.incomplete === '1' ? 1 : 0, b.floating === '1' ? 1 : 0)
     .run();
   return c.redirect(`/day/${date}`);

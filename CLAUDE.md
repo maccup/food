@@ -332,6 +332,19 @@ dostawą o 12:00. Dlatego przeglądu nie da się zrobić raz na cały okres,
 trzeba wracać co tydzień. Kryteria doboru posiłków: patrz
 `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md` w repo Longevity Agent.
 
+## Pusta godzina znaczy „teraz", ale tylko dzisiaj
+
+`godzinaWpisu()` w `src/views/ui.ts` to jedyne miejsce, gdzie zapada ta decyzja.
+Używają jej trzy trasy: `/log/meal`, `/log/symptom` i `/log/stool`. Wcześniej
+każda z nich zapisywała `NULL`, więc stolec dopisany w biegu lądował w bazie bez
+godziny i wypadał z porządku dnia (`ORDER BY COALESCE(time,'99:99')` spycha go
+na koniec listy, niezależnie od tego, kiedy naprawdę był).
+
+Zegar podstawia się **wyłącznie dla dnia dzisiejszego**. Przy wpisie wstecz
+„teraz" nic nie znaczy i wpis dostałby godzinę, o której nic się nie wydarzyło,
+więc tam nadal zostaje pusto. Zegar czyta się w strefie Europe/Warsaw, nie z UTC:
+`created_at` w bazie jest w UTC i w sierpniu różni się o dwie godziny.
+
 ## Wpisywanie posiłków przez czat
 
 Maciej często wrzuca w rozmowie zdjęcie menu albo opis tego, co zjadł, zamiast

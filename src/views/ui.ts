@@ -35,6 +35,26 @@ export function todayWarsaw(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(new Date());
 }
 
+/** Aktualna godzina w strefie Warszawy, format HH:MM. */
+export function terazWarsaw(): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date());
+}
+
+/**
+ * Godzina do zapisu: wpisana ręcznie, a gdy pusta, to zegar.
+ *
+ * Zegar podstawia się tylko dla dnia dzisiejszego. Przy dopisywaniu czegoś
+ * wstecz „teraz" nic nie znaczy i wpis dostałby godzinę, o której nic się nie
+ * wydarzyło, więc tam zostaje pusto. Jedna kopia dla posiłku, objawu i stolca.
+ */
+export function godzinaWpisu(podana: unknown, date: string): string | null {
+  const t = String(podana ?? '').trim();
+  if (t) return t;
+  return date === todayWarsaw() ? terazWarsaw() : null;
+}
+
 /** "14:05" na minuty od północy. Jedna kopia dla panelu, dnia i ustawień. */
 export function hhmmToMinutes(hhmm: string): number {
   const [h, m] = String(hhmm).split(':').map(Number);
