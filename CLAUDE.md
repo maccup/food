@@ -258,6 +258,13 @@ liczą wyłącznie `zjedzony`.
   fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
   pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
   pełną listę wykluczeń jeszcze jeden dzień.
+- **Wiersz „Możesz zjeść" wiąże dwie godziny i mówi, która wygrała.** Pokazywał wyłącznie
+  godzinę okna z ustawień, więc przy zjedzonym późno śniadaniu twierdził, że pora na obiad,
+  choć przerwa jeszcze nie minęła, a użytkownik nie miał jak odróżnić schematu od rachunku.
+  Bierze późniejszą z dwóch: okna z ustawień i „koniec ostatniego kęsa plus `min_gap_hours`".
+  Drugi wiersz zawsze wypisuje powód. Koniec ostatniego podejścia liczy
+  `koniecOstatniegoPodejscia()` z `utils/gaps-stats.ts`, ta sama funkcja i te same reguły
+  progu kalorycznego co przerwy przy posiłkach, żeby dwie liczby nie mogły się rozjechać.
 - **Przerwa dzieli podejścia, nie wiersze.** `przerwyDnia()` w `utils/gaps-stats.ts` grupuje
   posiłki po kolumnie `sitting` i liczy przerwę od końca ostatniego liczącego się posiłku
   poprzedniego podejścia. Deser i kawa po obiedzie to osobne pozycje w tym samym podejściu,

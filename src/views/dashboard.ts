@@ -1,6 +1,12 @@
 import { esc, pl, hhmmToMinutes as toMinutes } from './ui';
 import { stanMakro } from '../utils/day-status';
 
+/** Minuty od północy na „14:05". Godziny powyżej doby zawijają się na następny dzień. */
+function hhmm(minuty: number): string {
+  const m = ((minuty % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
 export interface DashboardData {
   date: string;
   isToday: boolean;
@@ -19,6 +25,8 @@ export interface DashboardData {
   forbiddenToday: Array<{ food_name: string; meal_name: string }>;
   /** Odchylenia, które malują dzień w kalendarzu na żółto, gotowymi zdaniami. */
   warnToday: string[];
+  /** Koniec ostatniego liczącego się podejścia dziś, w minutach od północy. */
+  lastBiteMinutes: number | null;
   nextDeliveryGap: { from: string; days: number } | null;
   minGapHours: number;
 }
@@ -54,15 +62,39 @@ export function dashboard(d: DashboardData): string {
     const upcoming = entries.find((e) => e.m > d.nowMinutes!);
     const current = [...entries].reverse().find((e) => e.m <= d.nowMinutes!);
 
-    if (upcoming) {
-      const mins = upcoming.m - d.nowMinutes;
+    /*
+     * Wiersz odpowiada na pytanie „za ile moge zjesc", a nie „kiedy wypada okno".
+     * Wczesniej pokazywal wylacznie godzine z ustawien, wiec przy zjedzonym
+     * pozno sniadaniu mowil, ze pora na obiad, choc przerwa jeszcze nie minela.
+     * Wiaze pozniejsza z dwoch godzin i zawsze pisze, ktora wygrala.
+     */
+    const najwczesniej =
+      d.lastBiteMinutes === null ? null : d.lastBiteMinutes + d.minGapHours * 60;
+
+    if (upcoming || (najwczesniej !== null && najwczesniej > d.nowMinutes)) {
+      const oknoMin = upcoming ? upcoming.m : null;
+      const kiedy = Math.max(oknoMin ?? -1, najwczesniej ?? -1);
+      const decydujePrzerwa = najwczesniej !== null && najwczesniej >= (oknoMin ?? -1);
+
+      const mins = Math.max(0, kiedy - d.nowMinutes);
       const h = Math.floor(mins / 60);
       const rest = mins % 60;
-      const eaten = d.mealsBySitting.get(upcoming.s);
+      const eaten = upcoming ? d.mealsBySitting.get(upcoming.s) : undefined;
+
+      const powod =
+        najwczesniej === null
+          ? 'okno z ustawień, dziś jeszcze nic nie zjedzone'
+          : decydujePrzerwa
+            ? `przerwa ${d.minGapHours} h od ostatniego kęsa o ${hhmm(d.lastBiteMinutes!)}${
+                oknoMin !== null ? `, okno z ustawień to ${hhmm(oknoMin)}` : ''
+              }`
+            : `okno z ustawień, przerwa ${d.minGapHours} h minie już o ${hhmm(najwczesniej)}`;
+
       nextWindow = `<div class="panel-row">
         <div>
-          <div class="panel-row-label">Następne podejście</div>
-          <div class="panel-row-main">${esc(upcoming.t)}, za ${h ? `${h} h ` : ''}${rest} min</div>
+          <div class="panel-row-label">Możesz zjeść</div>
+          <div class="panel-row-main">${hhmm(kiedy)}, ${mins === 0 ? 'już teraz' : `za ${h ? `${h} h ` : ''}${rest} min`}</div>
+          <div class="panel-row-why">${esc(powod)}</div>
         </div>
         <div class="panel-row-side">${eaten ? `${eaten.total} pudełka` : 'brak pudełek'}</div>
       </div>`;

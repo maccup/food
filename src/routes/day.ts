@@ -6,7 +6,7 @@ import {
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
-import { przerwyDnia } from '../utils/gaps-stats';
+import { przerwyDnia, koniecOstatniegoPodejscia } from '../utils/gaps-stats';
 import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
@@ -229,6 +229,10 @@ export async function renderDay(c: any, date: string) {
     warnToday: odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA)
       .filter((o) => o.duze)
       .map((o) => opisOdchylenia(o, pl)),
+    lastBiteMinutes: koniecOstatniegoPodejscia(meals.results ?? [], {
+      progKcal: Number(settings.get('gap_kcal_prog') || 30),
+      domyslneTrwanie: Number(settings.get('default_meal_min') || 30),
+    }),
     minGapHours: Number(settings.get('min_gap_hours') || 4),
     nextDeliveryGap: nextGap,
   });

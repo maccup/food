@@ -64,6 +64,32 @@ export function przerwyDnia(
   return out;
 }
 
+/**
+ * Koniec ostatniego podejscia tego dnia, w minutach od polnocy, albo null,
+ * gdy nic sie jeszcze nie liczy.
+ *
+ * To ten sam „ostatni kes", od ktorego `przerwyDnia` mierzy przerwe: pozycje
+ * ponizej progu kalorycznego sa pomijane, a deser i kawa w tym samym podejsciu
+ * przesuwaja koniec do przodu. Dzieki temu godzina „najwczesniej mozesz zjesc"
+ * w panelu i przerwa wypisana przy posilku nie moga podac dwoch roznych liczb.
+ *
+ * Lista musi byc posortowana po godzinie.
+ */
+export function koniecOstatniegoPodejscia(
+  lista: PosilekDoPrzerw[],
+  reguly: RegulyPrzerw
+): number | null {
+  let koniec: number | null = null;
+
+  for (const m of lista) {
+    if (!m.eaten_at || m.stan !== 'zjedzony' || (m.kcal ?? 0) < reguly.progKcal) continue;
+    const k = hhmmToMinutes(m.eaten_at) + (m.duration_min ?? reguly.domyslneTrwanie);
+    if (koniec === null || k > koniec) koniec = k;
+  }
+
+  return koniec;
+}
+
 export interface StatystykaPrzerw {
   /** Dni, w ktorych byla co najmniej jedna przerwa do policzenia. */
   dni: number;
