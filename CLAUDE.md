@@ -265,6 +265,19 @@ liczą wyłącznie `zjedzony`.
   Drugi wiersz zawsze wypisuje powód. Koniec ostatniego podejścia liczy
   `koniecOstatniegoPodejscia()` z `utils/gaps-stats.ts`, ta sama funkcja i te same reguły
   progu kalorycznego co przerwy przy posiłkach, żeby dwie liczby nie mogły się rozjechać.
+- **Przerwę przerywa napływ składników odżywczych, nie liczba kalorii.** `przerywaPrzerwe()`
+  w `utils/gaps-stats.ts` ma **dwa progi i wystarczy przekroczyć jeden**: `gap_kcal_prog`
+  (kalorie) albo `gap_makro_prog` (białko plus tłuszcz w gramach, domyślnie 1 g). To nie jest
+  flaga obok flagi, tylko jedno pojęcie opisane dwiema wielkościami, bo sama kaloryka go nie
+  opisuje: falę oczyszczającą gasi głównie tłuszcz i białko, przez hamulec jelitowy.
+  Do 11.08.2026 stał tu sam próg kaloryczny i **aplikacja przeczyła własnemu opisowi**: kawa
+  z 50 ml mleka ma 26 kcal, czyli poniżej progu 30, więc przechodziła jako neutralna, choć
+  podpowiedź przy polu mówiła wprost, że kawa z mlekiem przerywa. Migracja 022.
+  Warunek ma **jedną kopię**: czytają go `przerwyDnia`, `koniecOstatniegoPodejscia` i znacznik
+  „nie przerywa przerwy" przy posiłku. Znacznik miał wcześniej wpisane na sztywno „30 kcal"
+  i kłamał po każdej zmianie progu w Ustawieniach.
+  Przerwy nie są nigdzie zapisane, liczą się przy każdym wyświetleniu, więc zmiana reguły
+  przelicza też dni wsteczne. Nie ma tu migracji danych i nie wolno takiej dopisywać.
 - **Przerwa dzieli podejścia, nie wiersze.** `przerwyDnia()` w `utils/gaps-stats.ts` grupuje
   posiłki po kolumnie `sitting` i liczy przerwę od końca ostatniego liczącego się posiłku
   poprzedniego podejścia. Deser i kawa po obiedzie to osobne pozycje w tym samym podejściu,

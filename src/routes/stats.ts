@@ -73,7 +73,7 @@ stats.get('/statystyki', async (c) => {
        GROUP BY food_name, level ORDER BY level DESC, n DESC`
     ).bind(o.od, o.do).all<any>(),
     db.prepare(
-      `SELECT id, date, sitting, eaten_at, duration_min, kcal, stan FROM meals
+      `SELECT id, date, sitting, eaten_at, duration_min, kcal, protein_g, fat_g, stan FROM meals
        WHERE date BETWEEN ? AND ? ORDER BY date, COALESCE(eaten_at, '99:99'), id`
     ).bind(o.od, o.do).all<PosilekDoPrzerw & { date: string }>(),
     db.prepare(
@@ -96,6 +96,7 @@ stats.get('/statystyki', async (c) => {
     posilki.results ?? [],
     {
       progKcal: Number(settings.get('gap_kcal_prog') || 30),
+      progMakro: Number(settings.get('gap_makro_prog') || 1),
       domyslneTrwanie: Number(settings.get('default_meal_min') || 30),
     },
     minGap * 60

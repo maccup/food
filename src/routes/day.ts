@@ -6,7 +6,7 @@ import {
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
-import { przerwyDnia, koniecOstatniegoPodejscia } from '../utils/gaps-stats';
+import { przerwyDnia, koniecOstatniegoPodejscia, przerywaPrzerwe, RegulyPrzerw } from '../utils/gaps-stats';
 import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
@@ -127,6 +127,17 @@ export async function renderDay(c: any, date: string) {
   const times = sittingTimes(settings);
   const isToday = date === todayWarsaw();
 
+  /*
+   * Reguły przerywania przerwy w jednym obiekcie, bo czytają je trzy miejsca
+   * tej strony: panel („Możesz zjeść"), przerwy między posiłkami i znacznik
+   * przy pozycji. Trzy osobne odczyty z ustawień to trzy okazje na rozjazd.
+   */
+  const regulyPrzerw: RegulyPrzerw = {
+    progKcal: Number(settings.get('gap_kcal_prog') || 30),
+    progMakro: Number(settings.get('gap_makro_prog') || 1),
+    domyslneTrwanie: Number(settings.get('default_meal_min') || 30),
+  };
+
   const dayCode = ['nie', 'pon', 'wt', 'sr', 'czw', 'pt', 'sob'][new Date(`${date}T12:00:00Z`).getUTCDay()];
   const supps = await db.prepare(
     `SELECT s.id, s.time_of_day, sup.name, l.taken
@@ -229,10 +240,7 @@ export async function renderDay(c: any, date: string) {
     warnToday: odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA)
       .filter((o) => o.duze)
       .map((o) => opisOdchylenia(o, pl)),
-    lastBiteMinutes: koniecOstatniegoPodejscia(meals.results ?? [], {
-      progKcal: Number(settings.get('gap_kcal_prog') || 30),
-      domyslneTrwanie: Number(settings.get('default_meal_min') || 30),
-    }),
+    lastBiteMinutes: koniecOstatniegoPodejscia(meals.results ?? [], regulyPrzerw),
     minGapHours: Number(settings.get('min_gap_hours') || 4),
     nextDeliveryGap: nextGap,
   });
@@ -245,15 +253,10 @@ export async function renderDay(c: any, date: string) {
    * posiłkami, bo to ona uruchamia falę oczyszczającą jelito.
    */
   const minGap = Number(settings.get('min_gap_hours') || 4);
-  // Fala oczyszczajaca jelito cienkie wygasza sie po naplywie kalorii, nie od
-  // samego przelkniecia. Woda i czarne espresso jej nie przerywaja, kawa
-  // z mlekiem juz tak. Prog do zmiany w ustawieniach.
-  const progKcal = Number(settings.get('gap_kcal_prog') || 30);
-  const domyslneTrwanie = Number(settings.get('default_meal_min') || 30);
 
   const lista = meals.results ?? [];
   // Ten sam algorytm co w statystykach, patrz utils/gaps-stats.ts.
-  const przerwy = przerwyDnia(lista, { progKcal, domyslneTrwanie });
+  const przerwy = przerwyDnia(lista, regulyPrzerw);
   const wiersze: string[] = [];
 
   for (const m of lista) {
@@ -269,7 +272,7 @@ export async function renderDay(c: any, date: string) {
       </div>`);
     }
 
-    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [], progKcal)}</ul></div>`);
+    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [], regulyPrzerw)}</ul></div>`);
   }
 
   const mealsHtml = lista.length
@@ -313,7 +316,7 @@ export async function renderDay(c: any, date: string) {
       ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
-    ${blockTitle('Posiłki', `cel: przerwy min. ${minGap} h, poniżej ${progKcal} kcal nie liczy się jako przerwanie`)}
+    ${blockTitle('Posiłki', `cel: przerwy min. ${minGap} h`)}
     ${mealsHtml}
 
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
@@ -339,7 +342,7 @@ export async function renderDay(c: any, date: string) {
   });
 }
 
-function mealItem(m: MealRow, breaches: any[], progKcal: number): string {
+function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
   const forbidden = breaches.filter((b) => b.level === 'forbidden');
   const limits = breaches.filter((b) => b.level === 'limit');
 
@@ -351,9 +354,11 @@ function mealItem(m: MealRow, breaches: any[], progKcal: number): string {
     m.stan === 'plan' ? flag('info', 'zaplanowane') : '',
     m.stan === 'pominiety' ? flag('limit', 'pominięte') : '',
     m.stan === 'zjedzony' && m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
-    // Prog przychodzi z ustawien, tak jak do silnika przerw. Wpisany tu na sztywno
-    // (bylo: 30) zaczynal klamac w chwili, gdy Maciek zmienil wartosc w Ustawieniach.
-    (m.kcal ?? 0) > 0 && (m.kcal ?? 0) < progKcal ? flag('info', `poniżej ${progKcal} kcal, nie przerywa przerwy`) : '',
+    // Ten sam warunek, ktorym silnik liczy przerwy, a nie jego przepisana wersja.
+    // Wczesniej stalo tu wpisane na sztywno „ponizej 30 kcal", wiec etykieta
+    // klamala i po zmianie progu w Ustawieniach, i przy kawie z mlekiem.
+    m.stan === 'zjedzony' && m.eaten_at && !przerywaPrzerwe(m, reguly)
+      ? flag('info', 'nie przerywa przerwy') : '',
   ]
     .filter(Boolean)
     .join('');

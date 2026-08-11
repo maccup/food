@@ -15,14 +15,36 @@ export interface PosilekDoPrzerw {
   eaten_at: string | null;
   duration_min: number | null;
   kcal: number | null;
+  protein_g: number | null;
+  fat_g: number | null;
   stan: string;
 }
 
 export interface RegulyPrzerw {
   /** Ponizej tylu kalorii pozycja nie przerywa przerwy. Woda i czarne espresso. */
   progKcal: number;
+  /** Bialko plus tluszcz razem, w gramach. Drugi warunek, wystarczy jeden z dwoch. */
+  progMakro: number;
   /** Ile trwa posilek, gdy nie podano. */
   domyslneTrwanie: number;
+}
+
+/**
+ * Czy ta pozycja gasi fale oczyszczajaca jelito.
+ *
+ * Dwa progi, wystarczy przekroczyc jeden. To nie jest flaga obok flagi, tylko
+ * jedno pojecie opisane dwiema wielkosciami, bo sama kaloryka go nie opisuje:
+ * fale wygasza glownie tluszcz i bialko, przez hamulec jelitowy. Kawa z 50 ml
+ * mleka to raptem 26 kcal, ale 1,9 g bialka i 0,8 g tluszczu, wiec przerywa,
+ * a czarne espresso (0,2 g bialka, zero tluszczu) nie. Migracja 022.
+ *
+ * Jedna kopia tego warunku: uzywaja jej `przerwyDnia`, `koniecOstatniegoPodejscia`
+ * i etykieta przy posilku, wiec nie moga powiedziec trzech roznych rzeczy.
+ */
+export function przerywaPrzerwe(m: PosilekDoPrzerw, reguly: RegulyPrzerw): boolean {
+  if (!m.eaten_at || m.stan !== 'zjedzony') return false;
+  const makro = (m.protein_g ?? 0) + (m.fat_g ?? 0);
+  return (m.kcal ?? 0) >= reguly.progKcal || makro >= reguly.progMakro;
 }
 
 /**
@@ -39,8 +61,7 @@ export function przerwyDnia(
   lista: PosilekDoPrzerw[],
   reguly: RegulyPrzerw
 ): Map<number, number> {
-  const liczySie = (m: PosilekDoPrzerw) =>
-    Boolean(m.eaten_at) && m.stan === 'zjedzony' && (m.kcal ?? 0) >= reguly.progKcal;
+  const liczySie = (m: PosilekDoPrzerw) => przerywaPrzerwe(m, reguly);
   const podejscie = (m: PosilekDoPrzerw) => (m.sitting ? `s${m.sitting}` : `m${m.id}`);
   const koniec = (m: PosilekDoPrzerw) =>
     hhmmToMinutes(m.eaten_at!) + (m.duration_min ?? reguly.domyslneTrwanie);
@@ -68,9 +89,9 @@ export function przerwyDnia(
  * Koniec ostatniego podejscia tego dnia, w minutach od polnocy, albo null,
  * gdy nic sie jeszcze nie liczy.
  *
- * To ten sam „ostatni kes", od ktorego `przerwyDnia` mierzy przerwe: pozycje
- * ponizej progu kalorycznego sa pomijane, a deser i kawa w tym samym podejsciu
- * przesuwaja koniec do przodu. Dzieki temu godzina „najwczesniej mozesz zjesc"
+ * To ten sam „ostatni kes", od ktorego `przerwyDnia` mierzy przerwe: pozycje,
+ * ktore nie przerywaja przerwy, sa pomijane, a deser i kawa w tym samym
+ * podejsciu przesuwaja koniec do przodu. Dzieki temu godzina „najwczesniej mozesz zjesc"
  * w panelu i przerwa wypisana przy posilku nie moga podac dwoch roznych liczb.
  *
  * Lista musi byc posortowana po godzinie.
@@ -82,8 +103,8 @@ export function koniecOstatniegoPodejscia(
   let koniec: number | null = null;
 
   for (const m of lista) {
-    if (!m.eaten_at || m.stan !== 'zjedzony' || (m.kcal ?? 0) < reguly.progKcal) continue;
-    const k = hhmmToMinutes(m.eaten_at) + (m.duration_min ?? reguly.domyslneTrwanie);
+    if (!przerywaPrzerwe(m, reguly)) continue;
+    const k = hhmmToMinutes(m.eaten_at!) + (m.duration_min ?? reguly.domyslneTrwanie);
     if (koniec === null || k > koniec) koniec = k;
   }
 
