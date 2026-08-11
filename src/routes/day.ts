@@ -269,7 +269,7 @@ export async function renderDay(c: any, date: string) {
       </div>`);
     }
 
-    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [])}</ul></div>`);
+    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [], progKcal)}</ul></div>`);
   }
 
   const mealsHtml = lista.length
@@ -339,7 +339,7 @@ export async function renderDay(c: any, date: string) {
   });
 }
 
-function mealItem(m: MealRow, breaches: any[]): string {
+function mealItem(m: MealRow, breaches: any[], progKcal: number): string {
   const forbidden = breaches.filter((b) => b.level === 'forbidden');
   const limits = breaches.filter((b) => b.level === 'limit');
 
@@ -351,7 +351,9 @@ function mealItem(m: MealRow, breaches: any[]): string {
     m.stan === 'plan' ? flag('info', 'zaplanowane') : '',
     m.stan === 'pominiety' ? flag('limit', 'pominięte') : '',
     m.stan === 'zjedzony' && m.eaten_fraction < 1 ? flag('info', `zjedzone ${Math.round(m.eaten_fraction * 100)}%`) : '',
-    (m.kcal ?? 0) > 0 && (m.kcal ?? 0) < 30 ? flag('info', 'nie przerywa przerwy') : '',
+    // Prog przychodzi z ustawien, tak jak do silnika przerw. Wpisany tu na sztywno
+    // (bylo: 30) zaczynal klamac w chwili, gdy Maciek zmienil wartosc w Ustawieniach.
+    (m.kcal ?? 0) > 0 && (m.kcal ?? 0) < progKcal ? flag('info', `poniżej ${progKcal} kcal, nie przerywa przerwy`) : '',
   ]
     .filter(Boolean)
     .join('');
