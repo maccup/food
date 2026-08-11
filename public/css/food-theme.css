@@ -88,9 +88,18 @@ a { color: var(--accent-text); }
 .topbar {
   position: sticky; top: 0; z-index: 300;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: max(env(safe-area-inset-top), 8px) 14px 8px;
+  padding: 8px 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--hairline);
+}
+
+/* Wciecie na pasek stanu telefonu nalezy sie tylko wtedy, gdy aplikacja rysuje
+   sie pod nim, czyli po dodaniu do ekranu glownego. W zwyklej karcie Chrome
+   przegladarka zajmuje ten pas swoim wlasnym paskiem, a `viewport-fit=cover`
+   i tak zwraca pelna wysokosc paska stanu. Efekt byl taki, ze nad naglowkiem
+   siedzialo ok. 65 px pustki, ktora nic nie zaslaniala. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  .topbar { padding-top: max(env(safe-area-inset-top), 8px); }
 }
 .topbar h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
 .topbar-actions { display: flex; align-items: center; gap: 2px; }
@@ -111,18 +120,26 @@ a { color: var(--accent-text); }
 }
 
 /* Dolna nawigacja, tylko na telefonie */
+/* Liczba kolumn idzie z liczby pozycji w NAV, nie z tej reguly. Wpisana na
+   sztywno rozjezdzala sie z lista w layout.ts przy kazdej zmianie nawigacji. */
 .tabbar-bottom {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
   background: var(--surface);
   border-top: 1px solid var(--hairline);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabbar-bottom a {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 8px 0 6px; min-height: 52px;
+  gap: 2px; padding: 8px 2px 6px; min-height: 52px; min-width: 0;
   font-size: 10px; color: var(--muted); text-decoration: none;
 }
+/* Najdluzsza etykieta to „Statystyki". Przy szesciu kolumnach musi zmiescic sie
+   w jednej linii takze na 320 px, bo zawiniecie podnioslo by caly pasek. */
+.tabbar-bottom a > span:last-child {
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 359px) { .tabbar-bottom a { font-size: 9px; } }
 .tabbar-bottom a.active { color: var(--accent-text); font-weight: 700; }
 .tabbar-bottom .tab-icon { font-size: 18px; line-height: 1; }
 
@@ -134,6 +151,7 @@ a { color: var(--accent-text); }
 
 .block-title {
   display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 2px 10px;
   font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
   color: var(--muted);
   margin: 22px 14px 6px;
@@ -153,7 +171,11 @@ a { color: var(--accent-text); }
 .list ul { list-style: none; margin: 0; padding: 0; background: var(--surface); }
 .list > ul { border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
 .list li + li .item-content { border-top: 1px solid var(--hairline); }
-.item-content { padding: 0 14px; }
+/* `display: block` nie jest ozdoba. Gdy `.item-content` trafi na <a>, element
+   zostaje inline, wiec wciecie 14 px nie obejmuje blokowego dziecka, a obramowanie
+   u gory rysuje sie jako kilkupikselowy kikut przy lewej krawedzi. Tak wygladal
+   ekran „Więcej": ikony wychodzily poza ekran, a opisy nie miały prawego marginesu. */
+.item-content { display: block; padding: 0 14px; }
 .item-inner { padding: 10px 0; }
 .item-title { font-weight: 600; }
 .simple-list li {
@@ -161,6 +183,28 @@ a { color: var(--accent-text); }
   padding: 11px 14px; border-top: 1px solid var(--hairline);
   background: var(--surface);
 }
+
+/* Lista nawigacyjna ekranu „Więcej" i skrotow. Cały wiersz jest odnośnikiem,
+   więc wciecie i obramowanie musza siedziec na <a>, nie na jego rodzicu. */
+.nav-list {
+  margin: 8px 0; background: var(--surface);
+  border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+}
+.nav-list a {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px; min-height: 60px;
+  color: inherit; text-decoration: none;
+}
+.nav-list a + a { border-top: 1px solid var(--hairline); }
+.nav-list a:active { background: var(--surface-sunken); }
+.nav-list .nav-icon { flex: 0 0 26px; font-size: 21px; line-height: 1; text-align: center; }
+.nav-list .nav-text { flex: 1; min-width: 0; }
+.nav-list .nav-label { display: block; font-size: 16px; font-weight: 600; }
+.nav-list .nav-opis {
+  display: block; margin-top: 2px;
+  font-size: 12px; line-height: 1.35; color: var(--muted);
+}
+.nav-list .nav-chevron { flex: 0 0 auto; color: var(--muted); font-size: 18px; }
 
 .data-table { border-collapse: collapse; }
 .data-table th {
@@ -242,6 +286,21 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
   margin: 20px 0 10px; padding-top: 16px; border-top: 1px solid var(--hairline);
 }
 .hint { font-size: 12px; color: var(--muted); margin: -8px 0 14px; line-height: 1.4; }
+
+/* Filtr zakresu na statystykach. `1fr` to `minmax(auto, 1fr)`, a natywne
+   `input[type=date]` ma spora szerokosc minimalna, wiec dwa pola plus przycisk
+   rozpychaly siatke ponad szerokosc ekranu. Rosla wtedy szerokosc calej strony,
+   nie samego formularza: naglowki sekcji, tabela makro i przycisk „Pokaż"
+   wyjezdzaly poza prawa krawedz. `minmax(0, 1fr)` pozwala polom sie sciesnic,
+   a przycisk schodzi do wlasnego wiersza, dopoki nie ma dla niego miejsca. */
+.stats-filtr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; }
+.stats-filtr .field { margin: 0; min-width: 0; }
+.stats-filtr input { min-width: 0; }
+.stats-filtr button { grid-column: 1 / -1; }
+@media (min-width: 560px) {
+  .stats-filtr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .stats-filtr button { grid-column: auto; }
+}
 .check-row { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-bottom: 14px; }
 /* Dwa przyciski przy braku. Na telefonie po polowie szerokosci,
    na duzym ekranie nie rozciagaja sie na pol ekranu. */

@@ -34,16 +34,25 @@ menu boczne i ekran „Więcej".
 
 | | Co |
 |---|---|
-| Pasek na telefonie (`tab: true`) | Dziś, Dopisz, Zakupy, Suple, **Więcej** |
-| Za „Więcej" (`tab: false`) | Kalendarz, Statystyki, Wykluczenia, Ustawienia |
+| Pasek na telefonie (`tab: true`) | Dziś, Kalendarz, Statystyki, Dopisz, Suple, **Więcej** |
+| Za „Więcej" (`tab: false`) | Zakupy, Wykluczenia, Ustawienia |
 | Menu boczne od 1024 px | wszystko naraz, **bez** pozycji „Więcej" (`hub: true`) |
 
-**Pasek ma dokładnie pięć miejsc** i to nie jest przypadek: `grid-template-columns: repeat(5, 1fr)`
-w `food-theme.css`. Szósta ikona ściska pola dotyku poniżej progu używalności, więc rozrost
-nawigacji idzie do `NAV_POZA_PASKIEM`, nie do paska.
+**Liczby kolumn nie ma w arkuszu.** Pasek to `grid-auto-flow: column` z `grid-auto-columns:
+minmax(0, 1fr)`, więc bierze ją z długości `NAV`. Wcześniej stało tam `repeat(5, 1fr)` i każda
+zmiana nawigacji wymagała pamiętania o drugim pliku. Przy sześciu pozycjach na 402 px kolumna
+ma 67 px, czyli powyżej progu dotyku 44 px; na 320 px wychodzi 53 px i etykieta schodzi do 9 px.
 
-O tym, co trafia do paska, decyduje **gdzie ekran się otwiera**, nie jak często: zakupy robi się
-stojąc w sklepie z telefonem w ręku, kalendarz i statystyki czyta się na spokojnie.
+Kolejność w pasku to **kolejność czytania dnia**: najpierw stan (Dziś), potem dwa spojrzenia
+wstecz (Kalendarz, Statystyki), dopiero potem dwie akcje (Dopisz, Suple). Zakupy zeszły
+za „Więcej" na prośbę Maćka 11.08.2026.
+
+### Wciecie na pasek stanu
+
+`.topbar` dostaje `env(safe-area-inset-top)` **tylko w `@media (display-mode: standalone)`**.
+W zwykłej karcie Chrome przeglądarka sama rysuje pasek stanu, a `viewport-fit=cover` i tak
+zwraca jego pełną wysokość, więc nad nagłówkiem siedziało ok. 65 px pustki, która niczego
+nie zasłaniała. Nie wracać do bezwarunkowego `padding-top`.
 
 ## Statystyki
 
@@ -51,6 +60,11 @@ stojąc w sklepie z telefonem w ręku, kalendarz i statystyki czyta się na spok
 przekierowuje, żeby nie psuć zakładek.
 
 - Zakres siedzi w adresie (`?zakres=7|30|miesiac|rok` albo `?od=&do=`), więc da się go wysłać i zapisać.
+- Filtr dat ma klasę `.stats-filtr`, nie siatkę w atrybucie `style`. `1fr` to `minmax(auto, 1fr)`,
+  a natywne `input[type=date]` ma dużą szerokość minimalną: dwa pola plus przycisk rozpychały
+  siatkę ponad szerokość ekranu i **rosła szerokość całej strony**, więc nagłówki sekcji, tabela
+  makro i przycisk „Pokaż" wyjeżdżały poza prawą krawędź. Każda siatka z polem daty potrzebuje
+  `minmax(0, 1fr)`.
 - **Do 14 dni tabela idzie dzień po dniu, powyżej zwija się w tygodnie.** 365 wierszy nikt nie
   czyta, a średnia tygodniowa jest właściwą jednostką, bo reguły pokrycia grup są tygodniowe.
 - **Pierwsza liczba na ekranie to kompletność danych** („2 z 4 dni"). Średnia z trzech dni wygląda

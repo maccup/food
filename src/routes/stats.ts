@@ -267,12 +267,12 @@ stats.get('/statystyki', async (c) => {
     </div>
 
     <div class="block">
-      <form method="GET" action="/statystyki" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-        <div class="field" style="margin:0">
+      <form method="GET" action="/statystyki" class="stats-filtr">
+        <div class="field">
           <label class="field-label" for="st-od">Od</label>
           <input type="date" id="st-od" name="od" value="${esc(o.od)}">
         </div>
-        <div class="field" style="margin:0">
+        <div class="field">
           <label class="field-label" for="st-do">Do</label>
           <input type="date" id="st-do" name="do" value="${esc(o.do)}">
         </div>

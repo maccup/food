@@ -6,29 +6,30 @@ import { NAV_POZA_PASKIEM } from '../views/layout';
 /**
  * Ekran „Więcej”.
  *
- * Pasek na telefonie ma piec miejsc, a ekranow jest osiem. Zamiast sciskac
- * ikony albo chowac je w wysuwanym menu na javascripcie, piata pozycja prowadzi
- * do zwyklej strony z reszta. Na duzym ekranie menu boczne pokazuje wszystko
- * naraz, wiec ten ekran jest tam tylko dodatkowa droga, nie jedyna.
+ * Pasek na telefonie miesci szesc pozycji, a ekranow jest dziewiec. Zamiast
+ * sciskac ikony albo chowac je w wysuwanym menu na javascripcie, ostatnia
+ * pozycja prowadzi do zwyklej strony z reszta. Na duzym ekranie menu boczne
+ * pokazuje wszystko naraz, wiec ten ekran jest tam dodatkowa droga, nie jedyna.
+ *
+ * Cały wiersz jest jednym <a>, bez opakowania w <li> i bez stylow w atrybutach.
+ * Poprzednia wersja wieszala klase `.item-content` na odnosniku, czyli na
+ * elemencie inline, przez co wciecie nie obejmowalo tresci i ikony wychodzily
+ * poza lewa krawedz ekranu.
  */
 const more = new Hono<{ Bindings: Env }>();
 
 more.get('/wiecej', (c) => {
   const content = `
-    <div class="list media-list" style="margin-top:10px"><ul>
-      ${NAV_POZA_PASKIEM.map((n) => `<li>
-        <a href="${n.href}" class="item-content" style="text-decoration:none;color:inherit">
-          <div class="item-inner" style="display:flex;gap:12px;align-items:center;padding:14px 0;min-height:56px">
-            <span style="font-size:22px" aria-hidden="true">${n.icon}</span>
-            <span style="flex:1">
-              <b style="display:block">${esc(n.label)}</b>
-              ${n.opis ? `<span style="font-size:12px;color:var(--muted)">${esc(n.opis)}</span>` : ''}
-            </span>
-            <span style="color:var(--muted)" aria-hidden="true">›</span>
-          </div>
-        </a>
-      </li>`).join('')}
-    </ul></div>
+    <nav class="nav-list" aria-label="Pozostałe ekrany">
+      ${NAV_POZA_PASKIEM.map((n) => `<a href="${n.href}">
+        <span class="nav-icon" aria-hidden="true">${n.icon}</span>
+        <span class="nav-text">
+          <span class="nav-label">${esc(n.label)}</span>
+          ${n.opis ? `<span class="nav-opis">${esc(n.opis)}</span>` : ''}
+        </span>
+        <span class="nav-chevron" aria-hidden="true">›</span>
+      </a>`).join('')}
+    </nav>
   `;
 
   return c.html(page({ title: 'Więcej', tab: 'more', header: 'Więcej', content }));

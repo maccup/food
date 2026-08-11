@@ -3,10 +3,14 @@ import { ASSET_V } from './assets';
 /**
  * Jedna lista, trzy zastosowania.
  *
- * `tab` to pasek na telefonie i ma dokladnie piec miejsc, bo tyle mieszcza sie
- * bez sciskania pol dotyku (`grid-template-columns: repeat(5, 1fr)` w arkuszu).
- * Reszta siedzi za pozycja „Więcej". Do paska trafia to, co otwiera sie w biegu:
- * zakupy robi sie stojac w sklepie, kalendarz i statystyki czyta sie na spokojnie.
+ * `tab` to pasek na telefonie. Kolejnosc jest kolejnoscia czytania dnia:
+ * najpierw stan („Dziś"), potem dwa spojrzenia wstecz (kalendarz i statystyki),
+ * dopiero potem dwie akcje (dopisz, suple). Reszta siedzi za pozycja „Więcej".
+ *
+ * Liczba pozycji w pasku nie jest wpisana w arkusz. `grid-auto-flow: column`
+ * bierze ja z tej listy, wiec dodanie albo usuniecie zakladki nie wymaga
+ * ruszania CSS i nie da sie doprowadzic do rozjazdu miedzy jednym a drugim.
+ * Przy szesciu pozycjach na 402 px kolumna ma 67 px, czyli powyzej progu 44 px.
  *
  * `hub` oznacza sama pozycje „Więcej". Na duzym ekranie menu boczne pokazuje
  * wszystko naraz, wiec hub jest tam zbedny i jest z niego wylaczony.
@@ -16,14 +20,15 @@ const NAV: Array<{
   tab: boolean; hub?: boolean; opis?: string;
 }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today', tab: true },
+  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: true,
+    opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
+  { href: '/statystyki', icon: '📊', label: 'Statystyki', key: 'stats', tab: true,
+    opis: 'Dowolny zakres dat: makro, przerwy między podejściami, objawy' },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log', tab: true },
-  { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: true },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements', tab: true },
   { href: '/wiecej', icon: '☰', label: 'Więcej', key: 'more', tab: true, hub: true },
-  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: false,
-    opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
-  { href: '/statystyki', icon: '📊', label: 'Statystyki', key: 'stats', tab: false,
-    opis: 'Dowolny zakres dat: makro, przerwy między podejściami, objawy' },
+  { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: false,
+    opis: 'Lista do kupienia i podpowiedzi z brakujących grup' },
   { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions', tab: false,
     opis: 'Zakazy, limity i kolejka nierozpoznanych składników' },
   { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings', tab: false,
