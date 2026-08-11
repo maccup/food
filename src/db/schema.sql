@@ -222,6 +222,17 @@ CREATE TABLE IF NOT EXISTS stools (
 
 CREATE INDEX IF NOT EXISTS idx_stools_date ON stools(date);
 
+-- Jeden wiersz na dobe, bo stres wpisuje sie wieczorem za caly dzien.
+-- Osobna tabela, a nie symptoms z kind = 'stres': patrz migracja 025.
+CREATE TABLE IF NOT EXISTS stress (
+  date       TEXT PRIMARY KEY,
+  level      INTEGER NOT NULL,   -- 0 do 10, ta sama skala co symptoms.severity
+  powod      TEXT,               -- praca | pieniadze | relacje | zdrowie | studia | sen | inne
+  notes      TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (level BETWEEN 0 AND 10)
+);
+
 -- ---------------------------------------------------------------------------
 -- TESTOWANIE PRODUKTOW (rozszerzanie diety od 15.09)
 -- ---------------------------------------------------------------------------

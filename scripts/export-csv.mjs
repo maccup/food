@@ -31,6 +31,12 @@ const QUERIES = {
                       COALESCE(CASE WHEN incomplete THEN 'niepelne ' END,'') ||
                       COALESCE(CASE WHEN floating THEN 'plywajacy' END,''))
     FROM stools
+    UNION ALL
+    -- Stres jedzie tym samym plikiem, bo analiza i tak zestawia go ze stolcem,
+    -- a osobny CSV z jedna liczba na dobe znaczylby laczenie po dacie w Pythonie.
+    -- Godzina pusta celowo: to ocena calej doby, nie zdarzenie.
+    SELECT 'stres', date, NULL, COALESCE(powod, ''), level, notes
+    FROM stress
     ORDER BY date, time`,
   'food_restrictions.csv': `
     SELECT COALESCE(f.name, g.name) AS produkt, r.level, r.status, r.reason, r.max_amount,

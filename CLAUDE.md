@@ -176,6 +176,7 @@ foods ──< restrictions                 wykluczenia, limity, preferencje
       └──< trials                      testowanie produktu przy rozszerzaniu
 meals ──< meal_foods                   dziennik, powiązany ze słownikiem
 symptoms, stools                       objawy
+stress                                 stres dnia, jeden wiersz na dobę
 supplements ──< supplement_schedule ──< supplement_log
 ```
 
@@ -331,6 +332,34 @@ Menu z wyborem publikuje się około 7 dni naprzód, wymiana zamyka się 2 dni p
 dostawą o 12:00. Dlatego przeglądu nie da się zrobić raz na cały okres,
 trzeba wracać co tydzień. Kryteria doboru posiłków: patrz
 `Diagnostyka/2026-08-09_hfood_low_fodmap_analiza.md` w repo Longevity Agent.
+
+## Stres: jedna liczba na dobę, nie zdarzenia
+
+Tabela `stress`, jeden wiersz na dzień, `date` jako klucz główny. Zapis przez
+`/log/stres` jest upsertem, więc wejście w zakładkę drugi raz tego samego dnia
+poprawia ocenę zamiast dokładać drugą. Skala 0 do 10, ta sama co
+`symptoms.severity`, żeby dwie liczby na jednym ekranie nie znaczyły czego innego.
+
+**Nie przerabiać tego na zdarzenia z godziną.** Wpisy „w chwili, gdy się
+zestresowałem" byłyby dokładniejsze i jednocześnie bezużyteczne: w stresie nikt
+nie sięga po telefon, więc dziura w danych wypadłaby dokładnie w dniach, które
+mają największe znaczenie. Jelito reaguje w skali godzin i doby, nie minut, więc
+większa rozdzielczość i tak niczego by nie dodała.
+
+**Nie wrzucać stresu do `symptoms` jako `kind = 'stres'`.** Objawy są zdarzeniami
+i może ich być kilka dziennie, stres jest oceną całej doby. Zmieszanie ich
+zafałszowałoby każdą statystykę objawów, bo „ile razy bolał brzuch" zaczęłoby
+zawierać dni bez żadnego objawu jelitowego.
+
+Statystyki zestawiają każdy dzień ze stolcami **tego dnia i następnego**, bo
+napięcie z poniedziałku widać często dopiero we wtorek rano. Porównanie grup
+(6 do 10 kontra 0 do 3) pokazuje się dopiero przy trzech dniach po każdej stronie,
+wcześniej ekran mówi wprost, ilu brakuje, i pokazuje wyłącznie surowe dni. Środek
+skali, 4 i 5, nie wchodzi do żadnej grupy: dzień przeciętny rozmyłby obie strony.
+
+Widok dnia trzyma wiersz „stres dnia niewpisany" z odnośnikiem także wtedy, gdy
+wpisu nie ma. To jedyny mechanizm przypominający o wpisie, a bez wpisów ta liczba
+nie mierzy niczego.
 
 ## Pusta godzina znaczy „teraz", ale tylko dzisiaj
 

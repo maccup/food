@@ -96,7 +96,7 @@ interface MealRow {
 export async function renderDay(c: any, date: string) {
   const db = c.env.DB;
 
-  const [totals, phase, meals, breaches, symptoms, stools] = await Promise.all([
+  const [totals, phase, meals, breaches, symptoms, stools, stres] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date = ?`).bind(date).first<any>(),
     db.prepare(
       `SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`
@@ -114,6 +114,7 @@ export async function renderDay(c: any, date: string) {
     ).bind(date).all<any>(),
     db.prepare(`SELECT * FROM symptoms WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
     db.prepare(`SELECT * FROM stools WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
+    db.prepare(`SELECT * FROM stress WHERE date = ?`).bind(date).first(),
   ]);
 
   const targets = phase
@@ -279,23 +280,48 @@ export async function renderDay(c: any, date: string) {
     ? wiersze.join('')
     : emptyState('Brak posiłków tego dnia. Menu z cateringu wjeżdża importem, a wszystko poza nim dopisujesz w zakładce Dopisz.');
 
-  const eventsHtml =
-    (symptoms.results?.length ?? 0) + (stools.results?.length ?? 0) === 0
-      ? emptyState('Brak wpisów o objawach i stolcu.')
-      : `<div class="list simple-list"><ul>
-          ${(symptoms.results ?? []).map((s: any) =>
-            `<li>
-              <span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span>
-              <span class="ev-right"><span class="ev-wartosc">${s.severity ?? '?'}/10</span>${akcjeWpisu('objaw', 'symptom', s.id, date)}</span>
-            </li>`
-          ).join('')}
-          ${(stools.results ?? []).map((s: any) =>
-            `<li>
-              <span>${esc(s.time ?? '')} stolec${s.straining ? ', parcie' : ''}${s.incomplete ? ', niepełne wypróżnienie' : ''}${s.floating ? ', pływający' : ''}</span>
-              <span class="ev-right"><span class="ev-wartosc">Bristol ${s.bristol}</span>${akcjeWpisu('stolec', 'stool', s.id, date)}</span>
-            </li>`
-          ).join('')}
-        </ul></div>`;
+  /*
+   * Stres stoi w tym bloku pierwszy i zostaje w nim nawet wtedy, gdy nie jest
+   * wpisany. Pusty wiersz z odnosnikiem jest tu jedynym mechanizmem, ktory
+   * przypomina o wpisie, a bez wpisow ta liczba nie zmierzy niczego. Dni
+   * przyszlych nie zaczepiamy, bo stresu jeszcze nie bylo.
+   */
+  const stresWiersz = stres
+    ? `<li>
+        <span>stres dnia${stres.powod ? `, ${esc(stres.powod)}` : ''}${stres.notes ? `, ${esc(stres.notes)}` : ''}</span>
+        <span class="ev-right"><span class="ev-wartosc">${stres.level}/10</span>
+          <a href="/log?co=stres&date=${date}" class="ev-akcja">Popraw</a>
+          <form method="POST" action="/log/stres/usun" style="display:contents"
+                onsubmit="return confirm('Usunąć ten wpis? Tego nie da się cofnąć.')">
+            <input type="hidden" name="date" value="${date}">
+            <button type="submit" class="ev-akcja ev-usun">Usuń</button>
+          </form>
+        </span>
+      </li>`
+    : date <= todayWarsaw()
+      ? `<li>
+          <span style="color:var(--muted)">stres dnia niewpisany</span>
+          <span class="ev-right"><a href="/log?co=stres&date=${date}" class="ev-akcja">Wpisz</a></span>
+        </li>`
+      : '';
+
+  const wpisy = [
+    stresWiersz,
+    ...(symptoms.results ?? []).map((s: any) =>
+      `<li>
+        <span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span>
+        <span class="ev-right"><span class="ev-wartosc">${s.severity ?? '?'}/10</span>${akcjeWpisu('objaw', 'symptom', s.id, date)}</span>
+      </li>`),
+    ...(stools.results ?? []).map((s: any) =>
+      `<li>
+        <span>${esc(s.time ?? '')} stolec${s.straining ? ', parcie' : ''}${s.incomplete ? ', niepełne wypróżnienie' : ''}${s.floating ? ', pływający' : ''}</span>
+        <span class="ev-right"><span class="ev-wartosc">Bristol ${s.bristol}</span>${akcjeWpisu('stolec', 'stool', s.id, date)}</span>
+      </li>`),
+  ].filter(Boolean);
+
+  const eventsHtml = wpisy.length
+    ? `<div class="list simple-list"><ul>${wpisy.join('')}</ul></div>`
+    : emptyState('Brak wpisów o objawach i stolcu.');
 
   const content = `
     ${panel}
@@ -328,10 +354,10 @@ export async function renderDay(c: any, date: string) {
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
     ${renderGaps(dayGaps, date, doKupienia?.n ?? 0)}
 
-    ${blockTitle('Objawy i stolec')}
+    ${blockTitle('Stres, objawy i stolec')}
     ${eventsHtml}
 
-    <div class="block"><a href="/log?date=${date}" class="button button-fill">Dopisz posiłek, objaw albo stolec</a></div>
+    <div class="block"><a href="/log?date=${date}" class="button button-fill">Dopisz posiłek, objaw, stolec albo stres</a></div>
   `;
 
   return page({

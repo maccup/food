@@ -19,7 +19,25 @@ const TABS: Array<[string, string, string]> = [
   ['posilek', '🍽️', 'Posiłek'],
   ['objaw', '😖', 'Objaw'],
   ['stolec', '🚽', 'Stolec'],
+  ['stres', '🧠', 'Stres'],
 ];
+
+/**
+ * Kotwice skali stresu. Bez nich „6" znaczy co innego w poniedzialek niz w
+ * piatek, a cala wartosc tej liczby polega na tym, ze da sie ja porownac
+ * z ta sprzed miesiaca. Opisane co drugi stopien, bo opisanie wszystkich
+ * jedenastu i tak nikt nie przeczyta.
+ */
+const STRES_OPISY: Record<number, string> = {
+  0: 'spokój, nic nie wisiało',
+  2: 'lekkie napięcie',
+  4: 'zauważalne, ale odpuszczało',
+  6: 'wyraźne, trudno było odłożyć',
+  8: 'bardzo duże, wracało w myślach',
+  10: 'nie dało się normalnie funkcjonować',
+};
+
+export const STRES_POWODY = ['praca', 'pieniądze', 'relacje', 'zdrowie', 'studia', 'sen', 'inne'];
 
 log.get('/log', async (c) => {
   const date = c.req.query('date') ?? todayWarsaw();
@@ -29,11 +47,17 @@ log.get('/log', async (c) => {
   // Edycja to ten sam formularz z wypelnionymi polami, nie osobny ekran.
   // Drugi formularz o tych samych polach rozjechalby sie przy pierwszej zmianie,
   // a tu chodzi o poprawienie literowki, nie o inny rodzaj wpisu.
-  const edytujId = Number(c.req.query('edytuj')) || null;
+  const edytujId = co === 'objaw' || co === 'stolec' ? Number(c.req.query('edytuj')) || null : null;
   const edytowany = edytujId
     ? await db.prepare(
         `SELECT * FROM ${co === 'objaw' ? 'symptoms' : 'stools'} WHERE id = ?`
       ).bind(edytujId).first<any>()
+    : null;
+
+  // Stres nie ma trybu edycji, bo ma jeden wiersz na dobe. Wejscie w zakladke
+  // pokazuje to, co juz wpisane za ten dzien, a zapis nadpisuje.
+  const stres = co === 'stres'
+    ? await db.prepare(`SELECT * FROM stress WHERE date = ?`).bind(date).first<any>()
     : null;
 
   const slotOptions = Object.entries(SLOT_LABEL)
@@ -214,11 +238,53 @@ log.get('/log', async (c) => {
       </form>
     `)}`;
 
+  const stresForm = `
+    ${blockTitle(stres ? 'Popraw stres dnia' : 'Stres dnia', 'jedna liczba za całą dobę')}
+    ${card(`
+      <form method="POST" action="/log/stres" class="form-narrow">
+        <input type="hidden" name="date" value="${date}">
+        <div class="field">
+          <label class="field-label" for="str-level">Ile tego było, 0 do 10</label>
+          <select id="str-level" name="level">
+            ${[...Array(11).keys()].map((n) =>
+              `<option value="${n}"${(stres ? stres.level === n : n === 3) ? ' selected' : ''}>${n}${STRES_OPISY[n] ? `, ${STRES_OPISY[n]}` : ''}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="str-powod">Skąd głównie</label>
+          <select id="str-powod" name="powod">
+            <option value="">nie wiem albo wszystko naraz</option>
+            ${STRES_POWODY.map((p) =>
+              `<option value="${p}"${stres?.powod === p ? ' selected' : ''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="str-note">Notatka</label>
+          <input type="text" id="str-note" name="notes" placeholder="opcjonalnie" value="${esc(stres?.notes ?? '')}">
+        </div>
+        <p class="hint">
+          Wpisuj wieczorem, za cały dzień. Jelito reaguje na napięcie w skali godzin i doby,
+          więc dokładniejszy pomiar nic nie doda, a wpis zrobiony raz dziennie faktycznie powstanie.
+          Napięcie z dziś potrafi odezwać się dopiero jutro rano, dlatego statystyki zestawiają
+          każdy dzień ze stolcami tego dnia i następnego.
+        </p>
+        <button type="submit" class="button button-fill" style="width:100%">${stres ? 'Zapisz zmiany' : 'Zapisz stres dnia'}</button>
+      </form>
+      ${stres
+        ? `<form method="POST" action="/log/stres/usun" style="margin-top:8px"
+                 onsubmit="return confirm('Usunąć wpis o stresie z tego dnia?')">
+             <input type="hidden" name="date" value="${date}">
+             <button type="submit" class="button" style="width:100%">Usuń wpis z tego dnia</button>
+           </form>`
+        : ''}
+    `)}`;
+
   const content = `
     ${segmented}
     ${dateBar}
     ${szybkie}
-    ${co === 'posilek' ? posilek : co === 'objaw' ? objaw : stolec}
+    ${co === 'posilek' ? posilek : co === 'objaw' ? objaw : co === 'stolec' ? stolec : stresForm}
   `;
 
   return c.html(page({ title: 'Dopisz', tab: 'log', header: 'Dopisz', content }));
@@ -347,6 +413,33 @@ log.post('/log/stool', async (c) => {
       ).bind(...pola, date)
   ).run();
 
+  return c.redirect(`/day/${date}`);
+});
+
+/**
+ * Zapis stresu to nadpisanie, nie dopisanie.
+ *
+ * Jeden wiersz na dobe, wiec wejscie w zakladke drugi raz tego samego dnia
+ * poprawia liczbe zamiast tworzyc druga. Dzieki temu nie ma osobnego trybu
+ * edycji ani ryzyka, ze jeden dzien bedzie mial dwie sprzeczne oceny.
+ */
+log.post('/log/stres', async (c) => {
+  const b = await c.req.parseBody();
+  const date = String(b.date || todayWarsaw());
+  const level = Math.min(10, Math.max(0, Number(b.level ?? 0) || 0));
+
+  await c.env.DB.prepare(
+    `INSERT INTO stress (date, level, powod, notes) VALUES (?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET level = excluded.level, powod = excluded.powod, notes = excluded.notes`
+  ).bind(date, level, String(b.powod || '') || null, String(b.notes || '') || null).run();
+
+  return c.redirect(`/day/${date}`);
+});
+
+log.post('/log/stres/usun', async (c) => {
+  const b = await c.req.parseBody();
+  const date = String(b.date || todayWarsaw());
+  await c.env.DB.prepare(`DELETE FROM stress WHERE date = ?`).bind(date).run();
   return c.redirect(`/day/${date}`);
 });
 

@@ -53,7 +53,7 @@ stats.get('/statystyki', async (c) => {
   );
   const dniZakresu = daysBetween(o.od, o.do) + 1;
 
-  const [totals, phase, coverage, rules, breaches, posilki, objawy, stolce] = await Promise.all([
+  const [totals, phase, coverage, rules, breaches, posilki, objawy, stolce, stresDni, stolceDat] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date BETWEEN ? AND ? ORDER BY date`).bind(o.od, o.do).all<any>(),
     db.prepare(`SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`)
       .bind(o.do, o.do).first<any>(),
@@ -83,6 +83,14 @@ stats.get('/statystyki', async (c) => {
     db.prepare(
       `SELECT bristol, COUNT(*) AS n FROM stools WHERE date BETWEEN ? AND ? GROUP BY bristol ORDER BY bristol`
     ).bind(o.od, o.do).all<any>(),
+    db.prepare(
+      `SELECT date, level, powod FROM stress WHERE date BETWEEN ? AND ? ORDER BY date`
+    ).bind(o.od, o.do).all<any>(),
+    // Do dnia po koncu zakresu, bo stres z ostatniego dnia sprawdzamy takze
+    // nazajutrz. Bez tego ostatni wpis w kazdym zakresie mialby pusta kolumne.
+    db.prepare(
+      `SELECT date, bristol FROM stools WHERE date BETWEEN ? AND ? ORDER BY date`
+    ).bind(o.od, shiftDate(o.do, 1)).all<any>(),
   ]);
 
   const targets = phase
@@ -259,6 +267,108 @@ stats.get('/statystyki', async (c) => {
         : '<p class="hint" style="margin:0">Żadnych objawów w tym zakresie.</p>'}`)
     : emptyState('Brak wpisów o objawach i stolcu.');
 
+  /*
+   * Stres wobec stolca.
+   *
+   * Sedno siedzi w dwoch kolumnach zamiast jednej. Napiecie z danego dnia widac
+   * czesto dopiero nastepnego ranka, wiec zestawienie wylacznie „stres dzis
+   * kontra stolec dzis" przegapiloby polowe zjawiska. Stad kazdy dzien liczony
+   * jest dwa razy: ze swoimi stolcami i ze stolcami nazajutrz.
+   *
+   * Srodek skali, czyli 4 i 5, nie wchodzi do zadnej grupy. Porownanie ma
+   * odpowiadac na pytanie „czy dni napiete roznia sie od spokojnych", a dzien
+   * przecietny nie jest ani jednym, ani drugim i tylko rozmyclby obie strony.
+   */
+  const stolceWgDat = new Map<string, number[]>();
+  for (const s of stolceDat.results ?? []) {
+    if (!stolceWgDat.has(s.date)) stolceWgDat.set(s.date, []);
+    stolceWgDat.get(s.date)!.push(s.bristol);
+  }
+
+  const stresLista = (stresDni.results ?? []) as Array<{ date: string; level: number; powod: string | null }>;
+  const sredniStres = stresLista.length
+    ? stresLista.reduce((a, s) => a + s.level, 0) / stresLista.length
+    : 0;
+
+  const podsumuj = (dni: string[], przesuniecie: number) => {
+    const b = dni.flatMap((d) => stolceWgDat.get(shiftDate(d, przesuniecie)) ?? []);
+    return {
+      ile: b.length,
+      naDzien: dni.length ? b.length / dni.length : 0,
+      twarde: b.filter((x) => x <= 2).length,
+      srednia: b.length ? b.reduce((a, x) => a + x, 0) / b.length : 0,
+    };
+  };
+
+  const napiete = stresLista.filter((s) => s.level >= 6).map((s) => s.date);
+  const spokojne = stresLista.filter((s) => s.level <= 3).map((s) => s.date);
+  const MIN_DNI = 3;
+
+  const grupaWiersz = (nazwa: string, dni: string[]) => {
+    const dzis = podsumuj(dni, 0);
+    const jutro = podsumuj(dni, 1);
+    const kolor = (w: { srednia: number; ile: number }) =>
+      !w.ile ? 'var(--muted)' : w.srednia < 3 || w.srednia > 5 ? 'var(--warn)' : 'var(--ok)';
+    return `<tr>
+      <td>${nazwa}</td>
+      <td style="text-align:right">${dni.length}</td>
+      <td style="text-align:right;color:${kolor(dzis)};font-weight:600">${dzis.ile ? pl(dzis.srednia, 1) : '–'}</td>
+      <td style="text-align:right;color:${kolor(jutro)};font-weight:600">${jutro.ile ? pl(jutro.srednia, 1) : '–'}</td>
+      <td style="text-align:right">${dzis.ile ? `${dzis.twarde} z ${dzis.ile}` : '–'}</td>
+      <td style="text-align:right">${pl(dzis.naDzien, 1)}</td>
+    </tr>`;
+  };
+
+  const porownanie = napiete.length >= MIN_DNI && spokojne.length >= MIN_DNI
+    ? `<div style="overflow-x:auto"><table class="data-table" style="width:100%;font-size:13px">
+        <thead><tr>
+          <th>Dni</th><th style="text-align:right">ile</th>
+          <th style="text-align:right">Bristol</th><th style="text-align:right">nazajutrz</th>
+          <th style="text-align:right">twarde 1-2</th><th style="text-align:right">stolców/dzień</th>
+        </tr></thead>
+        <tbody>
+          ${grupaWiersz('napięte, 6 do 10', napiete)}
+          ${grupaWiersz('spokojne, 0 do 3', spokojne)}
+        </tbody>
+      </table></div>
+      <p class="hint" style="margin:10px 0 0">
+        Kolumna „Bristol" to średnia postać stolca w dniach danej grupy, „nazajutrz" ta sama
+        średnia przesunięta o dobę. Zdrowe pasmo to 3 do 4. Dni ze stresem 4 i 5 nie wchodzą
+        do żadnej grupy, bo dzień przeciętny rozmyłby obie strony.
+      </p>`
+    : `<p class="hint" style="margin:0">
+        Za mało dni, żeby porównywać. Potrzeba minimum ${MIN_DNI} dni napiętych i ${MIN_DNI} spokojnych,
+        jest ${napiete.length} i ${spokojne.length}. Do tego czasu tabela niżej pokazuje surowe dni
+        i nic nie uśrednia.
+      </p>`;
+
+  const dzienPoDniu = stresLista.length && dniZakresu <= 31
+    ? `<div style="overflow-x:auto;margin-top:12px"><table class="data-table" style="width:100%;font-size:13px">
+        <thead><tr><th>Dzień</th><th style="text-align:right">stres</th><th>Bristol</th><th>nazajutrz</th></tr></thead>
+        <tbody>${stresLista.map((s) => {
+          const dzis = stolceWgDat.get(s.date) ?? [];
+          const jutro = stolceWgDat.get(shiftDate(s.date, 1)) ?? [];
+          const kolorStres = s.level >= 6 ? 'var(--bad)' : s.level >= 4 ? 'var(--warn)' : 'var(--ok)';
+          return `<tr>
+            <td><a href="/day/${s.date}">${s.date.slice(8)}.${s.date.slice(5, 7)}</a>${s.powod ? ` <span style="color:var(--muted);font-size:11px">${esc(s.powod)}</span>` : ''}</td>
+            <td style="text-align:right;color:${kolorStres};font-weight:600">${s.level}</td>
+            <td>${dzis.join(', ') || '–'}</td>
+            <td>${jutro.join(', ') || '–'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`
+    : '';
+
+  const stresHtml = stresLista.length
+    ? card(`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--muted)">Wpisany stres, średnia</span>
+        <b style="font-size:19px">${pl(sredniStres, 1)}<span style="font-size:13px;font-weight:400;color:var(--muted)">/10 z ${stresLista.length} dni</span></b>
+      </div>
+      ${porownanie}
+      ${dzienPoDniu}`)
+    : emptyState('Żadnego wpisu o stresie w tym zakresie. Wpisuje się go wieczorem, w zakładce Dopisz.');
+
   const przycisk = (wartosc: string, label: string) =>
     `<a href="/statystyki?zakres=${wartosc}" class="button button-small ${o.zakres === wartosc ? 'button-fill' : ''}">${label}</a>`;
 
@@ -301,6 +411,9 @@ stats.get('/statystyki', async (c) => {
 
     ${blockTitle('Objawy i stolce')}
     ${zdrowiaHtml}
+
+    ${blockTitle('Stres a stolec', 'dzień napięty kontra spokojny')}
+    ${stresHtml}
   `;
 
   return c.html(page({ title: 'Statystyki', tab: 'stats', header: 'Statystyki', content }));
