@@ -8,6 +8,26 @@ Kontekst medyczny, decyzje i narracja żyją w osobnym repo:
 `~/Library/CloudStorage/GoogleDrive-maciej@cupial.eu/My Drive/Prywatne/Medycyna/Longevity Agent`.
 **Ta baza trzyma zdarzenia i liczby, tamte pliki markdown trzymają wnioski.** Nie mieszać.
 
+## Wdrożenia: bez pytania
+
+**Skończoną zmianę wdrażaj od razu na produkcję. Nie pytaj o zgodę.** To stałe pozwolenie
+Maćka z 11.08.2026 i dotyczy wyłącznie tego repozytorium. Globalna zasada „żadnego wdrożenia
+bez wyraźnej zgody w bieżącej rozmowie" z `~/.claude/CLAUDE.md` obowiązuje wszędzie indziej
+dalej, w szczególności w Calendesk.
+
+Powód, dla którego to jest bezpieczne akurat tutaj: aplikacja ma jednego użytkownika, którym
+jest właściciel repozytorium, nie obsługuje płatności ani cudzych danych, a wycofanie zmiany
+to jeden `wrangler pages deployment` wstecz.
+
+Co się przez to **nie** zmienia:
+
+- Kolejność zostaje: `npx tsc --noEmit` bez nowych błędów, render lokalny na kopii produkcji,
+  dopiero potem `npm run deploy`. „Bez pytania" znaczy bez pytania, nie bez sprawdzenia.
+- Po wdrożeniu weryfikacja na żywym adresie, po zawartości, nie po tym, że polecenie
+  nie krzyknęło.
+- **Migracje bazy dalej idą przed wdrożeniem kodu** i dalej mają być odwracalne.
+- Raport po fakcie mówi, co jest już na produkcji, a nie pyta, czy wysłać.
+
 ## Stack
 
 | Warstwa | Technologia |
