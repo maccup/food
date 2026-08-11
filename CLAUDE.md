@@ -34,25 +34,37 @@ menu boczne i ekran „Więcej".
 
 | | Co |
 |---|---|
-| Pasek na telefonie (`tab: true`) | Dziś, Kalendarz, Statystyki, Dopisz, Suple, **Więcej** |
-| Za „Więcej" (`tab: false`) | Zakupy, Wykluczenia, Ustawienia |
+| Górny pasek, każdy ekran | 🗓️ Kalendarz, 🚫 Wykluczenia, ⚙️ Ustawienia, 🌙 motyw |
+| Pasek na telefonie (`tab: true`) | Dziś, Statystyki, Dopisz, Suple, **Więcej** |
+| Za „Więcej" (`tab: false`) | Kalendarz, Zakupy, Wykluczenia, Ustawienia |
 | Menu boczne od 1024 px | wszystko naraz, **bez** pozycji „Więcej" (`hub: true`) |
 
 **Liczby kolumn nie ma w arkuszu.** Pasek to `grid-auto-flow: column` z `grid-auto-columns:
 minmax(0, 1fr)`, więc bierze ją z długości `NAV`. Wcześniej stało tam `repeat(5, 1fr)` i każda
-zmiana nawigacji wymagała pamiętania o drugim pliku. Przy sześciu pozycjach na 402 px kolumna
-ma 67 px, czyli powyżej progu dotyku 44 px; na 320 px wychodzi 53 px i etykieta schodzi do 9 px.
+zmiana nawigacji wymagała pamiętania o drugim pliku.
 
-Kolejność w pasku to **kolejność czytania dnia**: najpierw stan (Dziś), potem dwa spojrzenia
-wstecz (Kalendarz, Statystyki), dopiero potem dwie akcje (Dopisz, Suple). Zakupy zeszły
-za „Więcej" na prośbę Maćka 11.08.2026.
+Kolejność w pasku to **kolejność czytania dnia**: najpierw stan (Dziś), potem spojrzenie wstecz
+(Statystyki), dopiero potem dwie akcje (Dopisz, Suple). **Kalendarza w pasku nie ma celowo**:
+siedzi jako ikona w górnym pasku, więc jest pod ręką z każdego ekranu, nie tylko z dolnego.
+Zakupy zeszły za „Więcej". Oba ustawienia na prośbę Maćka 11.08.2026.
+
+Górny pasek mieści **cztery ikony po 44 px**, co na 402 px zostawia ok. 186 px na tytuł.
+Najdłuższy nagłówek to pełna data („niedziela, 9.08.2026") i przy 19 px gubiła końcówkę roku,
+dlatego poniżej 440 px tytuł schodzi do 17 px. Piąta ikona nie zmieści się bez zabrania
+miejsca tytułowi albo zejścia poniżej progu dotyku.
 
 ### Wciecie na pasek stanu
 
-`.topbar` dostaje `env(safe-area-inset-top)` **tylko w `@media (display-mode: standalone)`**.
-W zwykłej karcie Chrome przeglądarka sama rysuje pasek stanu, a `viewport-fit=cover` i tak
-zwraca jego pełną wysokość, więc nad nagłówkiem siedziało ok. 65 px pustki, która niczego
-nie zasłaniała. Nie wracać do bezwarunkowego `padding-top`.
+**Metatag viewport nie ma `viewport-fit=cover` i nie wolno go tam wracać.** Ta wartość każe
+stronie rysować się pod paskiem stanu telefonu i dopiero wtedy `env(safe-area-inset-top)`
+zwraca jego wysokość. W zwykłej karcie przeglądarki nic z tego nie wynika: pasek stanu rysuje
+przeglądarka, a strona dostawała ok. 65 px pustki nad nagłówkiem, która niczego nie zasłaniała.
+Chrome na iOS pokazywał to najwyraźniej, Safari nie.
+
+Warunek `@media (display-mode: standalone)` na `.topbar` był próbą obejścia i **nie zadziałał**,
+naprawę robi dopiero usunięcie `cover`. Bez niego system sam odsuwa okno strony spod paska stanu,
+a wszystkie `env(safe-area-inset-*)` zwracają zero. `apple-mobile-web-app-status-bar-style` idzie
+z tym w parze na `default`, bo `black-translucent` ma sens wyłącznie przy `cover`.
 
 ## Statystyki
 
@@ -79,7 +91,7 @@ Jeden HTML, dwa układy, decyduje CSS:
 
 | Szerokość | Co się dzieje |
 |---|---|
-| do 768 px | jedna kolumna, dolna nawigacja z 5 pozycjami |
+| do 768 px | jedna kolumna, dolna nawigacja z pozycjami `tab: true` |
 | 768 do 1023 px | szersze marginesy, siatki dwukolumnowe, większe komórki kalendarza |
 | od 1024 px | boczne menu ze wszystkimi pozycjami, dolny pasek znika, panel dzieli się na wiersze i kafelki, `.cols` układa sekcje obok siebie |
 

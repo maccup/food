@@ -1,4 +1,4 @@
-const CACHE_NAME = 'food-v5';
+const CACHE_NAME = 'food-v6';
 
 // Never hand respondWith() an undefined - a cache miss while offline must
 // still resolve to a real Response or the page throws

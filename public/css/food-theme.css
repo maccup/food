@@ -93,16 +93,22 @@ a { color: var(--accent-text); }
   border-bottom: 1px solid var(--hairline);
 }
 
-/* Wciecie na pasek stanu telefonu nalezy sie tylko wtedy, gdy aplikacja rysuje
-   sie pod nim, czyli po dodaniu do ekranu glownego. W zwyklej karcie Chrome
-   przegladarka zajmuje ten pas swoim wlasnym paskiem, a `viewport-fit=cover`
-   i tak zwraca pelna wysokosc paska stanu. Efekt byl taki, ze nad naglowkiem
-   siedzialo ok. 65 px pustki, ktora nic nie zaslaniala. */
-@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
-  .topbar { padding-top: max(env(safe-area-inset-top), 8px); }
+/* Nagłówek nie odsuwa się od góry sam z siebie. Wciecie na pasek stanu telefonu
+   robi system, bo strona nie rysuje sie juz pod nim: `viewport-fit=cover`
+   zniknelo z metatagu viewport w `layout.ts`. Nie dokladac tu `env(safe-area-inset-top)`
+   ani warunku na `display-mode`, bo bez `cover` to zawsze zero, a z `cover`
+   wraca 65 px pustki nad naglowkiem w karcie przegladarki. */
+/* Czwarta ikona w pasku zabiera 44 px, a naglowkiem bywa cala data
+   („wtorek, 11.08.2026"). Tytul ustepuje pierwszy, ikony maja stala szerokosc. */
+.topbar h1 {
+  margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.2px;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.topbar h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
-.topbar-actions { display: flex; align-items: center; gap: 2px; }
+/* Cztery ikony po 44 px zostawiaja na 402 px okolo 186 px na tytul, a najdluzszy
+   naglowek to pelna data („niedziela, 9.08.2026"), ktora przy 19 px sie nie miesci
+   i gubila koncowke roku. Ikony zostaja przy 44 px, bo to prog dotyku; ustepuje font. */
+@media (max-width: 440px) { .topbar h1 { font-size: 17px; } }
+.topbar-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .topbar-actions a, .topbar-actions button {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; min-height: 44px;

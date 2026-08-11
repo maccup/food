@@ -4,13 +4,16 @@ import { ASSET_V } from './assets';
  * Jedna lista, trzy zastosowania.
  *
  * `tab` to pasek na telefonie. Kolejnosc jest kolejnoscia czytania dnia:
- * najpierw stan („Dziś"), potem dwa spojrzenia wstecz (kalendarz i statystyki),
- * dopiero potem dwie akcje (dopisz, suple). Reszta siedzi za pozycja „Więcej".
+ * najpierw stan („Dziś"), potem spojrzenie wstecz (statystyki), dopiero potem
+ * dwie akcje (dopisz, suple). Reszta siedzi za pozycja „Więcej".
+ *
+ * Kalendarza tu nie ma i to nie jest przeoczenie: siedzi jako ikona w gornym
+ * pasku (`ui.ts`, `page()`), wiec jest pod reka z kazdego ekranu, a nie tylko
+ * z dolnego paska. Nie dodawac go tutaj drugi raz.
  *
  * Liczba pozycji w pasku nie jest wpisana w arkusz. `grid-auto-flow: column`
  * bierze ja z tej listy, wiec dodanie albo usuniecie zakladki nie wymaga
  * ruszania CSS i nie da sie doprowadzic do rozjazdu miedzy jednym a drugim.
- * Przy szesciu pozycjach na 402 px kolumna ma 67 px, czyli powyzej progu 44 px.
  *
  * `hub` oznacza sama pozycje „Więcej". Na duzym ekranie menu boczne pokazuje
  * wszystko naraz, wiec hub jest tam zbedny i jest z niego wylaczony.
@@ -20,13 +23,13 @@ const NAV: Array<{
   tab: boolean; hub?: boolean; opis?: string;
 }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today', tab: true },
-  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: true,
-    opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
   { href: '/statystyki', icon: '📊', label: 'Statystyki', key: 'stats', tab: true,
     opis: 'Dowolny zakres dat: makro, przerwy między podejściami, objawy' },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log', tab: true },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements', tab: true },
   { href: '/wiecej', icon: '☰', label: 'Więcej', key: 'more', tab: true, hub: true },
+  { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: false,
+    opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
   { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: false,
     opis: 'Lista do kupienia i podpowiedzi z brakujących grup' },
   { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions', tab: false,
@@ -55,12 +58,24 @@ export function layout(title: string, content: string, activeTab?: string) {
 <head>
   <meta charset="UTF-8">
   <!-- Bez maximum-scale i user-scalable=no: blokowanie powiekszania to bariera
-       dostepnosci, a na duzym ekranie nie ma czego chronic przed zoomem. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+       dostepnosci, a na duzym ekranie nie ma czego chronic przed zoomem.
+
+       Bez viewport-fit=cover. Ta wartosc kaze stronie rysowac sie pod paskiem
+       stanu telefonu i dopiero wtedy env(safe-area-inset-top) zwraca jego
+       wysokosc. W zwyklej karcie przegladarki nie ma z tego nic: pasek stanu
+       rysuje przegladarka, a strona dostawala ok. 65 px pustki nad naglowkiem,
+       ktora niczego nie zaslaniala. Chrome na iOS pokazywal to najwyrazniej.
+       Bez cover system sam odsuwa okno strony spod paska stanu, a wszystkie
+       env(safe-area-inset-*) zwracaja zero, wiec problem znika u zrodla,
+       a nie jest zaslaniany kolejnym warunkiem w arkuszu.
+
+       apple-mobile-web-app-status-bar-style idzie razem z tym na "default",
+       bo "black-translucent" ma sens wylacznie przy cover. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#16a34a">
   <meta name="color-scheme" content="light dark">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Food">
   <title>${title} - Food</title>
 

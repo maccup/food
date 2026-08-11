@@ -130,6 +130,7 @@ export function page(opts: {
           <h1>${opts.header}</h1>
           <div class="topbar-actions">
             ${opts.right ?? ''}
+            <a href="/kalendarz" aria-label="Kalendarz" title="Kalendarz">🗓️</a>
             <a href="/restrictions" aria-label="Wykluczenia" title="Wykluczenia">🚫</a>
             <a href="/ustawienia" aria-label="Ustawienia" title="Ustawienia">⚙️</a>
             <button class="theme-toggle" onclick="toggleTheme()" aria-label="Przełącz tryb jasny i ciemny">🌙</button>
