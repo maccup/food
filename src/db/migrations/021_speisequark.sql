@@ -4,9 +4,10 @@
 -- wpisac bez klamstwa w danych. Speisequark to zwykly twarog, jeden skladnik,
 -- laktoza w calosci zostaje.
 --
--- Etykieta Milbona, opakowanie 250 g, na 100 g: 98 kcal, B 11,0, T 4,4
--- (nasycone 2,9), W 3,6, w tym cukry 3,6 czyli laktoza, sol 0,10.
--- Zrodlo: openfoodfacts, wpis producenta 20816575.
+-- Etykieta Milbona "Faire Haltung", kubek 500 g, Privatmolkerei Bechtel,
+-- Schwarzenfeld. Na 100 g: 411 kJ / 98 kcal, T 4,4 (nasycone 2,9), W 3,6,
+-- w tym cukry 3,6 czyli laktoza, blonnik 0, B 11,0, sol 0,10. Nutri-Score A.
+-- Zrodlo: zdjecie wieczka z 11.08.2026, nie baza zewnetrzna.
 --
 -- Porcja 200 g to 7,2 g laktozy. Skyr 250 g miał ok. 10 g, wiec zamiana
 -- obniza ladunek, ale nadal jest daleko powyzej progu Monash (1 g na porcje).
@@ -17,7 +18,7 @@ PRAGMA foreign_keys = ON;
 
 INSERT INTO foods (id, name, group_id, fodmap, fodmap_note, fermented, histamine, fiber_type, processed_meat, refined_oil, notes) VALUES
   (131, 'twaróg Speisequark 20%', 13, 'moderate', 'laktoza', 1, 'moderate', 'none', 0, 0,
-   '98 kcal / 100 g, B 11,0, T 4,4 (nasycone 2,9), W 3,6 w tym cukry 3,6 czyli laktoza, sól 0,10. Skład: twaróg, jeden składnik. Milbona, opakowanie 250 g')
+   '98 kcal / 100 g, B 11,0, T 4,4 (nasycone 2,9), W 3,6 w tym cukry 3,6 czyli laktoza, błonnik 0, sól 0,10. Skład: twaróg, jeden składnik. Milbona Faire Haltung, kubek 500 g, Nutri-Score A. Etykieta odczytana ze zdjęcia 11.08.2026')
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name, group_id = excluded.group_id, fodmap = excluded.fodmap,
   fodmap_note = excluded.fodmap_note, fermented = excluded.fermented,
