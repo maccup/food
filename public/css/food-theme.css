@@ -462,16 +462,18 @@ details > summary { list-style: none; }
 .cal-empty { background: none; }
 .cal-num { font-size: 13px; font-weight: 600; }
 .cal-kcal { font-size: 10px; color: var(--muted); margin-top: 2px; }
-.cal-dots { display: flex; gap: 3px; margin-top: 3px; height: 5px; }
-.cal-dots .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
-.cal-dots .dot.bad { background: var(--bad); }
-.cal-dots .dot.ev { background: #6366f1; }
+.cal-dots { display: flex; gap: 3px; margin-top: 3px; height: 6px; }
+/* Jeden rodzaj kropki, jedno znaczenie: tego dnia jest wpis o objawie albo
+   stolcu. Czerwona kropka „coś zakazanego" zniknęła, bo mówiła to samo,
+   co czerwone tło kratki i znak „×" przy dniu. */
+.dot.ev { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: #6366f1; }
 .cal-ok   { background: #dcfce7; color: #14532d; }
 .cal-warn { background: #fef3c7; color: #713f12; }
 .cal-bad  { background: #fee2e2; color: #7f1d1d; }
-/* Kolor nie może być jedynym sygnałem, więc stan ma też znak. */
-.cal-warn .cal-num::after { content: '!'; font-size: 9px; vertical-align: super; opacity: .8; }
-.cal-bad  .cal-num::after { content: '×'; font-size: 11px; vertical-align: super; opacity: .9; }
+/* Kolor nie może być jedynym sygnałem, więc stan ma też znak. Znak przychodzi
+   z HTML, nie z `content` w arkuszu: legenda musi pokazać dokładnie ten sam,
+   a `content` nie da się odczytać z drugiego miejsca. */
+.cal-num sup { font-size: 10px; font-weight: 700; margin-left: 1px; }
 .cal-ok .cal-kcal, .cal-warn .cal-kcal, .cal-bad .cal-kcal { color: inherit; opacity: .78; }
 .cal-gap    { background: repeating-linear-gradient(45deg, #eceef1, #eceef1 4px, #dfe3e8 4px, #dfe3e8 8px); }
 .cal-none   { background: var(--surface); border: 1px solid var(--hairline); }
@@ -479,20 +481,28 @@ details > summary { list-style: none; }
 /* Zaplanowane, jeszcze nie zjedzone. Kreskowana ramka jak przyszlosc, bo tym
    jest, ale z tlem i kaloriami, bo tresc juz jest znana. */
 .cal-plan   { background: var(--surface); border: 1px dashed var(--color-primary); }
-.cal-plan .cal-num::after { content: '·'; font-size: 13px; vertical-align: super; opacity: .7; }
 .cal-today  { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 html.dark-mode .cal-ok   { background: #14532d; color: #dcfce7; }
 html.dark-mode .cal-warn { background: #713f12; color: #fef3c7; }
 html.dark-mode .cal-bad  { background: #7f1d1d; color: #fee2e2; }
 html.dark-mode .cal-gap  { background: repeating-linear-gradient(45deg, #27272a, #27272a 4px, #3f3f46 4px, #3f3f46 8px); }
-.cal-legend {
-  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;
-  font-size: 11px; color: var(--muted);
-}
+/* Legenda to lista, jeden stan w linii, a próbka jest miniaturą prawdziwej
+   kratki razem ze znakiem. Wcześniej był to zawijany rządek kwadracików 11 px
+   bez znaków: bladozielone #dcfce7 na jasnym tle było praktycznie niewidoczne,
+   a znaki „!", „×" i kropki nie miały gdzie zostać wyjaśnione. */
+.cal-legend { margin-top: 16px; display: grid; gap: 9px; font-size: 13px; }
+.cal-legend-lead { margin: 0 0 4px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.cal-legend > div { display: flex; align-items: center; gap: 10px; }
+.cal-legend > div > span { min-width: 0; }
 .cal-legend .sw {
-  display: inline-block; width: 11px; height: 11px; border-radius: 3px;
-  vertical-align: -1px; margin-right: 4px;
+  flex: 0 0 32px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; font-style: normal;
+  /* Cień wewnętrzny zamiast ramki: obrys widać także na bladym tle,
+     a kreskowane ramki `.cal-plan` i `.cal-none` zostają nietknięte. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14);
 }
+html.dark-mode .cal-legend .sw { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
 
 /* Pasek postępu nawigacji */
 #page-loader {

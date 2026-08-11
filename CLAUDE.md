@@ -85,6 +85,24 @@ przekierowuje, żeby nie psuć zakładek.
   **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
   zakłamałaby ją całkowicie.
 
+## Kalendarz
+
+Kratka niesie **kolor stanu, znak, kropkę i obwódkę** i każdy z nich odpowiada na inne pytanie.
+Legenda musi tłumaczyć wszystkie cztery, inaczej ekran jest ładny i nieczytelny (tak było
+do 11.08.2026: sześć kwadracików koloru wobec dziesięciu sygnałów w siatce).
+
+- **Stany dnia stoją w tablicy `STANY` w `calendar.ts`**: klasa, znak i zdanie legendy razem.
+  Znak („!", „×") idzie do HTML jako `<sup>`, nie do arkusza jako `content`, bo legenda
+  musi pokazać dokładnie ten sam glif, a `content` nie da się odczytać z drugiego miejsca.
+- **Próbka w legendzie jest miniaturą prawdziwej kratki**, ze znakiem w środku i obrysem
+  `box-shadow: inset`. Kwadracik 11 px w kolorze `#dcfce7` był na jasnym tle niewidoczny,
+  a obrys przez `border` zjadałby kreskowane ramki `.cal-plan` i `.cal-none`.
+- **Jeden rodzaj kropki, jedno znaczenie**: wpis o objawie albo stolcu tego dnia. Czerwona
+  kropka „coś zakazanego" została usunięta, bo powtarzała czerwone tło i znak „×", czyli
+  ten sam fakt był na kratce trzy razy.
+- Każda kratka ma `aria-label` ze złożonym opisem dnia, więc treść siatki da się przeczytać
+  bez rozróżniania kolorów.
+
 ## Układ responsywny
 
 Jeden HTML, dwa układy, decyduje CSS:

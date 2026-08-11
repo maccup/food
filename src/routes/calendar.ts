@@ -10,6 +10,31 @@ const MONTHS = [
   'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień',
 ];
 
+/**
+ * Jeden opis stanu dnia: klasa, znacznik w kratce i zdanie w legendzie.
+ *
+ * Wczesniej znaczniki „!", „×" i „·" siedzialy w arkuszu jako `content` na
+ * pseudoelemencie, a legenda pokazywala same kwadraciki koloru. Nie bylo gdzie
+ * przeczytac, co znacza, i nie dalo sie ich zmienic w jednym miejscu.
+ * Teraz kratka i legenda biora znak i zdanie z tej samej tablicy.
+ *
+ * Kropka jest osobnym sygnalem, bo odpowiada na inne pytanie niz kolor: kolor
+ * mowi, jak wyszedl dzien z jedzenia, kropka mowi, czy tego dnia cos zapisales
+ * o objawach albo stolcu. Czerwona kropka „cos zakazanego" zostala usunieta,
+ * bo powtarzala to samo, co czerwone tlo i znak „×".
+ */
+const STANY: Array<{ cls: string; znak: string; opis: string }> = [
+  { cls: 'cal-ok', znak: '', opis: 'wszystko w normie' },
+  { cls: 'cal-warn', znak: '!', opis: 'tłuszcz albo błonnik poza pasmem fazy' },
+  { cls: 'cal-bad', znak: '×', opis: 'było coś z listy zakazanych' },
+  { cls: 'cal-plan', znak: '', opis: 'catering zamówiony, dzień jeszcze nie nastąpił' },
+  { cls: 'cal-gap', znak: '', opis: 'przerwa w dostawach cateringu' },
+  { cls: 'cal-none', znak: '', opis: 'dzień minął, nic nie zapisane' },
+  { cls: 'cal-future', znak: '', opis: 'dzień jeszcze przed nami' },
+];
+
+const ZNAK = new Map(STANY.map((s) => [s.cls, s.znak]));
+
 function monthShift(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
@@ -105,10 +130,19 @@ calendar.get('/kalendarz', async (c) => {
 
     const kcal = t ?? plan;
 
-    cells.push(`<a href="/day/${date}" class="cal-cell ${cls} ${isToday ? 'cal-today' : ''}" title="${esc(hint)}">
-      <span class="cal-num">${d}</span>
+    const znak = ZNAK.get(cls) || '';
+    const opisDnia = [
+      `${d}.${String(mon).padStart(2, '0')}`,
+      hint,
+      kcal ? `${pl(kcal.kcal, 0)} kcal` : null,
+      ev ? 'zapisany objaw lub stolec' : null,
+      isToday ? 'dziś' : null,
+    ].filter(Boolean).join(', ');
+
+    cells.push(`<a href="/day/${date}" class="cal-cell ${cls} ${isToday ? 'cal-today' : ''}" aria-label="${esc(opisDnia)}" title="${esc(opisDnia)}">
+      <span class="cal-num">${d}${znak ? `<sup>${znak}</sup>` : ''}</span>
       ${kcal ? `<span class="cal-kcal">${pl(kcal.kcal, 0)}</span>` : '<span class="cal-kcal">&nbsp;</span>'}
-      <span class="cal-dots">${b?.forbidden ? '<i class="dot bad"></i>' : ''}${ev ? '<i class="dot ev"></i>' : ''}</span>
+      <span class="cal-dots">${ev ? '<i class="dot ev"></i>' : ''}</span>
     </a>`);
   }
 
@@ -139,12 +173,19 @@ calendar.get('/kalendarz', async (c) => {
       <div class="cal-head">${['pn', 'wt', 'śr', 'cz', 'pt', 'sb', 'nd'].map((d) => `<span>${d}</span>`).join('')}</div>
       <div class="cal-grid">${cells.join('')}</div>
       <div class="cal-legend">
-        <span><i class="sw cal-ok"></i> w normie</span>
-        <span><i class="sw cal-warn"></i> makro poza pasmem</span>
-        <span><i class="sw cal-bad"></i> coś zakazanego</span>
-        <span><i class="sw cal-plan"></i> zaplanowane</span>
-        <span><i class="sw cal-gap"></i> przerwa w dostawach</span>
-        <span><i class="sw cal-none"></i> brak wpisów</span>
+        <p class="cal-legend-lead">Duża liczba to dzień miesiąca, mała pod nią to kalorie z tego dnia.
+          Kolor kratki mówi, jak wyszło jedzenie.</p>
+        ${STANY.map((s) => `<div>
+          <i class="sw ${s.cls}">${s.znak}</i><span>${esc(s.opis)}</span>
+        </div>`).join('')}
+        <div>
+          <i class="sw cal-none"><b class="dot ev"></b></i>
+          <span>niebieska kropka: tego dnia zapisałeś objaw albo stolec</span>
+        </div>
+        <div>
+          <i class="sw cal-none cal-today"></i>
+          <span>zielona obwódka: dzisiejszy dzień</span>
+        </div>
       </div>
     </div>
 
