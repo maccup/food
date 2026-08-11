@@ -45,12 +45,22 @@ export interface Odchylenie {
 }
 
 /**
- * Odchylenia od pasma fazy dla podanej listy makr.
+ * Jak makro stoi wobec pasma fazy: w normie, poza pasmem, poza pasmem o ponad 10 procent.
  *
- * Prog 10 procent jest ten sam, ktorego uzywal kalendarz od poczatku, i ten sam,
- * po ktorym pasek na widoku dnia robi sie czerwony zamiast zoltego. Jedno miejsce,
- * zeby nie moglo sie rozjechac na dwa rozne „poza pasmem".
+ * Ten sam rachunek stal wczesniej w trzech miejscach osobno: w pasku `macroBar`,
+ * w wielkich liczbach panelu dnia i w kolorze kratki kalendarza. Trzy kopie
+ * jednego progu to trzy okazje, zeby jedna z nich zaczela mowic co innego.
  */
+export function stanMakro(wartosc: number, cel?: Cel | null): PoziomDnia {
+  if (!cel) return 'ok';
+  if (cel.min_value !== null && wartosc < cel.min_value * 0.9) return 'bad';
+  if (cel.max_value !== null && wartosc > cel.max_value * 1.1) return 'bad';
+  if (cel.min_value !== null && wartosc < cel.min_value) return 'warn';
+  if (cel.max_value !== null && wartosc > cel.max_value) return 'warn';
+  return 'ok';
+}
+
+/** Odchylenia od pasma fazy dla podanej listy makr. */
 export function odchylenia(
   totals: Record<string, any> | null,
   cel: (metric: string) => Cel | undefined,
@@ -67,11 +77,14 @@ export function odchylenia(
     const min = t.min_value;
     const max = t.max_value;
 
-    if (min !== null && wartosc < min) {
-      out.push({ ...m, wartosc, min, max, kierunek: 'poniżej', duze: wartosc < min * 0.9 });
-    } else if (max !== null && wartosc > max) {
-      out.push({ ...m, wartosc, min, max, kierunek: 'powyżej', duze: wartosc > max * 1.1 });
-    }
+    const stan = stanMakro(wartosc, t);
+    if (stan === 'ok') continue;
+
+    out.push({
+      ...m, wartosc, min, max,
+      kierunek: min !== null && wartosc < min ? 'poniżej' : 'powyżej',
+      duze: stan === 'bad',
+    });
   }
 
   return out;

@@ -226,6 +226,9 @@ export async function renderDay(c: any, date: string) {
     forbiddenToday: (breaches.results ?? [])
       .filter((b: any) => b.level === 'forbidden')
       .map((b: any) => ({ food_name: b.food_name, meal_name: b.meal_name ?? '' })),
+    warnToday: odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA)
+      .filter((o) => o.duze)
+      .map((o) => opisOdchylenia(o, pl)),
     minGapHours: Number(settings.get('min_gap_hours') || 4),
     nextDeliveryGap: nextGap,
   });

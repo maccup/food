@@ -123,6 +123,12 @@ wyłącznie jako kolor, a widok dnia liczył swoje paski według innego progu.
   Blok na widoku dnia je wypisuje i mówi wprost, że koloru nie zmieniają.
 - Limity są zbierane po produkcie („kawa, 2 razy"), zakazane rozbite po posiłku, bo przy
   limicie liczy się dzienna suma, a przy zakazanym to, który posiłek go przyniósł.
+- **Karta na górze widoku dnia pokazuje oba powody**, nie sam czerwony. Miała wyłącznie pasek
+  zakazanych składników, więc dzień żółty z powodu tłuszczu albo błonnika wyglądał w karcie
+  na czysty (`warnToday` w `dashboard.ts`).
+- **Próg jest jeden i liczy go `stanMakro()`.** Ten sam rachunek stał wcześniej osobno
+  w pasku `macroBar`, w wielkich liczbach panelu i w kolorze kratki. Trzy kopie jednego progu
+  to trzy okazje, żeby jedna zaczęła mówić co innego. Nie dopisywać czwartej.
 
 ## Kalendarz
 

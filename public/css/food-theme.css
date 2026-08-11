@@ -400,6 +400,8 @@ details > summary { list-style: none; }
   margin-top: 10px; padding: 9px 11px; border-radius: 10px;
   background: rgba(220, 38, 38, .1); color: var(--bad); font-size: 13px;
 }
+/* Ten sam pasek w kolorze żółtej kratki kalendarza: makro poza pasmem fazy. */
+.panel-alert.warn { background: rgba(180, 83, 9, .12); color: var(--warn); }
 .panel-actions { display: flex; gap: 8px; margin-top: 12px; }
 .panel-actions .button { flex: 1; }
 

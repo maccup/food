@@ -1,4 +1,5 @@
 import { layout, sidenav } from './layout';
+import { stanMakro } from '../utils/day-status';
 
 export function esc(value: unknown): string {
   if (value === null || value === undefined) return '';
@@ -89,11 +90,8 @@ export function macroBar(m: MacroSpec): string {
   const pct = Math.min(100, (actual / scale) * 100);
   const targetPct = Math.min(100, (max / scale) * 100);
 
-  let state: 'ok' | 'warn' | 'bad' = 'ok';
-  if (m.min !== null && actual < m.min * 0.9) state = 'bad';
-  else if (m.min !== null && actual < m.min) state = 'warn';
-  else if (m.max !== null && actual > m.max * 1.1) state = 'bad';
-  else if (m.max !== null && actual > m.max) state = 'warn';
+  // Jeden rachunek progu na całą aplikację, patrz utils/day-status.ts.
+  const state = stanMakro(actual, { min_value: m.min, max_value: m.max });
 
   const range =
     m.min !== null && m.max !== null ? `${pl(m.min, 0)} do ${pl(m.max, 0)}` : '';

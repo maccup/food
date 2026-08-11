@@ -1,4 +1,5 @@
 import { esc, pl, hhmmToMinutes as toMinutes } from './ui';
+import { stanMakro } from '../utils/day-status';
 
 export interface DashboardData {
   date: string;
@@ -16,17 +17,10 @@ export interface DashboardData {
   nextSupplement: { time: string; name: string } | null;
   overdueSupplements: number;
   forbiddenToday: Array<{ food_name: string; meal_name: string }>;
+  /** Odchylenia, które malują dzień w kalendarzu na żółto, gotowymi zdaniami. */
+  warnToday: string[];
   nextDeliveryGap: { from: string; days: number } | null;
   minGapHours: number;
-}
-
-function state(actual: number, t?: { min_value: number | null; max_value: number | null }) {
-  if (!t) return 'ok';
-  if (t.min_value !== null && actual < t.min_value * 0.9) return 'bad';
-  if (t.max_value !== null && actual > t.max_value * 1.1) return 'bad';
-  if (t.min_value !== null && actual < t.min_value) return 'warn';
-  if (t.max_value !== null && actual > t.max_value) return 'warn';
-  return 'ok';
 }
 
 /**
@@ -45,7 +39,7 @@ export function dashboard(d: DashboardData): string {
 
   const macroTiles = macros.map((m) => {
     const value = d.totals ? Number(d.totals[m.key]) : 0;
-    const st = d.totals ? state(value, d.targets.get(m.key)) : 'none';
+    const st = d.totals ? stanMakro(value, d.targets.get(m.key)) : 'none';
     const color = st === 'bad' ? 'var(--bad)' : st === 'warn' ? 'var(--warn)' : st === 'ok' ? 'var(--ok)' : 'var(--muted)';
     return `<div class="tile">
       <div class="tile-value" style="color:${color}">${d.totals ? pl(value, m.digits) : '–'}</div>
@@ -107,12 +101,26 @@ export function dashboard(d: DashboardData): string {
       </div>`
     : '';
 
-  const alerts = d.forbiddenToday.length
-    ? `<div class="panel-alert">
-        <b>${d.forbiddenToday.length === 1 ? 'Zakazany składnik' : `Zakazane składniki: ${d.forbiddenToday.length}`}</b>
-        <div style="margin-top:3px">${d.forbiddenToday.slice(0, 4).map((f) => esc(f.food_name)).join(', ')}</div>
-      </div>`
-    : '';
+  /*
+   * Karta pokazuje oba powody, dla ktorych kalendarz koloruje dzien, a nie sam
+   * czerwony. Wczesniej byl tu wylacznie pasek zakazanych skladnikow, wiec dzien
+   * zolty z powodu tluszczu albo blonnika wygladal w karcie na czysty i trzeba
+   * bylo zgadywac, o co kalendarzowi chodzi.
+   */
+  const alerts = [
+    d.forbiddenToday.length
+      ? `<div class="panel-alert">
+          <b>${d.forbiddenToday.length === 1 ? 'Zakazany składnik' : `Zakazane składniki: ${d.forbiddenToday.length}`}</b>
+          <div style="margin-top:3px">${d.forbiddenToday.slice(0, 4).map((f) => esc(f.food_name)).join(', ')}</div>
+        </div>`
+      : '',
+    d.warnToday.length
+      ? `<div class="panel-alert warn">
+          <b>Poza pasmem fazy: ${d.warnToday.length}</b>
+          <div style="margin-top:3px">${d.warnToday.map(esc).join('<br>')}</div>
+        </div>`
+      : '',
+  ].join('');
 
   const missingMacros = d.totals?.meals_without_macros > 0 || d.totals?.meals_estimated > 0
     ? `<div class="panel-note">${[
