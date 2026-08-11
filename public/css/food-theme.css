@@ -190,6 +190,26 @@ a { color: var(--accent-text); }
   background: var(--surface);
 }
 
+/* Wiersz o objawie i stolcu: opis, wartosc, potem Popraw i Usun.
+   Na telefonie opis i akcje nie mieszcza sie w jednej linii, wiec wiersz sie
+   zawija zamiast wypychac przyciski poza ekran. Opis dostaje `min-width: 0`,
+   bo bez tego element flex nie zwezi sie ponizej swojej tresci i lamanie
+   tekstu nigdy nie zadziala. Akcje sa male i szare, bo rzadko sie ich uzywa,
+   ale maja 44 px pola dotyku, wiec pionowy padding jest wiekszy niz tekst. */
+.simple-list li > span:first-child { flex: 1 1 60%; min-width: 0; }
+.ev-right {
+  display: flex; align-items: center; gap: 4px;
+  flex: 0 0 auto; margin-left: auto;
+}
+.ev-wartosc { color: var(--muted); white-space: nowrap; margin-right: 4px; }
+.ev-akcja {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: 0 6px; font-size: 13px; color: var(--muted);
+  background: none; border: 0; cursor: pointer; text-decoration: none;
+}
+.ev-akcja:hover { color: var(--text); }
+.ev-usun:hover { color: var(--bad); }
+
 /* Lista nawigacyjna ekranu „Więcej" i skrotow. Cały wiersz jest odnośnikiem,
    więc wciecie i obramowanie musza siedziec na <a>, nie na jego rodzicu. */
 .nav-list {

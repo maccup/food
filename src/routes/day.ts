@@ -284,10 +284,16 @@ export async function renderDay(c: any, date: string) {
       ? emptyState('Brak wpisów o objawach i stolcu.')
       : `<div class="list simple-list"><ul>
           ${(symptoms.results ?? []).map((s: any) =>
-            `<li><span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span><span style="color:var(--muted)">${s.severity ?? '?'}/10</span></li>`
+            `<li>
+              <span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span>
+              <span class="ev-right"><span class="ev-wartosc">${s.severity ?? '?'}/10</span>${akcjeWpisu('objaw', 'symptom', s.id, date)}</span>
+            </li>`
           ).join('')}
           ${(stools.results ?? []).map((s: any) =>
-            `<li><span>${esc(s.time ?? '')} stolec${s.incomplete ? ', niepełne wypróżnienie' : ''}${s.floating ? ', pływający' : ''}</span><span style="color:var(--muted)">Bristol ${s.bristol}</span></li>`
+            `<li>
+              <span>${esc(s.time ?? '')} stolec${s.straining ? ', parcie' : ''}${s.incomplete ? ', niepełne wypróżnienie' : ''}${s.floating ? ', pływający' : ''}</span>
+              <span class="ev-right"><span class="ev-wartosc">Bristol ${s.bristol}</span>${akcjeWpisu('stolec', 'stool', s.id, date)}</span>
+            </li>`
           ).join('')}
         </ul></div>`;
 
@@ -340,6 +346,23 @@ export async function renderDay(c: any, date: string) {
     header: isToday ? 'Dziś' : `${Number(date.slice(8))}.${date.slice(5, 7)}.${date.slice(0, 4)}`,
     content,
   });
+}
+
+/**
+ * Poprawienie i skasowanie wpisu o objawie albo stolcu.
+ *
+ * Edycja prowadzi do tego samego formularza w zakladce Dopisz, tylko wypelnionego.
+ * Kasowanie jest zwyklym POST-em, bo to jedyny nieodwracalny przycisk na tym
+ * ekranie i ma wymagac potwierdzenia, a nie chodzic pod odnosnikiem, ktory
+ * przegladarka moze odwiedzic sama.
+ */
+function akcjeWpisu(co: string, tabela: string, id: number, date: string): string {
+  return `<a href="/log?co=${co}&edytuj=${id}" class="ev-akcja">Popraw</a>
+    <form method="POST" action="/log/${tabela}/${id}/usun" style="display:contents"
+          onsubmit="return confirm('Usunąć ten wpis? Tego nie da się cofnąć.')">
+      <input type="hidden" name="date" value="${date}">
+      <button type="submit" class="ev-akcja ev-usun">Usuń</button>
+    </form>`;
 }
 
 function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {

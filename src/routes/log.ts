@@ -26,6 +26,16 @@ log.get('/log', async (c) => {
   const db = c.env.DB;
   const co = TABS.some(([k]) => k === c.req.query('co')) ? c.req.query('co')! : 'posilek';
 
+  // Edycja to ten sam formularz z wypelnionymi polami, nie osobny ekran.
+  // Drugi formularz o tych samych polach rozjechalby sie przy pierwszej zmianie,
+  // a tu chodzi o poprawienie literowki, nie o inny rodzaj wpisu.
+  const edytujId = Number(c.req.query('edytuj')) || null;
+  const edytowany = edytujId
+    ? await db.prepare(
+        `SELECT * FROM ${co === 'objaw' ? 'symptoms' : 'stools'} WHERE id = ?`
+      ).bind(edytujId).first<any>()
+    : null;
+
   const slotOptions = Object.entries(SLOT_LABEL)
     .map(([k, v]) => `<option value="${k}"${k === 'obiad' ? ' selected' : ''}>${v}</option>`)
     .join('');
@@ -135,63 +145,72 @@ log.get('/log', async (c) => {
       </form>
     `)}`;
 
+  const e = edytowany;
+  const anuluj = e
+    ? `<a href="/day/${esc(e.date)}" class="button" style="width:100%;margin-top:8px">Anuluj</a>`
+    : '';
+
   const objaw = `
-    ${blockTitle('Objaw')}
+    ${blockTitle(e ? 'Popraw objaw' : 'Objaw')}
     ${card(`
       <form method="POST" action="/log/symptom" class="form-narrow">
-        <input type="hidden" name="date" value="${date}">
+        <input type="hidden" name="date" value="${e ? esc(e.date) : date}">
+        ${e ? `<input type="hidden" name="id" value="${e.id}">` : ''}
         <div class="field">
           <label class="field-label" for="s-kind">Rodzaj</label>
           <select id="s-kind" name="kind">
             ${['gazy', 'wzdecia', 'bol', 'przelewanie', 'zgaga', 'inne']
-              .map((k) => `<option value="${k}">${k === 'wzdecia' ? 'wzdęcia' : k === 'bol' ? 'ból' : k}</option>`).join('')}
+              .map((k) => `<option value="${k}"${e?.kind === k ? ' selected' : ''}>${k === 'wzdecia' ? 'wzdęcia' : k === 'bol' ? 'ból' : k}</option>`).join('')}
           </select>
         </div>
         <div class="grid-2">
           <div class="field">
             <label class="field-label" for="s-sev">Nasilenie, 0 do 10</label>
-            <input type="number" id="s-sev" name="severity" min="0" max="10" value="5">
+            <input type="number" id="s-sev" name="severity" min="0" max="10" value="${e?.severity ?? 5}">
           </div>
           <div class="field">
             <label class="field-label" for="s-time">Godzina</label>
-            <input type="time" id="s-time" name="time">
+            <input type="time" id="s-time" name="time" value="${esc(e?.time ?? '')}">
           </div>
         </div>
         <div class="field">
           <label class="field-label" for="s-note">Notatka</label>
-          <input type="text" id="s-note" name="notes" placeholder="opcjonalnie">
+          <input type="text" id="s-note" name="notes" placeholder="opcjonalnie" value="${esc(e?.notes ?? '')}">
         </div>
-        <button type="submit" class="button button-fill" style="width:100%">Zapisz objaw</button>
+        <button type="submit" class="button button-fill" style="width:100%">${e ? 'Zapisz zmiany' : 'Zapisz objaw'}</button>
+        ${anuluj}
       </form>
     `)}`;
 
+  const bristolOpisy: Array<[number, string]> = [
+    [1, 'twarde grudki, zaparcie'], [2, 'grudkowaty, zbity'], [3, 'z pęknięciami, norma'],
+    [4, 'gładki i miękki, ideał'], [5, 'miękkie kawałki'], [6, 'papkowaty, biegunka'], [7, 'wodnisty'],
+  ];
+
   const stolec = `
-    ${blockTitle('Stolec', 'skala Bristolska 1 do 7')}
+    ${blockTitle(e ? 'Popraw stolec' : 'Stolec', 'skala Bristolska 1 do 7')}
     ${card(`
       <form method="POST" action="/log/stool" class="form-narrow">
-        <input type="hidden" name="date" value="${date}">
+        <input type="hidden" name="date" value="${e ? esc(e.date) : date}">
+        ${e ? `<input type="hidden" name="id" value="${e.id}">` : ''}
         <div class="field">
           <label class="field-label" for="st-type">Typ</label>
           <select id="st-type" name="bristol">
-            <option value="1">1, twarde grudki, zaparcie</option>
-            <option value="2">2, grudkowaty, zbity</option>
-            <option value="3">3, z pęknięciami, norma</option>
-            <option value="4" selected>4, gładki i miękki, ideał</option>
-            <option value="5">5, miękkie kawałki</option>
-            <option value="6">6, papkowaty, biegunka</option>
-            <option value="7">7, wodnisty</option>
+            ${bristolOpisy.map(([n, opis]) =>
+              `<option value="${n}"${(e ? e.bristol === n : n === 4) ? ' selected' : ''}>${n}, ${opis}</option>`).join('')}
           </select>
         </div>
         <div class="field">
           <label class="field-label" for="st-time">Godzina</label>
-          <input type="time" id="st-time" name="time">
+          <input type="time" id="st-time" name="time" value="${esc(e?.time ?? '')}">
         </div>
         <div class="check-row">
-          <label class="check"><input type="checkbox" name="straining" value="1"> parcie</label>
-          <label class="check"><input type="checkbox" name="incomplete" value="1"> niepełne</label>
-          <label class="check"><input type="checkbox" name="floating" value="1"> pływający</label>
+          <label class="check"><input type="checkbox" name="straining" value="1"${e?.straining ? ' checked' : ''}> parcie</label>
+          <label class="check"><input type="checkbox" name="incomplete" value="1"${e?.incomplete ? ' checked' : ''}> niepełne</label>
+          <label class="check"><input type="checkbox" name="floating" value="1"${e?.floating ? ' checked' : ''}> pływający</label>
         </div>
-        <button type="submit" class="button button-fill" style="width:100%">Zapisz stolec</button>
+        <button type="submit" class="button button-fill" style="width:100%">${e ? 'Zapisz zmiany' : 'Zapisz stolec'}</button>
+        ${anuluj}
       </form>
     `)}`;
 
@@ -288,22 +307,53 @@ log.post('/log/szablon/:id', async (c) => {
 log.post('/log/symptom', async (c) => {
   const b = await c.req.parseBody();
   const date = String(b.date || todayWarsaw());
-  await c.env.DB.prepare(`INSERT INTO symptoms (date, time, kind, severity, notes) VALUES (?, ?, ?, ?, ?)`)
-    .bind(date, godzinaWpisu(b.time, date), String(b.kind || 'inne'), numOrNull(b.severity), String(b.notes || '') || null)
-    .run();
+  const id = Number(b.id) || null;
+  const pola = [
+    godzinaWpisu(b.time, date), String(b.kind || 'inne'),
+    numOrNull(b.severity), String(b.notes || '') || null,
+  ];
+
+  await (id
+    ? c.env.DB.prepare(`UPDATE symptoms SET time = ?, kind = ?, severity = ?, notes = ? WHERE id = ?`)
+        .bind(...pola, id)
+    : c.env.DB.prepare(`INSERT INTO symptoms (time, kind, severity, notes, date) VALUES (?, ?, ?, ?, ?)`)
+        .bind(...pola, date)
+  ).run();
+
   return c.redirect(`/day/${date}`);
+});
+
+log.post('/log/symptom/:id/usun', async (c) => {
+  const b = await c.req.parseBody();
+  await c.env.DB.prepare(`DELETE FROM symptoms WHERE id = ?`).bind(Number(c.req.param('id'))).run();
+  return c.redirect(`/day/${String(b.date || todayWarsaw())}`);
 });
 
 log.post('/log/stool', async (c) => {
   const b = await c.req.parseBody();
   const date = String(b.date || todayWarsaw());
-  await c.env.DB.prepare(
-    `INSERT INTO stools (date, time, bristol, straining, incomplete, floating) VALUES (?, ?, ?, ?, ?, ?)`
-  )
-    .bind(date, godzinaWpisu(b.time, date), Number(b.bristol || 4),
-      b.straining === '1' ? 1 : 0, b.incomplete === '1' ? 1 : 0, b.floating === '1' ? 1 : 0)
-    .run();
+  const id = Number(b.id) || null;
+  const pola = [
+    godzinaWpisu(b.time, date), Number(b.bristol || 4),
+    b.straining === '1' ? 1 : 0, b.incomplete === '1' ? 1 : 0, b.floating === '1' ? 1 : 0,
+  ];
+
+  await (id
+    ? c.env.DB.prepare(
+        `UPDATE stools SET time = ?, bristol = ?, straining = ?, incomplete = ?, floating = ? WHERE id = ?`
+      ).bind(...pola, id)
+    : c.env.DB.prepare(
+        `INSERT INTO stools (time, bristol, straining, incomplete, floating, date) VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(...pola, date)
+  ).run();
+
   return c.redirect(`/day/${date}`);
+});
+
+log.post('/log/stool/:id/usun', async (c) => {
+  const b = await c.req.parseBody();
+  await c.env.DB.prepare(`DELETE FROM stools WHERE id = ?`).bind(Number(c.req.param('id'))).run();
+  return c.redirect(`/day/${String(b.date || todayWarsaw())}`);
 });
 
 export default log;
