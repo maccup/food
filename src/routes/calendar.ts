@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, blockTitle, esc, pl, todayWarsaw } from '../views/ui';
 import { loadNoDelivery } from '../utils/settings';
+import { MAKRA_KALENDARZA, odchylenia, poziomDnia } from '../utils/day-status';
 
 const calendar = new Hono<{ Bindings: Env }>();
 
@@ -111,15 +112,16 @@ calendar.get('/kalendarz', async (c) => {
       cls = 'cal-gap';
       hint = 'przerwa w dostawach';
     } else if (t) {
-      const fat = targetFor(phase?.id, 'fat_g');
-      const fiber = targetFor(phase?.id, 'fiber_g');
-      const outside =
-        (fat && (t.fat_g > (fat.max_value ?? 1e9) * 1.1 || t.fat_g < (fat.min_value ?? 0) * 0.9)) ||
-        (fiber && (t.fiber_g > (fiber.max_value ?? 1e9) * 1.1 || t.fiber_g < (fiber.min_value ?? 0) * 0.9));
+      // Ta sama funkcja liczy to na widoku dnia, patrz utils/day-status.ts.
+      // Tam jej wynik jest wypisany slowami, tu zamienia sie w kolor kratki.
+      const odch = odchylenia(t, (m) => targetFor(phase?.id, m), MAKRA_KALENDARZA);
+      const poziom = poziomDnia(b?.forbidden ?? 0, odch);
 
-      if (b?.forbidden > 0) { cls = 'cal-bad'; hint = `${b.forbidden} zakazane`; }
-      else if (outside) { cls = 'cal-warn'; hint = 'makro poza pasmem'; }
-      else { cls = 'cal-ok'; hint = 'w normie'; }
+      if (poziom === 'bad') { cls = 'cal-bad'; hint = `${b.forbidden} zakazane`; }
+      else if (poziom === 'warn') {
+        cls = 'cal-warn';
+        hint = odch.filter((o) => o.duze).map((o) => `${o.label.toLowerCase()} ${o.kierunek} celu`).join(', ');
+      } else { cls = 'cal-ok'; hint = 'w normie'; }
     } else if (plan) {
       cls = 'cal-plan';
       hint = `zaplanowane, ${pl(plan.kcal, 0)} kcal`;

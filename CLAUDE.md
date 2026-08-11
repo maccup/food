@@ -105,6 +105,25 @@ przekierowuje, żeby nie psuć zakładek.
   **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
   zakłamałaby ją całkowicie.
 
+## Dlaczego kalendarz zaznacza dzień
+
+Regułę koloru kratki liczy `utils/day-status.ts` i **korzystają z niej dwa ekrany**: kalendarz
+zamienia jej wynik w kolor, widok dnia wypisuje go słowami w bloku „Dlaczego kalendarz to
+zaznacza". Wcześniej reguła siedziała w pętli rysującej kratki, więc dawało się ją zobaczyć
+wyłącznie jako kolor, a widok dnia liczył swoje paski według innego progu.
+
+- **Kolor ustawiają tylko dwie rzeczy**: produkt z listy zakazanych (czerwony) oraz tłuszcz
+  albo błonnik odchylone o **ponad 10 procent** od pasma fazy (żółty).
+- **Kalendarz patrzy tylko na tłuszcz i błonnik** i to jest decyzja kliniczna: tłuszcz przy
+  elastazie 151, błonnik przez obserwację, że więcej błonnika to twardszy stolec. Kalorie,
+  białko i węgle mają paski na widoku dnia, ale koloru nie ruszają.
+- **Limity nie kolorują dnia i nie mogą zacząć.** `v_restriction_breaches` zgłasza każde
+  wystąpienie produktu z limitem, a nie przekroczenie limitu, więc kawa, banan czy surowa
+  sałata pojawiają się prawie codziennie. Pomalowanie tego na żółto zrobiłoby żółty miesiąc.
+  Blok na widoku dnia je wypisuje i mówi wprost, że koloru nie zmieniają.
+- Limity są zbierane po produkcie („kawa, 2 razy"), zakazane rozbite po posiłku, bo przy
+  limicie liczy się dzienna suma, a przy zakazanym to, który posiłek go przyniósł.
+
 ## Kalendarz
 
 Kratka niesie **kolor stanu, znak, kropkę i obwódkę** i każdy z nich odpowiada na inne pytanie.
@@ -243,6 +262,11 @@ liczą wyłącznie `zjedzony`.
 - **Ustawienia mają grupy, nie jedną płaską listę.** `settings.grupa` decyduje,
   w którym zwijanym bloku pole się pojawi (`okna`, `przerwy`). Nowy klucz bez
   przypisania trafia do bloku „Pozostałe" i nie znika z ekranu.
+- **Blok „Okna jedzenia" pokazuje rachunek, nie sam wynik.** Przy oknach 08:00 i 13:00 stało
+  tam samo „4 h 30 ✓" i brakujące pół godziny wyglądało na błąd aplikacji. To `default_meal_min`:
+  przerwa liczy się od **końca** posiłku. Każdy wiersz wypisuje teraz „08:00 plus 30 min,
+  czyli koniec 08:30, do 13:00". Nagłówek bloku dostaje krótkie podsumowanie z osobnej funkcji
+  `podsumowanieOkien()`, bo w `<summary>` mieści się jedna linia.
 - **Godziny okien i próg przerwy muszą do siebie pasować, a to dwa niezależne pola.**
   Blok „Okna jedzenia" wylicza przerwy między oknami przy obecnym `default_meal_min`
   i oznacza te poniżej `min_gap_hours`. 09:00 / 14:00 / 18:30 mieści się w progu 4 h

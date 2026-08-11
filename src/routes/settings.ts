@@ -88,23 +88,61 @@ function blok(tytul: string, podpis: string | null, tresc: string, otwarty = fal
  * 4 h tylko przy posiłku 30-minutowym. Przy 45 minutach druga przerwa spada do
  * 3 h 45 i próg pęka po cichu. To odczyt, nie blokada: pokazuje rozjazd, nie zabrania go.
  */
-function kontrolaOkien(s: Setting[]): string {
+function przerwyOkien(s: Setting[]): Array<{ od: string; koniec: string; doGodz: string; minuty: number; ok: boolean }> {
   const wartosc = (k: string) => s.find((x) => x.key === k)?.value ?? '';
   const czasy = ['sitting_1_time', 'sitting_2_time', 'sitting_3_time'].map(wartosc).filter(Boolean);
-  if (czasy.length < 2) return '';
+  if (czasy.length < 2) return [];
 
   const trwanie = Number(wartosc('default_meal_min') || 30);
   const prog = Number(wartosc('min_gap_hours') || 4) * 60;
 
-  const kawalki = czasy.slice(0, -1).map((od, i) => {
-    const minuty = hhmmToMinutes(czasy[i + 1]) - (hhmmToMinutes(od) + trwanie);
-    const ok = minuty >= prog;
-    const abs = Math.abs(minuty);
-    const tekst = `${minuty < 0 ? '−' : ''}${Math.floor(abs / 60)} h ${String(abs % 60).padStart(2, '0')}`;
-    return `<span style="color:${ok ? 'var(--ok)' : 'var(--bad)'};font-weight:600">${tekst} ${ok ? '✓' : '✗'}</span>`;
+  return czasy.slice(0, -1).map((od, i) => {
+    const koniec = hhmmToMinutes(od) + trwanie;
+    const minuty = hhmmToMinutes(czasy[i + 1]) - koniec;
+    return {
+      od,
+      koniec: `${String(Math.floor(koniec / 60) % 24).padStart(2, '0')}:${String(koniec % 60).padStart(2, '0')}`,
+      doGodz: czasy[i + 1],
+      minuty,
+      ok: minuty >= prog,
+    };
   });
+}
 
-  return kawalki.join(' <span style="color:var(--muted)">&middot;</span> ');
+function czasPrzerwy(minuty: number): string {
+  const abs = Math.abs(minuty);
+  return `${minuty < 0 ? '−' : ''}${Math.floor(abs / 60)} h ${String(abs % 60).padStart(2, '0')}`;
+}
+
+/** Krótki podpis w nagłówku bloku. Pełny rachunek siedzi w `kontrolaOkien`. */
+function podsumowanieOkien(s: Setting[]): string {
+  const p = przerwyOkien(s);
+  if (!p.length) return '';
+  return p
+    .map((x) => `<span style="color:${x.ok ? 'var(--ok)' : 'var(--bad)'};font-weight:600">${czasPrzerwy(x.minuty)} ${x.ok ? '✓' : '✗'}</span>`)
+    .join(' <span style="color:var(--muted)">&middot;</span> ');
+}
+
+/*
+ * Rachunek pokazany, nie sam wynik. Wczesniej stalo tu „4 h 30 ✓" przy oknach
+ * 08:00 i 13:00, wiec brakujace pol godziny wygladalo na blad aplikacji.
+ * Te 30 minut to `default_meal_min` z sasiedniego bloku: przerwa liczy sie
+ * od konca posilku, bo fala oczyszczajaca jelito rusza dopiero po oproznieniu
+ * zoladka, a nie od chwili siadania do stolu.
+ */
+function kontrolaOkien(s: Setting[]): string {
+  const wiersze = przerwyOkien(s);
+  if (!wiersze.length) return '';
+
+  const trwanie = Number(s.find((x) => x.key === 'default_meal_min')?.value || 30);
+
+  return `<p style="margin:0 0 6px">Przerwa liczy się od <b>końca</b> posiłku, nie od godziny startu.
+      Posiłek trwa domyślnie ${trwanie} min (pole „Domyślny czas posiłku” w bloku „Zasady przerw”),
+      więc każde okno zabiera tyle z przerwy do następnego.</p>
+    ${wiersze.map((x) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0">
+      <span>${esc(x.od)} plus ${trwanie} min, czyli koniec ${esc(x.koniec)}, do ${esc(x.doGodz)}</span>
+      <span style="color:${x.ok ? 'var(--ok)' : 'var(--bad)'};font-weight:600;white-space:nowrap">${czasPrzerwy(x.minuty)} ${x.ok ? '✓' : '✗'}</span>
+    </div>`).join('')}`;
 }
 
 /** Przeszłe, aktywne, planowane. Liczone z dat, żeby nie było flagi do przestawiania. */
@@ -171,8 +209,8 @@ settings.get('/ustawienia', async (c) => {
   const grupaHtml = (klucz: string) => card(`<form method="POST" action="/ustawienia/ogolne">
       ${(grupy.get(klucz) ?? []).map(poleUstawienia).join('')}
       ${klucz === 'okna'
-        ? `<div style="font-size:12px;color:var(--muted);margin:-4px 0 12px">
-             Przerwy przy obecnym czasie posiłku: ${kontrolaOkien(general)}
+        ? `<div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.45">
+             ${kontrolaOkien(general)}
            </div>`
         : ''}
       <button type="submit" class="button button-fill">Zapisz</button>
@@ -389,7 +427,7 @@ settings.get('/ustawienia', async (c) => {
     </form>`);
 
   const content = `
-    ${blok('Okna jedzenia', kontrolaOkien(general), grupaHtml('okna'), true)}
+    ${blok('Okna jedzenia', podsumowanieOkien(general), grupaHtml('okna'), true)}
     ${blok('Zasady przerw', null, grupaHtml('przerwy'), true)}
     ${[...grupy.keys()].filter((g) => g !== 'okna' && g !== 'przerwy')
       .map((g) => blok(GRUPA_LABEL[g] ?? g, null, grupaHtml(g))).join('')}

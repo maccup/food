@@ -1,2 +1,2 @@
 // Plik generowany przez scripts/stamp-assets.mjs. Nie edytowac recznie.
-export const ASSET_V = '09d39afb1c';
+export const ASSET_V = '692d15bbde';

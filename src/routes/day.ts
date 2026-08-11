@@ -7,10 +7,14 @@ import {
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
 import { przerwyDnia } from '../utils/gaps-stats';
+import {
+  MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
+} from '../utils/day-status';
 import { loadDayGaps, renderGaps } from './gaps';
 
 const day = new Hono<{ Bindings: Env }>();
 
+/** Kolejność pasków. Progi i podział na „koloruje kalendarz" siedzą w utils/day-status.ts. */
 const MACROS = [
   { key: 'kcal', label: 'Kalorie', unit: 'kcal' },
   { key: 'protein_g', label: 'Białko', unit: 'g' },
@@ -18,6 +22,61 @@ const MACROS = [
   { key: 'carbs_g', label: 'Węgle', unit: 'g' },
   { key: 'fiber_g', label: 'Błonnik', unit: 'g' },
 ];
+
+/**
+ * Dlaczego kalendarz zaznacza ten dzień.
+ *
+ * Reguła koloru kratki siedziała wyłącznie w kalendarzu, więc dawało się ją
+ * zobaczyć tylko jako kolor. Do tego część ostrzeżeń nie miała gdzie się
+ * pokazać: przekroczone limity i makra spoza tłuszczu i błonnika nie zmieniają
+ * koloru dnia i nie było o nich ani słowa. Ten blok wypisuje wszystko, co
+ * aplikacja o dniu wie, i mówi wprost, które pozycje ustawiają kolor.
+ */
+function ostrzezenia(
+  zakazane: any[],
+  limity: any[],
+  kolorujace: Odchylenie[],
+  pozostale: Odchylenie[]
+): string {
+  const wiersz = (poziom: string, znak: string, tytul: string, opis: string) =>
+    `<div class="ostrzezenie">
+      <span class="flag ${poziom}">${znak}</span>
+      <span><b>${esc(tytul)}</b>${opis ? `<br><span class="ostrzezenie-opis">${esc(opis)}</span>` : ''}</span>
+    </div>`;
+
+  const duze = kolorujace.filter((o) => o.duze);
+  const male = kolorujace.filter((o) => !o.duze);
+
+  const rzedy = [
+    ...zakazane.map((b) =>
+      wiersz('forbidden', '×', `${b.food_name}${b.meal_name ? ` w „${b.meal_name}”` : ''}`,
+        `zakazane: ${b.reason}`)),
+    ...duze.map((o) =>
+      wiersz('limit', '!', opisOdchylenia(o, pl), 'odchylenie ponad 10 procent, to ono maluje dzień na żółto')),
+    ...male.map((o) =>
+      wiersz('info', '·', opisOdchylenia(o, pl), 'poza pasmem, ale w granicach 10 procent, więc dzień zostaje zielony')),
+    // Limity zbierane po produkcie, nie po posilku: dwie kawy to jedna linia
+    // „kawa, 2 razy", bo przy limicie liczy sie dzienna suma, a nie to,
+    // przy ktorym posilku padla. Zakazane zostaja rozbite, bo tam chcesz
+    // wiedziec, ktory posilek to przyniosl.
+    ...[...new Map(limity.map((b: any) => [b.food_name, b])).values()].map((b: any) => {
+      const ile = limity.filter((x: any) => x.food_name === b.food_name).length;
+      return wiersz('info', '·', `${b.food_name}${ile > 1 ? `, ${ile} razy` : ''}`,
+        `limit${b.max_amount ? ` ${b.max_amount}` : ''}: ${b.reason}. Nie zmienia koloru dnia`);
+    }),
+    ...pozostale.map((o) =>
+      wiersz('info', '·', opisOdchylenia(o, pl), 'kalendarz patrzy tylko na tłuszcz i błonnik, więc to nie zmienia koloru dnia')),
+  ];
+
+  if (!rzedy.length) {
+    return emptyState('Nic do zgłoszenia. Kalendarz pokaże ten dzień na zielono.');
+  }
+
+  return card(`${rzedy.join('')}
+    <p class="hint" style="margin:10px 0 0">Kolor kratki w kalendarzu ustawiają tylko dwa pierwsze rodzaje:
+      produkt z listy zakazanych maluje dzień na czerwono, tłuszcz albo błonnik odchylone
+      o ponad 10 procent od pasma fazy na żółto. Reszta jest do wiadomości.</p>`);
+}
 
 // Trzy stany zamiast jednej flagi: "dopiero bedzie" i "nie zjadlem" mialy
 // wczesniej ta sama wartosc, przez co plan znikal z kalendarza. Patrz 019.
@@ -234,6 +293,14 @@ export async function renderDay(c: any, date: string) {
       <a href="/day/${shiftDate(date, 1)}" class="button button-small">następny ›</a>
     </div>
 
+    ${blockTitle('Dlaczego kalendarz to zaznacza', 'wszystkie ostrzeżenia dnia')}
+    ${ostrzezenia(
+      (breaches.results ?? []).filter((b: any) => b.level === 'forbidden'),
+      (breaches.results ?? []).filter((b: any) => b.level === 'limit'),
+      odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA),
+      odchylenia(totals, (m) => targetBy.get(m), MAKRA_POZOSTALE)
+    )}
+
     ${blockTitle('Makro wobec celu')}
     ${totals
       ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
@@ -257,7 +324,10 @@ export async function renderDay(c: any, date: string) {
     // paska, wiec po kliknieciu "poprzedni dzien" albo dnia w kalendarzu
     // uzytkownik na telefonie tracil cala nawigacje i wracal tylko wstecz.
     tab: 'today',
-    header: isToday ? 'Dziś' : esc(prettyDate(date)),
+    // Sam dzień bez nazwy tygodnia, bo pełna data nie mieści się w pasku obok
+    // czterech ikon („poniedziałek, 10.08.2026" gubiło końcówkę). Pełny zapis
+    // stoi wiersz niżej, w przełączniku dni, więc nic nie ginie.
+    header: isToday ? 'Dziś' : `${Number(date.slice(8))}.${date.slice(5, 7)}.${date.slice(0, 4)}`,
     content,
   });
 }
