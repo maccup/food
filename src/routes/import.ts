@@ -107,8 +107,14 @@ importRoutes.post('/api/import/hfood', async (c) => {
       const dishes = Array.isArray(dvm?.dishes) ? dvm.dishes : [];
       const chosen = dishes.find((d: any) => d?.selected) ?? dishes.find((d: any) => d?.defaultDish);
 
-      // Menu jeszcze nieopublikowane: pozycja istnieje, ale bez dania.
-      if (!chosen?.dish?.dishName) {
+      /*
+       * Menu jeszcze nieopublikowane. Od 12.08 panel zwraca dla takich dni
+       * atrape zamiast pustej listy: jedno "danie" o nazwie posilku
+       * ("Sniadanie"), bez skladu i bez makr. Sam `dishName` juz tego nie
+       * odsiewa, bo atrapa go ma. Rozstrzyga `dishScheduleId`: prawdziwe danie
+       * zawsze je ma, bo to nim panel wymienia posilek.
+       */
+      if (!chosen?.dish?.dishName || !chosen?.dishScheduleId) {
         stats.mealsSkipped++;
         continue;
       }
