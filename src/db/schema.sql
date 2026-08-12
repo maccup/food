@@ -233,6 +233,31 @@ CREATE TABLE IF NOT EXISTS stress (
   CHECK (level BETWEEN 0 AND 10)
 );
 
+-- Apple Watch, jeden wiersz na dobe, wsadem z recznego eksportu ze Zdrowia.
+-- Wiersz istnieje takze dla dni bez zadnego wpisu, bo zegarek mierzy niezaleznie
+-- od tego, czy cokolwiek zapisales. Powody projektowe w migracji 027.
+CREATE TABLE IF NOT EXISTS watch (
+  date             TEXT PRIMARY KEY,
+  hrv_noc          REAL,     -- mediana SDNN 00:00-08:00, ms, glowna liczba
+  hrv              REAL,     -- mediana SDNN z calej doby, kontrola dla nocnej
+  hrv_pomiarow     INTEGER,
+  rhr              INTEGER,  -- tetno spoczynkowe
+  sen_min          INTEGER,  -- gleboki + REM + lekki, przypisany do dnia pobudki
+  sen_gleboki_min  INTEGER,
+  sen_rem_min      INTEGER,
+  sen_budzenia_min INTEGER,
+  zasniecie        TEXT,     -- HH:MM
+  temperatura      REAL,     -- nadgarstek podczas snu, stopnie Celsjusza
+  oddech           REAL,
+  spo2             REAL,     -- ulamek, 0,97 to 97 procent
+  kroki            INTEGER,
+  kcal_aktywne     INTEGER,
+  min_ruchu        INTEGER,
+  imported_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_watch_date ON watch(date);
+
 -- ---------------------------------------------------------------------------
 -- TESTOWANIE PRODUKTOW (rozszerzanie diety od 15.09)
 -- ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
 import { loadDayGaps, renderGaps } from './gaps';
+import { METRYKI, WatchRow, normy, stan } from '../utils/watch';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -97,7 +98,7 @@ interface MealRow {
 export async function renderDay(c: any, date: string) {
   const db = c.env.DB;
 
-  const [totals, phase, meals, breaches, symptoms, stools, stres] = await Promise.all([
+  const [totals, phase, meals, breaches, symptoms, stools, stres, zegarek] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date = ?`).bind(date).first<any>(),
     db.prepare(
       `SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`
@@ -116,7 +117,18 @@ export async function renderDay(c: any, date: string) {
     db.prepare(`SELECT * FROM symptoms WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
     db.prepare(`SELECT * FROM stools WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
     db.prepare(`SELECT * FROM stress WHERE date = ?`).bind(date).first(),
+    db.prepare(`SELECT * FROM watch WHERE date = ?`).bind(date).first(),
   ]);
+
+  /*
+   * Norma zegarka dociagana dopiero wtedy, gdy ta doba w ogole ma pomiary.
+   * Dane wchodza wsadem raz na kilka tygodni, wiec wiekszosc otwarc strony
+   * dotyczy dni bez wiersza i drugie zapytanie byloby wtedy czystym kosztem.
+   */
+  const normyZegarka = zegarek
+    ? normy(((await db.prepare(`SELECT * FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
+        .bind(shiftDate(date, -180), date).all()).results ?? []) as unknown as WatchRow[])
+    : new Map();
 
   const targets = phase
     ? await db.prepare(`SELECT metric, min_value, max_value FROM targets WHERE phase_id = ?`)
@@ -312,8 +324,33 @@ export async function renderDay(c: any, date: string) {
         </li>`
       : '';
 
+  /*
+   * Zegarek stoi tuz po stresie, bo obie liczby opisuja cala dobe, a nie moment,
+   * i czyta sie je razem: sam spadek HRV nic nie znaczy, dopoki nie wiadomo, czy
+   * dzien byl napiety, czy po prostu krotko spany.
+   *
+   * Wiersza NIE MA, gdy doba nie ma pomiarow, i nie ma tu odpowiednika pustego
+   * wiersza od stresu. Stres zalezy od wpisu, wiec przypomnienie ma sens.
+   * Zegarek mierzyl niezaleznie od wszystkiego, a brak wiersza znaczy tylko tyle,
+   * ze eksport jeszcze nie zostal wgrany. Przypominanie o tym przy kazdym dniu
+   * z osobna zamienia sie w szum na kilkudziesieciu ekranach naraz.
+   */
+  const NA_WIERSZ = ['hrv_noc', 'rhr', 'sen_min'];
+  const zegarekWiersz = zegarek
+    ? `<li>
+        <span>zegarek: ${METRYKI.filter((m) => NA_WIERSZ.includes(m.key as string)).map((m) => {
+          const v = (zegarek as any)[m.key];
+          if (typeof v !== 'number') return '';
+          const poza = stan(m, v, normyZegarka.get(m.key as string)) === 'poza';
+          return `<span${poza ? ' style="color:var(--warn);font-weight:600"' : ''}>${esc(m.krotko)} ${esc(m.format(v))}</span>`;
+        }).filter(Boolean).join(', ')}</span>
+        <span class="ev-right"><a href="/zegarek" class="ev-akcja">Trendy</a></span>
+      </li>`
+    : '';
+
   const wpisy = [
     stresWiersz,
+    zegarekWiersz,
     ...(symptoms.results ?? []).map((s: any) =>
       `<li>
         <span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span>
@@ -330,9 +367,18 @@ export async function renderDay(c: any, date: string) {
     ? `<div class="list simple-list"><ul>${wpisy.join('')}</ul></div>`
     : emptyState('Brak wpisów o objawach i stolcu.');
 
+  /*
+   * Kolejnosc sekcji ustawiona 12.08 i jest to kolejnosc czytania dnia, nie
+   * wazności danych. Najpierw gdzie jestem (data), potem co mam teraz zrobic
+   * (panel z suplementami i godzina najblizszego posilku), potem stan dnia
+   * (makro, posilki, objawy), na koncu planowanie na jutro (braki) i dopiero
+   * wyjasnienie, dlaczego kalendarz maluje ten dzien tak, a nie inaczej.
+   *
+   * Legenda stoi ostatnia celowo. To jedyna sekcja, ktora nie niesie nowych
+   * faktow, tylko tlumaczy te wypisane wyzej, wiec czytana jest wtedy, gdy cos
+   * sie nie zgadza, a nie za kazdym otwarciem ekranu.
+   */
   const content = `
-    ${panel}
-
     <div class="block" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
       <a href="/day/${shiftDate(date, -1)}" class="button button-small">‹ poprzedni</a>
       <div style="text-align:center">
@@ -342,13 +388,7 @@ export async function renderDay(c: any, date: string) {
       <a href="/day/${shiftDate(date, 1)}" class="button button-small">następny ›</a>
     </div>
 
-    ${blockTitle('Dlaczego kalendarz to zaznacza', 'wszystkie ostrzeżenia dnia')}
-    ${ostrzezenia(
-      (breaches.results ?? []).filter((b: any) => b.level === 'forbidden'),
-      (breaches.results ?? []).filter((b: any) => b.level === 'limit'),
-      odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA),
-      odchylenia(totals, (m) => targetBy.get(m), MAKRA_POZOSTALE)
-    )}
+    ${panel}
 
     ${blockTitle('Makro wobec celu')}
     ${totals
@@ -358,11 +398,19 @@ export async function renderDay(c: any, date: string) {
     ${blockTitle('Posiłki', `cel: przerwy min. ${minGap} h`)}
     ${mealsHtml}
 
+    ${blockTitle('Stres, zegarek, objawy i stolec')}
+    ${eventsHtml}
+
     ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
     ${renderGaps(dayGaps, date, doKupienia?.n ?? 0)}
 
-    ${blockTitle('Stres, objawy i stolec')}
-    ${eventsHtml}
+    ${blockTitle('Dlaczego kalendarz to zaznacza', 'wszystkie ostrzeżenia dnia')}
+    ${ostrzezenia(
+      (breaches.results ?? []).filter((b: any) => b.level === 'forbidden'),
+      (breaches.results ?? []).filter((b: any) => b.level === 'limit'),
+      odchylenia(totals, (m) => targetBy.get(m), MAKRA_KALENDARZA),
+      odchylenia(totals, (m) => targetBy.get(m), MAKRA_POZOSTALE)
+    )}
 
     <div class="block"><a href="/log?date=${date}" class="button button-fill">Dopisz posiłek, objaw, stolec albo stres</a></div>
   `;

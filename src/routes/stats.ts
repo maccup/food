@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
-import { page, card, blockTitle, emptyState, esc, pl, todayWarsaw, shiftDate, daysBetween, DAY_NAMES } from '../views/ui';
+import { page, card, blockTitle, emptyState, esc, pl, todayWarsaw, shiftDate, daysBetween, DAY_NAMES, poniedzialek } from '../views/ui';
 import { loadSettings } from '../utils/settings';
 import { statystykaPrzerw, PosilekDoPrzerw } from '../utils/gaps-stats';
 
@@ -18,12 +18,6 @@ const ZAKRESY: Array<[string, string]> = [
   ['miesiac', 'ten miesiąc'],
   ['rok', 'rok'],
 ];
-
-/** Dzien tygodnia liczony od poniedzialku, zeby tygodnie w tabeli zaczynaly sie tam, gdzie w regulach. */
-function poniedzialek(date: string): string {
-  const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
-  return shiftDate(date, -dow);
-}
 
 function okres(zakres: string, od: string | undefined, doDnia: string | undefined) {
   const dzis = todayWarsaw();

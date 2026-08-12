@@ -89,6 +89,18 @@ export function shiftDate(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Poniedzialek tygodnia, w ktorym lezy data.
+ *
+ * Tydzien zaczyna sie w poniedzialek, bo tak licza reguly pokrycia grup. Jedna
+ * kopia dla statystyk i dla zegarka: dwie zwijalyby te same dni w dwa rozne
+ * tygodnie i wykres nie zgadzalby sie z tabela obok.
+ */
+export function poniedzialek(date: string): string {
+  const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
+  return shiftDate(date, -dow);
+}
+
 export function prettyDate(date: string): string {
   const d = new Date(`${date}T12:00:00Z`);
   const [y, m, dd] = date.split('-');

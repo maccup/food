@@ -177,6 +177,7 @@ foods ──< restrictions                 wykluczenia, limity, preferencje
 meals ──< meal_foods                   dziennik, powiązany ze słownikiem
 symptoms, stools                       objawy
 stress                                 stres dnia, jeden wiersz na dobę
+watch                                  Apple Watch, jeden wiersz na dobę, wsadem
 supplements ──< supplement_schedule ──< supplement_log
 ```
 
@@ -374,6 +375,48 @@ Widok dnia trzyma wiersz „stres dnia niewpisany" z odnośnikiem także wtedy, 
 wpisu nie ma. To jedyny mechanizm przypominający o wpisie, a bez wpisów ta liczba
 nie mierzy niczego.
 
+## Zegarek: wsad, nie synchronizacja
+
+Tabela `watch`, jeden wiersz na dobę, `date` jako klucz główny. Dane wchodzą
+**wsadem z ręcznego eksportu** ze Zdrowia na iPhonie, poleceniem
+`npm run watch:import`. Import jest upsertem, więc kolejny eksport wgrywa się na
+wierzch poprzedniego i nie trzeba pilnować, od kiedy dogrywać.
+
+**Nie przerabiać tego na automatyczną synchronizację.** Decyzja Maćka z 12.08.2026,
+podjęta po przedstawieniu trzech dróg: automat wymagałby oddania całego HealthKit
+zewnętrznej aplikacji albo złożenia łańcucha w Skrótach, a analiza jest wsteczna
+i robi się raz na kilka tygodni. Czas rzeczywisty nie zmienia tu żadnej decyzji.
+
+Osobna tabela, nie kolumny w `stress`. Zegarek mierzy dobę niezależnie od tego,
+czy cokolwiek tego dnia wpisałeś, więc wiersz istnieje także dla dni bez wpisów.
+Doklejenie do `stress` gubiłoby HRV w każdym dniu bez samooceny.
+
+**Norma jest własna, nie populacyjna** (`src/utils/watch.ts`). HRV zdrowych
+dorosłych rozciąga się od kilkunastu do ponad stu milisekund, więc próg z
+podręcznika nie mówi nic o konkretnym człowieku. Progi to decyl 10 i 90 z
+własnych ostatnich **180 dni**, liczone zawsze z tego samego okna niezależnie od
+zakresu wybranego na ekranie: inaczej przełączenie na „14 dni" zwężałoby normę do
+dwóch tygodni i typowy dzień wypadałby poza nią przez zmianę punktu odniesienia,
+a nie stanu organizmu. Norma nie powstaje poniżej **30 dni** pomiarów, bo
+wcześniej decyle są szumem i co trzeci dzień wyglądałby na nietypowy, co uczy
+ignorować wszystkie ostrzeżenia.
+
+HRV trzymane dwa razy i to nie jest duplikat. `hrv_noc` to mediana pomiarów z
+00:00 do 08:00 i tylko ona jest porównywalna między dobami, bo w nocy nie ma
+ruchu, kawy ani rozmowy. `hrv` z całej doby zostaje jako kontrola: rozjazd między
+jednym a drugim znaczy nierówny dzień, nie złą noc. **Mediana, nie średnia**:
+zegarek regularnie wypuszcza pojedynczy odczyt dwa razy wyższy od reszty, a
+średnia z jedenastu pomiarów skacze przez to o kilkanaście procent.
+
+Sen przypisany do **dnia pobudki**, bo tego dnia chodzisz niewyspany. Kroki i
+kalorie brane jako **najwyższa suma z jednego źródła**, nie suma źródeł: iPhone w
+kieszeni i zegarek na ręku liczą te same kroki równolegle.
+
+Widok dnia pokazuje wiersz zegarka **tylko wtedy, gdy doba ma pomiary**, i nie ma
+tu odpowiednika pustego wiersza od stresu. Stres zależy od wpisu, więc
+przypomnienie ma sens. Zegarek mierzył niezależnie od wszystkiego, a brak wiersza
+znaczy tylko tyle, że eksport nie został jeszcze wgrany.
+
 ## Pusta godzina znaczy „teraz", ale tylko dzisiaj
 
 `godzinaWpisu()` w `src/views/ui.ts` to jedyne miejsce, gdzie zapada ta decyzja.
@@ -475,6 +518,7 @@ npm run deploy         # Cloudflare Pages
 npm run db:schema      # schemat na zdalne D1
 npm run db:seed        # dane startowe i słownik produktów
 npm run export         # 7 plików CSV do Longevity Agent/CSV_Analysis
+npm run watch:import   # eksport Apple Health do tabeli watch (domyślnie ~/Downloads/apple_health_export/export.xml)
 ```
 
 Migracje SQL: `src/db/migrations/`, uruchamiane ręcznie przez
@@ -488,6 +532,10 @@ indziej bez zmian. Warunek jest jeden i twardy: **każde wdrożenie sprawdzone n
 adresie**, nie w logach i nie na kodzie. Migracja bazy idzie zaraz po wdrożeniu kodu,
 nie przed, bo stary kod pracuje do przełączenia deploymentu i wtedy przerwa jest
 sekundowa zamiast kilkudziesięciosekundowej.
+
+Wyjątek: **migracja, która tylko dodaje nową tabelę, idzie przed kodem.** Stary kod
+o niej nie wie, więc niczego nie zepsuje, a nowy kod wdrożony wcześniej zwracałby
+500 na każdym ekranie, który z niej czyta.
 
 Hasło: `wrangler pages secret put PASSWORD --project-name=food` oraz `.dev.vars` lokalnie.
 
