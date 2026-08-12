@@ -243,6 +243,32 @@ watch.get('/zegarek', async (c) => {
         </tr>`).join('')}</tbody>
       </table></div>
 
+      ${(() => {
+        /*
+         * Rachunek rozpisany na liczbach z OSTATNIEJ doby, nie na przykladzie.
+         * Wzor z literami nie tlumaczy niczego, dopoki nie widac, ktora liczba
+         * na tym ekranie jest ktora. Blok liczy sie sam, wiec nie da sie go
+         * rozjechac z tabela wyzej.
+         */
+        const { d, b } = dniBilansu[dniBilansu.length - 1];
+        const dzien = `${d.date.slice(8)}.${d.date.slice(5, 7)}`;
+        const krok = (opis: string, rachunek: string) =>
+          `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px">
+            <span style="color:var(--muted)">${opis}</span><b style="white-space:nowrap">${rachunek}</b>
+          </div>`;
+        return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline)">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Jak to policzone, na przykładzie ${dzien}</div>
+          ${krok('spalone w spoczynku, z ustawień', `${Math.round(b.bazowe)} kcal`)}
+          ${krok('spalone ruchem, z zegarka', `+ ${Math.round(b.aktywne)} kcal`)}
+          ${krok('razem spalone', `= ${Math.round(b.spalone)} kcal`)}
+          ${krok('zjedzone, z dziennika', `− ${Math.round(b.zjedzone)} kcal`)}
+          ${krok('saldo dnia', `= ${b.saldo < 0 ? '−' : '+'}${Math.abs(Math.round(b.saldo))} kcal`)}
+          <div style="height:8px"></div>
+          ${krok(`średnia z ${dniBilansu.length} ${dniBilansu.length === 1 ? 'dnia' : 'dni'} w tabeli`, `${sredniSaldo < 0 ? '−' : '+'}${Math.abs(Math.round(sredniSaldo))} kcal`)}
+          ${krok(`razy 7 dni, dzielone przez ${KCAL_NA_KILOGRAM} kcal na kilogram`, `${kg < 0 ? '−' : '+'}${Math.abs(kg).toFixed(2).replace('.', ',')} kg / tydzień`)}
+        </div>`;
+      })()}
+
       <p class="hint" style="margin:12px 0 0">
         <b>Ta liczba jest orientacyjna i trzeba o tym pamiętać za każdym razem.</b>
         ${dniBilansu[0].b.bazoweZZegarka
@@ -252,7 +278,7 @@ watch.get('/zegarek', async (c) => {
              Własną liczbę ustawia się w Ustawieniach, pole „Własna przemiana podstawowa".`
           : `Przemiana podstawowa wzięta z ustawień (${Math.round(dniBilansu[0].b.bazowe)} kcal), nie z zegarka.`} Kalorie aktywne zegarek szacuje z tętna i ruchu, a przy sile potrafi
         pomylić się o kilkadziesiąt procent.${naSzacunkach ? ' Część posiłków po Twojej stronie też jest liczona na oko.' : ''}
-        Trzy błędy naraz, każdy w dowolną stronę.
+        Każdy z tych błędów może iść w dowolną stronę.
       </p>
       <p class="hint" style="margin:8px 0 0">
         <b>Jedynym twardym sprawdzianem deficytu jest masa ciała.</b>
