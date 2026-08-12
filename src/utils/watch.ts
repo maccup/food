@@ -38,6 +38,11 @@ export interface Bilans {
   zjedzone: number;
   /** Zjedzone minus spalone. Ujemne znaczy deficyt. */
   saldo: number;
+  /** Przemiana podstawowa uzyta w rachunku. */
+  bazowe: number;
+  aktywne: number;
+  /** Czy przemiana podstawowa pochodzi z wzoru Apple, czy z ustawienia. Widoczne w UI, bo zmienia wynik o setki kcal. */
+  bazoweZZegarka: boolean;
 }
 
 /**
@@ -52,12 +57,24 @@ export interface Bilans {
 export function bilans(
   zjedzone: number | null | undefined,
   w: WatchRow | null | undefined,
-  kompletna: boolean
+  kompletna: boolean,
+  bmrWlasny?: number | null
 ): Bilans | null {
   if (!kompletna || !w || typeof zjedzone !== 'number' || !zjedzone) return null;
-  if (typeof w.kcal_bazowe !== 'number') return null;
-  const spalone = w.kcal_bazowe + (w.kcal_aktywne ?? 0);
-  return { spalone, zjedzone, saldo: zjedzone - spalone };
+
+  /*
+   * Wlasna przemiana podstawowa wygrywa z liczba z zegarka, gdy jest ustawiona.
+   * Apple liczy ja ze wzoru na masie i wieku, wiec nie wie nic o skladzie ciala,
+   * a roznica wobec rachunku z masy beztluszczowej siega u Macka 250 kcal na
+   * dobe. Przy deficycie rzedu 400 kcal to nie jest korekta, tylko polowa wyniku.
+   */
+  const wlasna = typeof bmrWlasny === 'number' && bmrWlasny > 0 ? bmrWlasny : null;
+  const bazowe = wlasna ?? w.kcal_bazowe;
+  if (typeof bazowe !== 'number') return null;
+
+  const aktywne = w.kcal_aktywne ?? 0;
+  const spalone = bazowe + aktywne;
+  return { spalone, zjedzone, saldo: zjedzone - spalone, bazowe, aktywne, bazoweZZegarka: wlasna === null };
 }
 
 /** „deficyt 442 kcal" zamiast „saldo −442", bo znak przed liczba czyta sie na dwa sposoby. */

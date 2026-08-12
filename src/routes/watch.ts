@@ -3,6 +3,7 @@ import { Env } from '../types';
 import {
   page, card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween, poniedzialek,
 } from '../views/ui';
+import { loadSettings } from '../utils/settings';
 import {
   METRYKI, WatchRow, Norma, Bilans, normy, sygnaly, stan, MIN_DNI_NORMY,
   bilans, opisSalda, kgNaTydzien, KCAL_NA_KILOGRAM,
@@ -129,6 +130,7 @@ watch.get('/zegarek', async (c) => {
 
   const lista = wZakresie.results ?? [];
   const n = normy(doNormy.results ?? []);
+  const bmrWlasny = Number((await loadSettings(db)).get('bmr_kcal') || 0) || null;
 
   if (!ostatni) {
     return c.html(page({
@@ -201,7 +203,7 @@ watch.get('/zegarek', async (c) => {
   );
 
   const dniBilansu = lista
-    .map((d) => ({ d, b: bilans(zjedzoneWgDat.get(d.date)?.kcal, d, d.date < dzis) }))
+    .map((d) => ({ d, b: bilans(zjedzoneWgDat.get(d.date)?.kcal, d, d.date < dzis, bmrWlasny) }))
     .filter((x): x is { d: WatchRow; b: Bilans } => x.b !== null);
 
   const sredniSaldo = dniBilansu.length
@@ -235,7 +237,7 @@ watch.get('/zegarek', async (c) => {
           <td><a href="/day/${d.date}">${d.date.slice(8)}.${d.date.slice(5, 7)}</a></td>
           <td style="text-align:right">${Math.round(b.zjedzone)}</td>
           <td style="text-align:right">${Math.round(b.spalone)}
-            <span style="color:var(--muted);font-size:11px">${d.kcal_bazowe ?? 0}+${d.kcal_aktywne ?? 0}</span></td>
+            <span style="color:var(--muted);font-size:11px">${Math.round(b.bazowe)}+${Math.round(b.aktywne)}</span></td>
           <td style="text-align:right;white-space:nowrap;color:${b.saldo < -50 ? 'var(--ok)' : b.saldo > 50 ? 'var(--warn)' : 'var(--muted)'};font-weight:600">
             ${b.saldo < 0 ? '−' : '+'}${Math.abs(Math.round(b.saldo))}</td>
         </tr>`).join('')}</tbody>
@@ -243,9 +245,12 @@ watch.get('/zegarek', async (c) => {
 
       <p class="hint" style="margin:12px 0 0">
         <b>Ta liczba jest orientacyjna i trzeba o tym pamiętać za każdym razem.</b>
-        Przemiana podstawowa (pierwsza liczba w kolumnie „spalone") nie jest mierzona:
-        Apple wylicza ją ze wzoru z wieku, wzrostu, masy i płci, więc nieaktualna waga w profilu iPhone
-        przesuwa całą kolumnę. Kalorie aktywne zegarek szacuje z tętna i ruchu, a przy sile potrafi
+        ${dniBilansu[0].b.bazoweZZegarka
+          ? `Przemiana podstawowa (pierwsza liczba w kolumnie „spalone") nie jest mierzona:
+             Apple wylicza ją ze wzoru z wieku, wzrostu, masy i płci, nic nie wie o składzie ciała
+             i zwykle wychodzi jej więcej niż z rachunku na masie beztłuszczowej.
+             Własną liczbę ustawia się w Ustawieniach, pole „Własna przemiana podstawowa".`
+          : `Przemiana podstawowa wzięta z ustawień (${Math.round(dniBilansu[0].b.bazowe)} kcal), nie z zegarka.`} Kalorie aktywne zegarek szacuje z tętna i ruchu, a przy sile potrafi
         pomylić się o kilkadziesiąt procent.${naSzacunkach ? ' Część posiłków po Twojej stronie też jest liczona na oko.' : ''}
         Trzy błędy naraz, każdy w dowolną stronę.
       </p>

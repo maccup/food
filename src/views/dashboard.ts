@@ -1,5 +1,6 @@
 import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui';
 import { stanMakro } from '../utils/day-status';
+import { opisSalda } from '../utils/watch';
 
 export interface DashboardData {
   date: string;
@@ -23,6 +24,14 @@ export interface DashboardData {
   lastBiteMinutes: number | null;
   nextDeliveryGap: { from: string; days: number } | null;
   minGapHours: number;
+  /**
+   * Bilans kalorii z ostatnich dni ZAMKNIETYCH, nigdy z dzisiejszego.
+   * Przemiana podstawowa narasta do polnocy, wiec dzis kazdy dzien wyglada na
+   * gigantyczna nadwyzke az do wieczora i taka liczba uczylaby ignorowac panel.
+   */
+  bilansOkna: { srednia: number; dni: number; kgTydzien: number; ostatni: number | null } | null;
+  /** Metryki zegarka poza wlasna norma, zdaniami. Puste, gdy wszystko typowe. */
+  zegarekPozaNorma: string[];
 }
 
 /**
@@ -146,6 +155,14 @@ export function dashboard(d: DashboardData): string {
           <div style="margin-top:3px">${d.warnToday.map(esc).join('<br>')}</div>
         </div>`
       : '',
+    // Zegarek na koncu, bo mowi o organizmie, a nie o tym, co zostalo zjedzone,
+    // wiec nie jest odchyleniem od protokolu i nie maluje dnia w kalendarzu.
+    d.zegarekPozaNorma.length
+      ? `<div class="panel-alert warn">
+          <b>Zegarek poza Twoją normą: ${d.zegarekPozaNorma.length}</b>
+          <div style="margin-top:3px">${d.zegarekPozaNorma.map(esc).join('<br>')}</div>
+        </div>`
+      : '',
   ].join('');
 
   const missingMacros = d.totals?.meals_without_macros > 0 || d.totals?.meals_estimated > 0
@@ -153,6 +170,27 @@ export function dashboard(d: DashboardData): string {
         d.totals.meals_without_macros ? `${d.totals.meals_without_macros} bez makr` : '',
         d.totals.meals_estimated ? `${d.totals.meals_estimated} na oko` : '',
       ].filter(Boolean).join(', ')}, więc sumy są przybliżone</div>`
+    : '';
+
+  /*
+   * Bilans w panelu pokazuje SREDNIA z okna, a nie ostatni dzien, i to jest
+   * istota tego wiersza. Pojedyncza doba potrafi sie rozjechac o tysiac kcal
+   * przez jeden trening albo jedna kolacje, a pytanie brzmi „czy schodze", nie
+   * „ile zjadlem wczoraj". Ostatni dzien stoi z boku jako kontekst.
+   */
+  const bilansLine = d.bilansOkna
+    ? `<div class="panel-row">
+        <div>
+          <div class="panel-row-label">Bilans kalorii</div>
+          <div class="panel-row-main" style="color:${d.bilansOkna.srednia < -50 ? 'var(--ok)' : d.bilansOkna.srednia > 50 ? 'var(--warn)' : 'var(--text)'}">
+            ${esc(opisSalda(d.bilansOkna.srednia))} dziennie
+          </div>
+          <div class="panel-row-why">${d.bilansOkna.kgTydzien < 0 ? '−' : '+'}${Math.abs(d.bilansOkna.kgTydzien).toFixed(2).replace('.', ',')} kg tygodniowo, z ${d.bilansOkna.dni} ${d.bilansOkna.dni === 1 ? 'dnia zamkniętego' : 'dni zamkniętych'}</div>
+        </div>
+        <div class="panel-row-side">${d.bilansOkna.ostatni !== null
+          ? `wczoraj ${d.bilansOkna.ostatni < 0 ? '−' : '+'}${Math.abs(Math.round(d.bilansOkna.ostatni))}`
+          : ''}</div>
+      </div>`
     : '';
 
   const gapLine = d.nextDeliveryGap
@@ -171,6 +209,7 @@ export function dashboard(d: DashboardData): string {
     <div class="panel-main">
       ${suppLine}
       ${nextWindow}
+      ${bilansLine}
       ${phaseLine}
       ${gapLine}
     </div>

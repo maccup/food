@@ -12,7 +12,7 @@ import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
 import { loadDayGaps, renderGaps } from './gaps';
-import { METRYKI, WatchRow, normy, stan, bilans, opisSalda } from '../utils/watch';
+import { METRYKI, WatchRow, normy, stan, sygnaly, bilans, opisSalda, kgNaTydzien } from '../utils/watch';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -228,6 +228,38 @@ export async function renderDay(c: any, date: string) {
     }
   }
 
+  /*
+   * Okno bilansu: siedem ostatnich dob ZAMKNIETYCH. Dzisiejsza nie wchodzi,
+   * bo przemiana podstawowa narasta do polnocy. Siedem, bo tyle wygladza
+   * pojedynczy trening i pojedyncza kolacje, a jednoczesnie reaguje na zmiane
+   * w ciagu tygodnia, a nie miesiaca.
+   */
+  const bmrWlasny = Number(settings.get('bmr_kcal') || 0) || null;
+  const koniecOkna = date < todayWarsaw() ? date : shiftDate(todayWarsaw(), -1);
+  const oknoBilansu = await db.prepare(
+    `SELECT w.date, w.kcal_bazowe, w.kcal_aktywne, t.kcal AS zjedzone
+     FROM watch w JOIN v_day_totals t ON t.date = w.date
+     WHERE w.date BETWEEN ? AND ? ORDER BY w.date`
+  ).bind(shiftDate(koniecOkna, -6), koniecOkna).all();
+
+  const bilanse = ((oknoBilansu.results ?? []) as any[])
+    .map((r) => ({ date: r.date as string, b: bilans(r.zjedzone, r as WatchRow, true, bmrWlasny) }))
+    .filter((x): x is { date: string; b: NonNullable<ReturnType<typeof bilans>> } => x.b !== null);
+
+  const bilansOkna = bilanse.length
+    ? (() => {
+        const srednia = bilanse.reduce((a, x) => a + x.b.saldo, 0) / bilanse.length;
+        return {
+          srednia,
+          dni: bilanse.length,
+          kgTydzien: kgNaTydzien(srednia),
+          ostatni: bilanse[bilanse.length - 1].date === koniecOkna
+            ? bilanse[bilanse.length - 1].b.saldo
+            : null,
+        };
+      })()
+    : null;
+
   const panel = dashboard({
     date,
     isToday,
@@ -257,6 +289,10 @@ export async function renderDay(c: any, date: string) {
     lastBiteMinutes: koniecOstatniegoPodejscia(meals.results ?? [], regulyPrzerw),
     minGapHours: Number(settings.get('min_gap_hours') || 4),
     nextDeliveryGap: nextGap,
+    bilansOkna,
+    zegarekPozaNorma: sygnaly(zegarek as WatchRow | null, normyZegarka).map(
+      (s) => `${s.metryka.label} ${s.metryka.format(s.wartosc)}, Twoja norma to ${s.metryka.format(s.norma.mediana)}`
+    ),
   });
 
   /*
@@ -354,7 +390,7 @@ export async function renderDay(c: any, date: string) {
    * znika dla dnia dzisiejszego, bo przemiana podstawowa narasta do polnocy
    * i o poludniu kazdy dzien wygladalby na potezna nadwyzke.
    */
-  const b = bilans(totals?.kcal, zegarek as WatchRow | null, date < todayWarsaw());
+  const b = bilans(totals?.kcal, zegarek as WatchRow | null, date < todayWarsaw(), bmrWlasny);
   const bilansWiersz = b
     ? `<li>
         <span>bilans: zjedzone ${Math.round(b.zjedzone)}, spalone ${Math.round(b.spalone)} kcal</span>
