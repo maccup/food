@@ -412,6 +412,30 @@ Sen przypisany do **dnia pobudki**, bo tego dnia chodzisz niewyspany. Kroki i
 kalorie brane jako **najwyższa suma z jednego źródła**, nie suma źródeł: iPhone w
 kieszeni i zegarek na ręku liczą te same kroki równolegle.
 
+### Bilans kalorii
+
+`spalone = kcal_bazowe + kcal_aktywne`, `saldo = zjedzone − spalone`, ujemne to
+deficyt. Zjedzone przychodzi z `v_day_totals`, więc bilans powstaje tylko dla dób,
+które mają jedno i drugie.
+
+**Dzień dzisiejszy jest wykluczony i to warunek sensu, nie ostrożność.** Przemiana
+podstawowa narasta przez całą dobę, więc o południu wynosi połowę tego, co wyniesie
+wieczorem, a bilans pokazywałby potężną nadwyżkę przy każdym śniadaniu. Doby bez
+wpisanego jedzenia też wypadają: zero kcal w bazie znaczy „nie wpisał", a nie „nic
+nie jadł", i policzenie im deficytu 3000 kcal fałszowałoby średnią w stronę, którą
+najłatwiej wziąć za sukces.
+
+**Każde miejsce pokazujące bilans ma obowiązek pokazać obok, na czym stoi.**
+`kcal_bazowe` nie jest pomiarem, tylko wzorem Apple z wieku, wzrostu, masy i płci,
+więc nieaktualna waga w profilu iPhone przesuwa całą kolumnę. Kalorie aktywne to
+szacunek z tętna i ruchu, przy sile mylący się o kilkadziesiąt procent. Do tego
+`meals_estimated` po stronie jedzenia. Trzy błędy naraz, każdy w dowolną stronę.
+Nie usuwać tych zastrzeżeń jako „rozwlekłych": bez nich liczba wygląda na pomiar.
+
+Ekran mówi wprost, że **jedynym twardym sprawdzianem deficytu jest masa ciała**, i
+podaje wiek ostatniego wpisu wagi. Przy dziurze ponad 30 dni zamienia się to w
+prośbę o podpięcie wagi, bo deficytu nie ma wtedy czym zweryfikować.
+
 Widok dnia pokazuje wiersz zegarka **tylko wtedy, gdy doba ma pomiary**, i nie ma
 tu odpowiednika pustego wiersza od stresu. Stres zależy od wpisu, więc
 przypomnienie ma sens. Zegarek mierzył niezależnie od wszystkiego, a brak wiersza

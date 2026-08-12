@@ -36,6 +36,9 @@ const MEDIANA = {
   [`${Q}RespiratoryRate`]: 'oddech',
   [`${Q}OxygenSaturation`]: 'spo2',
   [`${Q}AppleSleepingWristTemperature`]: 'temperatura',
+  [`${Q}VO2Max`]: 'vo2max',
+  [`${Q}BodyMass`]: 'waga',
+  [`${Q}WalkingHeartRateAverage`]: 'tetno_marsz',
 };
 
 /*
@@ -47,6 +50,7 @@ const SUMA = {
   [`${Q}StepCount`]: 'kroki',
   [`${Q}ActiveEnergyBurned`]: 'kcal_aktywne',
   [`${Q}AppleExerciseTime`]: 'min_ruchu',
+  [`${Q}BasalEnergyBurned`]: 'kcal_bazowe',
 };
 
 const FAZY = {
@@ -146,7 +150,7 @@ console.error(`przetworzono ${n} rekordow, ${dni.size} dni`);
 const KOLUMNY = [
   'date', 'hrv_noc', 'hrv', 'hrv_pomiarow', 'rhr', 'sen_min', 'sen_gleboki_min',
   'sen_rem_min', 'sen_budzenia_min', 'zasniecie', 'temperatura', 'oddech', 'spo2',
-  'kroki', 'kcal_aktywne', 'min_ruchu',
+  'kroki', 'kcal_aktywne', 'min_ruchu', 'kcal_bazowe', 'vo2max', 'waga', 'tetno_marsz',
 ];
 
 const sql = (v) => (v === null || v === undefined ? 'NULL'
@@ -172,6 +176,7 @@ for (const [data, d] of [...dni.entries()].sort()) {
     d.zasniecie ? d.zasniecie.slice(11, 16) : null,
     m('temperatura', 2), m('oddech'), m('spo2', 3),
     naj('kroki'), naj('kcal_aktywne'), naj('min_ruchu'),
+    naj('kcal_bazowe'), m('vo2max', 2), m('waga', 1), m('tetno_marsz', 0),
   ];
   // Dzien bez ani jednego pomiaru poza data nie ma po co zajmowac wiersza.
   if (w.slice(1).every((x) => x === null)) continue;

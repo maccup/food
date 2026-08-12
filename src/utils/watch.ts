@@ -27,6 +27,58 @@ export interface WatchRow {
   kroki: number | null;
   kcal_aktywne: number | null;
   min_ruchu: number | null;
+  kcal_bazowe: number | null;
+  vo2max: number | null;
+  waga: number | null;
+  tetno_marsz: number | null;
+}
+
+export interface Bilans {
+  spalone: number;
+  zjedzone: number;
+  /** Zjedzone minus spalone. Ujemne znaczy deficyt. */
+  saldo: number;
+}
+
+/**
+ * Bilans doby.
+ *
+ * Zwraca null dla doby niekompletnej, i to jest istota tej funkcji, a nie
+ * zabezpieczenie na wszelki wypadek. Przemiana podstawowa narasta przez cala
+ * dobe, wiec o poludniu wynosi polowe tego, co wyniesie wieczorem. Bilans dnia
+ * dzisiejszego pokazywalby gigantyczna nadwyzke przy kazdym sniadaniu i uczyl
+ * ignorowac te liczbe.
+ */
+export function bilans(
+  zjedzone: number | null | undefined,
+  w: WatchRow | null | undefined,
+  kompletna: boolean
+): Bilans | null {
+  if (!kompletna || !w || typeof zjedzone !== 'number' || !zjedzone) return null;
+  if (typeof w.kcal_bazowe !== 'number') return null;
+  const spalone = w.kcal_bazowe + (w.kcal_aktywne ?? 0);
+  return { spalone, zjedzone, saldo: zjedzone - spalone };
+}
+
+/** „deficyt 442 kcal" zamiast „saldo −442", bo znak przed liczba czyta sie na dwa sposoby. */
+export function opisSalda(saldo: number): string {
+  const v = Math.abs(Math.round(saldo));
+  if (v < 50) return 'wyjście na zero';
+  return `${saldo < 0 ? 'deficyt' : 'nadwyżka'} ${v} kcal`;
+}
+
+/**
+ * Ile kilogramow tygodniowo oznacza takie dzienne saldo.
+ *
+ * 7700 kcal na kilogram to przelicznik przyjety powszechnie i jednoczesnie
+ * uproszczony: pochodzi z energii czystego tluszczu, a realny ubytek masy to
+ * zawsze mieszanka tluszczu, wody i tkanki beztluszczowej. Sluzy do
+ * oszacowania rzedu wielkosci, nie do prognozy.
+ */
+export const KCAL_NA_KILOGRAM = 7700;
+
+export function kgNaTydzien(sredniedzienne: number): number {
+  return (sredniedzienne * 7) / KCAL_NA_KILOGRAM;
 }
 
 /** Ktora strona skali jest gorsza. Decyduje o kolorze i o tym, ktory ogon lapie sygnal. */
@@ -140,6 +192,61 @@ export const METRYKI: Metryka[] = [
     kierunek: 'wyzej',
     format: (v) => liczba(v),
     poCo: 'Ruch to niezależny czynnik przyspieszający pracę jelita, więc dzień bez kroków tłumaczy część zaparć bez udziału stresu.',
+  },
+  {
+    key: 'kcal_aktywne',
+    label: 'Kalorie aktywne',
+    krotko: 'aktywne',
+    kierunek: 'wyzej',
+    format: (v) => `${liczba(v)} kcal`,
+    poCo:
+      'Wydatek ponad spoczynek, czyli to, co dołożył ruch. Zegarek liczy go z tętna i ruchu, ' +
+      'więc przy sile i noszeniu ciężarów potrafi się pomylić o kilkadziesiąt procent.',
+  },
+  {
+    key: 'kcal_bazowe',
+    label: 'Przemiana podstawowa',
+    krotko: 'bazowe',
+    kierunek: 'wyzej',
+    format: (v) => `${liczba(v)} kcal`,
+    poCo:
+      'Ile organizm spala leżąc bez ruchu. To NIE jest pomiar, tylko wzór z wieku, wzrostu, ' +
+      'masy i płci, więc nieaktualna waga w profilu iPhone przesuwa całą kolumnę.',
+  },
+  {
+    key: 'min_ruchu',
+    label: 'Minuty ćwiczeń',
+    krotko: 'ćwiczenia',
+    kierunek: 'wyzej',
+    format: (v) => `${liczba(v)} min`,
+    poCo: 'Czas, przez który tętno trzymało poziom co najmniej żwawego marszu.',
+  },
+  {
+    key: 'vo2max',
+    label: 'VO2max',
+    krotko: 'VO2max',
+    kierunek: 'wyzej',
+    format: (v) => `${liczba(v, 1)} ml/kg/min`,
+    poCo:
+      'Ile tlenu organizm potrafi zużyć przy maksymalnym wysiłku. Ze wszystkiego, co ten zegarek liczy, ' +
+      'to najsilniejszy pojedynczy wskaźnik przewidujący długość życia. Zmienia się miesiącami, nie dobami, ' +
+      'więc nie ma sensu patrzeć na pojedynczy dzień.',
+  },
+  {
+    key: 'spo2',
+    label: 'Wysycenie tlenem',
+    krotko: 'tlen',
+    kierunek: 'wyzej',
+    format: (v) => `${liczba(v * 100, 1)} %`,
+    poCo: 'Ile tlenu niesie krew. Spadki w nocy chodzą w parze z bezdechem sennym.',
+  },
+  {
+    key: 'tetno_marsz',
+    label: 'Tętno w marszu',
+    krotko: 'tętno marsz',
+    kierunek: 'nizej',
+    format: (v) => `${liczba(v)} /min`,
+    poCo: 'Tętno przy zwykłym chodzeniu. Spada, gdy rośnie wydolność, więc czyta się je razem z VO2max.',
   },
 ];
 

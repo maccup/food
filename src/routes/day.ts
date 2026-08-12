@@ -12,7 +12,7 @@ import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
 import { loadDayGaps, renderGaps } from './gaps';
-import { METRYKI, WatchRow, normy, stan } from '../utils/watch';
+import { METRYKI, WatchRow, normy, stan, bilans, opisSalda } from '../utils/watch';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -348,9 +348,27 @@ export async function renderDay(c: any, date: string) {
       </li>`
     : '';
 
+  /*
+   * Bilans stoi w osobnym wierszu, a nie doklejony do poprzedniego, bo laczy
+   * dwa zrodla: spalone przychodzi z zegarka, zjedzone z dziennika. Wiersz
+   * znika dla dnia dzisiejszego, bo przemiana podstawowa narasta do polnocy
+   * i o poludniu kazdy dzien wygladalby na potezna nadwyzke.
+   */
+  const b = bilans(totals?.kcal, zegarek as WatchRow | null, date < todayWarsaw());
+  const bilansWiersz = b
+    ? `<li>
+        <span>bilans: zjedzone ${Math.round(b.zjedzone)}, spalone ${Math.round(b.spalone)} kcal</span>
+        <span class="ev-right">
+          <span class="ev-wartosc" style="color:${b.saldo < -50 ? 'var(--ok)' : b.saldo > 50 ? 'var(--warn)' : 'var(--muted)'}">${esc(opisSalda(b.saldo))}</span>
+          <a href="/zegarek" class="ev-akcja">Bilans</a>
+        </span>
+      </li>`
+    : '';
+
   const wpisy = [
     stresWiersz,
     zegarekWiersz,
+    bilansWiersz,
     ...(symptoms.results ?? []).map((s: any) =>
       `<li>
         <span>${esc(s.time ?? '')} ${esc(s.kind)}${s.notes ? `, ${esc(s.notes)}` : ''}</span>

@@ -253,6 +253,10 @@ CREATE TABLE IF NOT EXISTS watch (
   kroki            INTEGER,
   kcal_aktywne     INTEGER,
   min_ruchu        INTEGER,
+  kcal_bazowe      INTEGER,  -- przemiana podstawowa, WZOR Apple z wieku i masy, nie pomiar
+  vo2max           REAL,     -- ml/kg/min
+  waga             REAL,     -- kg, z wagi polaczonej ze Zdrowiem
+  tetno_marsz      INTEGER,
   imported_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

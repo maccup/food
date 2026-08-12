@@ -4,7 +4,8 @@ import {
   page, card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween, poniedzialek,
 } from '../views/ui';
 import {
-  METRYKI, WatchRow, Norma, normy, sygnaly, stan, odchylenie, MIN_DNI_NORMY,
+  METRYKI, WatchRow, Norma, Bilans, normy, sygnaly, stan, MIN_DNI_NORMY,
+  bilans, opisSalda, kgNaTydzien, KCAL_NA_KILOGRAM,
 } from '../utils/watch';
 
 /**
@@ -114,12 +115,16 @@ watch.get('/zegarek', async (c) => {
   const dniZakresu = daysBetween(o.od, o.do) + 1;
   const dzis = todayWarsaw();
 
-  const [wZakresie, doNormy, ostatni] = await Promise.all([
+  const [wZakresie, doNormy, ostatni, zjedzone, ostatniaWaga] = await Promise.all([
     db.prepare(`SELECT * FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
       .bind(o.od, o.do).all<WatchRow>(),
     db.prepare(`SELECT * FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
       .bind(shiftDate(dzis, -OKNO_NORMY), dzis).all<WatchRow>(),
     db.prepare(`SELECT * FROM watch ORDER BY date DESC LIMIT 1`).first<WatchRow>(),
+    db.prepare(`SELECT date, kcal, meals_estimated FROM v_day_totals WHERE date BETWEEN ? AND ?`)
+      .bind(o.od, o.do).all<any>(),
+    db.prepare(`SELECT date, waga FROM watch WHERE waga IS NOT NULL ORDER BY date DESC LIMIT 1`)
+      .first<any>(),
   ]);
 
   const lista = wZakresie.results ?? [];
@@ -178,6 +183,88 @@ watch.get('/zegarek', async (c) => {
     : card(`<p style="margin:0;font-size:14px">
         Nic nie odstaje. Doba ${esc(ostatni.date)} mieści się w Twojej normie we wszystkim, co zegarek mierzy.
       </p>`);
+
+  /*
+   * Bilans kalorii.
+   *
+   * Dzien dzisiejszy jest z niego WYKLUCZONY i to nie jest ostroznosc, tylko
+   * warunek sensu. Przemiana podstawowa narasta przez cala dobe, wiec o
+   * poludniu wynosi polowe tego, co wyniesie wieczorem, a bilans pokazywalby
+   * potezna nadwyzke przy kazdym sniadaniu.
+   *
+   * Dni bez wpisanego jedzenia tez wypadaja. Zero kcal z bazy nie znaczy „nic
+   * nie jadl", tylko „nie wpisal", a policzenie im deficytu 3000 kcal
+   * zafalszowaloby srednia w strone, ktora najlatwiej wziac za sukces.
+   */
+  const zjedzoneWgDat = new Map<string, { kcal: number; szacowane: number }>(
+    (zjedzone.results ?? []).map((t: any) => [t.date, { kcal: Number(t.kcal), szacowane: Number(t.meals_estimated ?? 0) }])
+  );
+
+  const dniBilansu = lista
+    .map((d) => ({ d, b: bilans(zjedzoneWgDat.get(d.date)?.kcal, d, d.date < dzis) }))
+    .filter((x): x is { d: WatchRow; b: Bilans } => x.b !== null);
+
+  const sredniSaldo = dniBilansu.length
+    ? dniBilansu.reduce((a, x) => a + x.b.saldo, 0) / dniBilansu.length
+    : 0;
+  const kg = kgNaTydzien(sredniSaldo);
+  const naSzacunkach = dniBilansu.some((x) => (zjedzoneWgDat.get(x.d.date)?.szacowane ?? 0) > 0);
+
+  const wiekWagi = ostatniaWaga ? daysBetween(ostatniaWaga.date, dzis) : null;
+
+  const bilansHtml = dniBilansu.length
+    ? card(`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <span style="font-size:13px;color:var(--muted)">Średnio na dzień</span>
+        <b style="font-size:19px;color:${sredniSaldo < -50 ? 'var(--ok)' : sredniSaldo > 50 ? 'var(--warn)' : 'var(--text)'}">
+          ${esc(opisSalda(sredniSaldo))}
+        </b>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px">
+        <span style="font-size:13px;color:var(--muted)">Co przy takim tempie daje</span>
+        <b style="font-size:19px">${kg < 0 ? '−' : '+'}${Math.abs(kg).toFixed(2).replace('.', ',')} kg / tydzień</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px">
+        <span style="font-size:13px;color:var(--muted)">Policzone z dni kompletnych</span>
+        <b style="font-size:19px">${dniBilansu.length}</b>
+      </div>
+
+      <div style="overflow-x:auto;margin-top:14px"><table class="data-table" style="width:100%;font-size:13px">
+        <thead><tr><th>Dzień</th><th style="text-align:right">zjedzone</th><th style="text-align:right">spalone</th><th style="text-align:right">saldo</th></tr></thead>
+        <tbody>${[...dniBilansu].reverse().slice(0, 30).map(({ d, b }) => `<tr>
+          <td><a href="/day/${d.date}">${d.date.slice(8)}.${d.date.slice(5, 7)}</a></td>
+          <td style="text-align:right">${Math.round(b.zjedzone)}</td>
+          <td style="text-align:right">${Math.round(b.spalone)}
+            <span style="color:var(--muted);font-size:11px">${d.kcal_bazowe ?? 0}+${d.kcal_aktywne ?? 0}</span></td>
+          <td style="text-align:right;white-space:nowrap;color:${b.saldo < -50 ? 'var(--ok)' : b.saldo > 50 ? 'var(--warn)' : 'var(--muted)'};font-weight:600">
+            ${b.saldo < 0 ? '−' : '+'}${Math.abs(Math.round(b.saldo))}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+
+      <p class="hint" style="margin:12px 0 0">
+        <b>Ta liczba jest orientacyjna i trzeba o tym pamiętać za każdym razem.</b>
+        Przemiana podstawowa (pierwsza liczba w kolumnie „spalone") nie jest mierzona:
+        Apple wylicza ją ze wzoru z wieku, wzrostu, masy i płci, więc nieaktualna waga w profilu iPhone
+        przesuwa całą kolumnę. Kalorie aktywne zegarek szacuje z tętna i ruchu, a przy sile potrafi
+        pomylić się o kilkadziesiąt procent.${naSzacunkach ? ' Część posiłków po Twojej stronie też jest liczona na oko.' : ''}
+        Trzy błędy naraz, każdy w dowolną stronę.
+      </p>
+      <p class="hint" style="margin:8px 0 0">
+        <b>Jedynym twardym sprawdzianem deficytu jest masa ciała.</b>
+        ${ostatniaWaga && wiekWagi !== null
+          ? wiekWagi > 30
+            ? `Ostatnia waga w Zdrowiu to ${String(ostatniaWaga.waga).replace('.', ',')} kg z ${esc(ostatniaWaga.date)}, czyli sprzed ${wiekWagi} dni.
+               Przy takiej dziurze nie ma czym zweryfikować powyższych liczb. Podepnij wagę do Zdrowia albo waż się raz w tygodniu.`
+            : `Ostatnia waga w Zdrowiu: ${String(ostatniaWaga.waga).replace('.', ',')} kg z ${esc(ostatniaWaga.date)}.
+               Porównaj kierunek zmiany masy z saldem powyżej: jeśli idą w różne strony, to myli się bilans, nie waga.`
+          : 'W Zdrowiu nie ma ani jednego pomiaru masy, więc powyższych liczb nie ma czym zweryfikować.'}
+        Przelicznik ${KCAL_NA_KILOGRAM} kcal na kilogram pochodzi z energii czystego tłuszczu, a realny ubytek
+        to zawsze mieszanka tłuszczu, wody i mięśni, więc pierwsze dni zawsze wyglądają szybciej, niż jest.
+      </p>`)
+    : emptyState(
+        'Za mało dni, żeby liczyć bilans. Potrzebna jest doba, która ma i pomiar z zegarka, i wpisane jedzenie, ' +
+        'i która już się skończyła. Dzisiejszy dzień nie wchodzi, bo przemiana podstawowa narasta do północy.'
+      );
 
   // Kolumny tabeli to metryki sygnalowe plus sen glowny. Reszta siedzi w
   // normach nizej: w tabeli dzien po dniu osiem kolumn nie miesci sie na telefonie.
@@ -250,6 +337,9 @@ watch.get('/zegarek', async (c) => {
 
     ${blockTitle('Ile tego jest')}
     ${stanDanych}
+
+    ${blockTitle('Bilans kalorii', 'zjedzone wobec spalonego')}
+    ${bilansHtml}
 
     ${blockTitle('Trend HRV', `${esc(o.od)} do ${esc(o.do)}`)}
     ${wykres(lista, n.get('hrv_noc'), dniZakresu > 92)}
