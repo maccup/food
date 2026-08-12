@@ -12,7 +12,7 @@ import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
 import { loadDayGaps, renderGaps } from './gaps';
-import { METRYKI, WatchRow, normy, stan, sygnaly, bilans, opisSalda, kgNaTydzien } from '../utils/watch';
+import { METRYKI, WatchRow, normy, stan, sygnaly, bilans, kgNaTydzien } from '../utils/watch';
 
 const day = new Hono<{ Bindings: Env }>();
 
@@ -393,9 +393,9 @@ export async function renderDay(c: any, date: string) {
   const b = bilans(totals?.kcal, zegarek as WatchRow | null, date < todayWarsaw(), bmrWlasny);
   const bilansWiersz = b
     ? `<li>
-        <span>bilans: zjedzone ${Math.round(b.zjedzone)}, spalone ${Math.round(b.spalone)} kcal</span>
+        <span>zjadłeś ${Math.round(b.zjedzone)} kcal, spaliłeś ${Math.round(b.spalone)}</span>
         <span class="ev-right">
-          <span class="ev-wartosc" style="color:${b.saldo < -50 ? 'var(--ok)' : b.saldo > 50 ? 'var(--warn)' : 'var(--muted)'}">${esc(opisSalda(b.saldo))}</span>
+          <span class="ev-wartosc">${Math.abs(Math.round(b.saldo))} kcal ${b.saldo < 0 ? 'mniej' : 'więcej'}</span>
           <a href="/zegarek" class="ev-akcja">Bilans</a>
         </span>
       </li>`

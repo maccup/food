@@ -77,11 +77,32 @@ export function bilans(
   return { spalone, zjedzone, saldo: zjedzone - spalone, bazowe, aktywne, bazoweZZegarka: wlasna === null };
 }
 
-/** „deficyt 442 kcal" zamiast „saldo −442", bo znak przed liczba czyta sie na dwa sposoby. */
-export function opisSalda(saldo: number): string {
+/*
+ * Bilans opisujemy ZDANIEM, nie liczba ze znakiem, i nie uzywamy slow „deficyt",
+ * „nadwyzka" ani „saldo".
+ *
+ * Powod jest konkretny: „deficyt 150 kcal" plus „−0,14 kg" to dwa zaprzeczenia
+ * w jednej linijce i za kazdym razem trzeba sie zastanowic, czy to znaczy chudne,
+ * czy tyje. Maciek pytal o to dwa razy pod rzad, wiec ekran byl po prostu zle
+ * napisany. Zdanie „jesz o 150 kcal mniej, niz spalasz" czyta sie raz.
+ *
+ * Nie wracac do wersji z „deficytem", nawet gdyby byla krotsza.
+ */
+export function zdanieBilansu(saldo: number): string {
   const v = Math.abs(Math.round(saldo));
-  if (v < 50) return 'wyjście na zero';
-  return `${saldo < 0 ? 'deficyt' : 'nadwyżka'} ${v} kcal`;
+  if (v < 50) return 'Jesz mniej więcej tyle, ile spalasz';
+  return saldo < 0
+    ? `Jesz o ${v} kcal mniej, niż spalasz`
+    : `Jesz o ${v} kcal więcej, niż spalasz`;
+}
+
+export function zdanieMasy(kgTydzien: number): string {
+  const v = Math.abs(kgTydzien);
+  if (v < 0.05) return 'W tym tempie masa ciała stoi w miejscu';
+  const liczba = v.toFixed(2).replace('.', ',');
+  return kgTydzien < 0
+    ? `W tym tempie chudniesz ${liczba} kg na tydzień`
+    : `W tym tempie tyjesz ${liczba} kg na tydzień`;
 }
 
 /**

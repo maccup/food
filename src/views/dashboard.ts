@@ -1,6 +1,6 @@
 import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui';
 import { stanMakro } from '../utils/day-status';
-import { opisSalda } from '../utils/watch';
+import { zdanieBilansu, zdanieMasy } from '../utils/watch';
 
 export interface DashboardData {
   date: string;
@@ -181,16 +181,14 @@ export function dashboard(d: DashboardData): string {
   const bilansLine = d.bilansOkna
     ? `<div class="panel-row">
         <div>
-          <div class="panel-row-label">Bilans kalorii</div>
-          <div class="panel-row-main" style="color:${d.bilansOkna.srednia < -50 ? 'var(--ok)' : d.bilansOkna.srednia > 50 ? 'var(--warn)' : 'var(--text)'}">
-            ${esc(opisSalda(d.bilansOkna.srednia))} dziennie
+          <div class="panel-row-label">Jedzenie a spalanie</div>
+          <div class="panel-row-main">${esc(zdanieBilansu(d.bilansOkna.srednia))}</div>
+          <div class="panel-row-why">
+            ${esc(zdanieMasy(d.bilansOkna.kgTydzien))}.
+            Średnia z ${d.bilansOkna.dni} ${d.bilansOkna.dni === 1 ? 'pełnego dnia' : 'pełnych dni'}.
+            <a href="/zegarek" style="white-space:nowrap">Jak to liczone ›</a>
           </div>
-          <div class="panel-row-why">${d.bilansOkna.kgTydzien < 0 ? '−' : '+'}${Math.abs(d.bilansOkna.kgTydzien).toFixed(2).replace('.', ',')} kg tygodniowo, z ${d.bilansOkna.dni} ${d.bilansOkna.dni === 1 ? 'dnia zamkniętego' : 'dni zamkniętych'}.
-            <a href="/zegarek" style="white-space:nowrap">Jak to liczone ›</a></div>
         </div>
-        <div class="panel-row-side">${d.bilansOkna.ostatni !== null
-          ? `wczoraj ${d.bilansOkna.ostatni < 0 ? '−' : '+'}${Math.abs(Math.round(d.bilansOkna.ostatni))}`
-          : ''}</div>
       </div>`
     : '';
 

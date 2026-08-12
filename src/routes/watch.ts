@@ -6,7 +6,7 @@ import {
 import { loadSettings } from '../utils/settings';
 import {
   METRYKI, WatchRow, Norma, Bilans, normy, sygnaly, stan, MIN_DNI_NORMY,
-  bilans, opisSalda, kgNaTydzien, KCAL_NA_KILOGRAM,
+  bilans, zdanieBilansu, zdanieMasy, kgNaTydzien, KCAL_NA_KILOGRAM,
 } from '../utils/watch';
 
 /**
@@ -216,23 +216,15 @@ watch.get('/zegarek', async (c) => {
 
   const bilansHtml = dniBilansu.length
     ? card(`
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
-        <span style="font-size:13px;color:var(--muted)">Średnio na dzień</span>
-        <b style="font-size:19px;color:${sredniSaldo < -50 ? 'var(--ok)' : sredniSaldo > 50 ? 'var(--warn)' : 'var(--text)'}">
-          ${esc(opisSalda(sredniSaldo))}
-        </b>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px">
-        <span style="font-size:13px;color:var(--muted)">Co przy takim tempie daje</span>
-        <b style="font-size:19px">${kg < 0 ? '−' : '+'}${Math.abs(kg).toFixed(2).replace('.', ',')} kg / tydzień</b>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px">
-        <span style="font-size:13px;color:var(--muted)">Policzone z dni kompletnych</span>
-        <b style="font-size:19px">${dniBilansu.length}</b>
+      <div style="font-size:19px;font-weight:700;line-height:1.35">${esc(zdanieBilansu(sredniSaldo))}</div>
+      <div style="font-size:15px;margin-top:4px">${esc(zdanieMasy(kg))}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:6px">
+        Średnia z ${dniBilansu.length} ${dniBilansu.length === 1 ? 'pełnego dnia' : 'pełnych dni'}.
+        Dzisiejszy dzień nie wchodzi, bo się jeszcze nie skończył.
       </div>
 
       <div style="overflow-x:auto;margin-top:14px"><table class="data-table" style="width:100%;font-size:13px">
-        <thead><tr><th>Dzień</th><th style="text-align:right">zjedzone</th><th style="text-align:right">spalone</th><th style="text-align:right">saldo</th></tr></thead>
+        <thead><tr><th>Dzień</th><th style="text-align:right">zjadłeś</th><th style="text-align:right">spaliłeś</th><th style="text-align:right">różnica</th></tr></thead>
         <tbody>${[...dniBilansu].reverse().slice(0, 30).map(({ d, b }) => `<tr>
           <td><a href="/day/${d.date}">${d.date.slice(8)}.${d.date.slice(5, 7)}</a></td>
           <td style="text-align:right">${Math.round(b.zjedzone)}</td>
@@ -242,6 +234,10 @@ watch.get('/zegarek', async (c) => {
             ${b.saldo < 0 ? '−' : '+'}${Math.abs(Math.round(b.saldo))}</td>
         </tr>`).join('')}</tbody>
       </table></div>
+      <p class="hint" style="margin:6px 0 0">
+        Minus w ostatniej kolumnie znaczy, że tego dnia zjadłeś mniej, niż spaliłeś. Plus, że więcej.
+        Liczby przy „spaliłeś" to spoczynek plus ruch.
+      </p>
 
       ${(() => {
         /*
@@ -262,10 +258,10 @@ watch.get('/zegarek', async (c) => {
           ${krok('spalone ruchem, z zegarka', `+ ${Math.round(b.aktywne)} kcal`)}
           ${krok('razem spalone', `= ${Math.round(b.spalone)} kcal`)}
           ${krok('zjedzone, z dziennika', `− ${Math.round(b.zjedzone)} kcal`)}
-          ${krok('saldo dnia', `= ${b.saldo < 0 ? '−' : '+'}${Math.abs(Math.round(b.saldo))} kcal`)}
+          ${krok(b.saldo < 0 ? 'czyli zjadłeś mniej o' : 'czyli zjadłeś więcej o', `= ${Math.abs(Math.round(b.saldo))} kcal`)}
           <div style="height:8px"></div>
-          ${krok(`średnia z ${dniBilansu.length} ${dniBilansu.length === 1 ? 'dnia' : 'dni'} w tabeli`, `${sredniSaldo < 0 ? '−' : '+'}${Math.abs(Math.round(sredniSaldo))} kcal`)}
-          ${krok(`razy 7 dni, dzielone przez ${KCAL_NA_KILOGRAM} kcal na kilogram`, `${kg < 0 ? '−' : '+'}${Math.abs(kg).toFixed(2).replace('.', ',')} kg / tydzień`)}
+          ${krok(`to samo dla ${dniBilansu.length} ${dniBilansu.length === 1 ? 'dnia' : 'dni'} z tabeli, średnio`, `${Math.abs(Math.round(sredniSaldo))} kcal ${sredniSaldo < 0 ? 'mniej' : 'więcej'}`)}
+          ${krok(`razy 7 dni, dzielone przez ${KCAL_NA_KILOGRAM} kcal na kilogram tłuszczu`, `${Math.abs(kg).toFixed(2).replace('.', ',')} kg tygodniowo ${kg < 0 ? 'w dół' : 'w górę'}`)}
         </div>`;
       })()}
 
@@ -281,14 +277,14 @@ watch.get('/zegarek', async (c) => {
         Każdy z tych błędów może iść w dowolną stronę.
       </p>
       <p class="hint" style="margin:8px 0 0">
-        <b>Jedynym twardym sprawdzianem deficytu jest masa ciała.</b>
+        <b>Jedynym twardym sprawdzianem jest waga na łazienkowej wadze.</b>
         ${ostatniaWaga && wiekWagi !== null
           ? wiekWagi > 30
             ? `Ostatnia waga w Zdrowiu to ${String(ostatniaWaga.waga).replace('.', ',')} kg z ${esc(ostatniaWaga.date)}, czyli sprzed ${wiekWagi} dni.
-               Przy takiej dziurze nie ma czym zweryfikować powyższych liczb. Podepnij wagę do Zdrowia albo waż się raz w tygodniu.`
+               Przy takiej dziurze nie ma czym sprawdzić powyższych liczb. Podepnij wagę do Zdrowia albo waż się raz w tygodniu.`
             : `Ostatnia waga w Zdrowiu: ${String(ostatniaWaga.waga).replace('.', ',')} kg z ${esc(ostatniaWaga.date)}.
                Porównaj kierunek zmiany masy z saldem powyżej: jeśli idą w różne strony, to myli się bilans, nie waga.`
-          : 'W Zdrowiu nie ma ani jednego pomiaru masy, więc powyższych liczb nie ma czym zweryfikować.'}
+          : 'W Zdrowiu nie ma ani jednego pomiaru masy, więc powyższych liczb nie ma czym sprawdzić.'}
         Przelicznik ${KCAL_NA_KILOGRAM} kcal na kilogram pochodzi z energii czystego tłuszczu, a realny ubytek
         to zawsze mieszanka tłuszczu, wody i mięśni, więc pierwsze dni zawsze wyglądają szybciej, niż jest.
       </p>`)
