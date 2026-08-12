@@ -61,6 +61,12 @@ export function hhmmToMinutes(hhmm: string): number {
   return (h || 0) * 60 + (m || 0);
 }
 
+/** Minuty od północy na „14:05". Godziny powyżej doby zawijają się na następny dzień. */
+export function minutyNaHhmm(minuty: number): string {
+  const m = ((minuty % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
 /** Aktualna godzina w Warszawie, jako minuty od północy. */
 export function nowMinutesWarsaw(): number {
   const parts = new Intl.DateTimeFormat('en-GB', {

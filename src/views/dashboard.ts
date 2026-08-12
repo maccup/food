@@ -1,11 +1,5 @@
-import { esc, pl, hhmmToMinutes as toMinutes } from './ui';
+import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui';
 import { stanMakro } from '../utils/day-status';
-
-/** Minuty od północy na „14:05". Godziny powyżej doby zawijają się na następny dzień. */
-function hhmm(minuty: number): string {
-  const m = ((minuty % 1440) + 1440) % 1440;
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-}
 
 export interface DashboardData {
   date: string;

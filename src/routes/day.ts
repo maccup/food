@@ -3,6 +3,7 @@ import { Env } from '../types';
 import {
   page, card, blockTitle, emptyState, esc, pl, flag, macroBar,
   SLOT_LABEL, todayWarsaw, shiftDate, prettyDate, nowMinutesWarsaw, daysBetween,
+  hhmmToMinutes, minutyNaHhmm,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
@@ -267,8 +268,14 @@ export async function renderDay(c: any, date: string) {
       const h = Math.floor(przerwa / 60);
       const min = przerwa % 60;
       const zaKrotka = przerwa < minGap * 60;
+      // Granice przerwy wypisane wprost. Sama dlugosc kazala liczyc w pamieci,
+      // od ktorej godziny biegnie, a to wlasnie koniec poprzedniego podejscia
+      // jest ta godzina, ktora trzeba znac, zeby wiedziec, kiedy wolno zjesc.
+      const koniecPoprzedniego = minutyNaHhmm(hhmmToMinutes(m.eaten_at!) - przerwa);
       wiersze.push(`<div class="gap ${zaKrotka ? 'gap-short' : ''}">
-        <span>${przerwa < 0 ? 'podejścia nachodzą na siebie' : `przerwa ${h ? `${h} h ` : ''}${min} min`}</span>
+        <span>${przerwa < 0
+          ? 'podejścia nachodzą na siebie'
+          : `przerwa ${h && min ? `${h} h ${min} min` : h ? `${h} h` : `${min} min`}, od ${koniecPoprzedniego} do ${esc(m.eaten_at!)}`}</span>
         ${zaKrotka ? `<span class="gap-note">mniej niż ${minGap} h</span>` : ''}
       </div>`);
     }
@@ -391,6 +398,24 @@ function akcjeWpisu(co: string, tabela: string, id: number, date: string): strin
     </form>`;
 }
 
+/**
+ * Godziny posilku od poczatku do konca, a nie poczatek plus czas trwania.
+ *
+ * Przerwa liczy sie od ostatniego kesa, wiec godzina zakonczenia jest tu
+ * wazniejsza niz poczatek, a wczesniej trzeba ja bylo dodawac w pamieci.
+ * Gdy czasu trwania nie podano, silnik przerw i tak przyjmuje domyslny, wiec
+ * ekran pokazuje ta sama godzine, tylko oznaczona jako przyjeta, zeby nie
+ * udawala zmierzonej.
+ */
+function godziny(m: MealRow, reguly: RegulyPrzerw): string {
+  if (!m.eaten_at) return '';
+  const mocno = (t: string) => `<b style="color:var(--text);font-size:13px">${t}</b>`;
+  const koniec = minutyNaHhmm(hhmmToMinutes(m.eaten_at) + (m.duration_min ?? reguly.domyslneTrwanie));
+  return `${mocno(esc(m.eaten_at))}
+    <span style="text-transform:none">do ${m.duration_min ? '' : 'ok. '}</span>${mocno(koniec)}
+    &middot; `;
+}
+
 function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
   const forbidden = breaches.filter((b) => b.level === 'forbidden');
   const limits = breaches.filter((b) => b.level === 'limit');
@@ -420,7 +445,7 @@ function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
     <div class="item-content">
       <div class="item-inner" style="display:block;padding-top:10px;padding-bottom:10px">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
-          ${m.eaten_at ? `<b style="color:var(--text);font-size:13px">${esc(m.eaten_at)}</b>${m.duration_min ? ` <span style="text-transform:none">+ ${m.duration_min} min</span>` : ''} &middot; ` : ''}${esc(SLOT_LABEL[m.slot] ?? m.slot)}
+          ${godziny(m, reguly)}${esc(SLOT_LABEL[m.slot] ?? m.slot)}
         </div>
         <div class="item-title" style="white-space:normal;font-weight:600;line-height:1.35">${esc(m.name)}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px">${macros}</div>
