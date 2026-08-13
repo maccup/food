@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   PASSWORD: string;
+  /** Token aplikacji iOS. Wylacznie dla /api/watch, patrz authMiddleware. */
+  WATCH_TOKEN?: string;
 }
 
 export type MealSlot =

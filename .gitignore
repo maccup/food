@@ -5,3 +5,10 @@ dist/
 *.log
 .DS_Store
 .idea
+# Xcode: projekt jest generowany z ios/project.yml przez `xcodegen generate`,
+# wiec .xcodeproj to artefakt, nie zrodlo. Trzymanie go w repo konczy sie
+# konfliktami w pbxproj przy kazdej zmianie pliku.
+ios/*.xcodeproj/
+ios/build/
+ios/DerivedData/
+.DS_Store

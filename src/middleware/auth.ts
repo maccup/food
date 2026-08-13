@@ -83,6 +83,24 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
     return next();
   }
 
+  /*
+   * Aplikacja iOS chodzi na tokenie, nie na ciasteczku. Telefon nie utrzyma
+   * sesji przegladarki, a wpisanie tam hasla oznaczaloby trzymanie sekretu
+   * calej aplikacji na urzadzeniu, ktore mozna zgubic. Token jest osobny
+   * i uniewaznia sie go bez ruszania hasla.
+   *
+   * Brak WATCH_TOKEN w srodowisku zamyka te sciezke calkowicie, zamiast
+   * przepuszczac wszystkich. Puste porownanie jest gorsze niz brak endpointu.
+   */
+  if (path.startsWith('/api/watch')) {
+    const oczekiwany = c.env.WATCH_TOKEN;
+    const podany = (c.req.header('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (!oczekiwany || !podany || !timingSafeEqual(podany, oczekiwany)) {
+      return c.json({ error: 'Zly token' }, 401);
+    }
+    return next();
+  }
+
   // API routes need auth cookie but return JSON 401 instead of redirect
   if (path.startsWith('/api/')) {
     if (!(await isAuthenticated(c))) {

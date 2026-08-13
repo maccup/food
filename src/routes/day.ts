@@ -130,6 +130,25 @@ export async function renderDay(c: any, date: string) {
         .bind(shiftDate(date, -180), date).all()).results ?? []) as unknown as WatchRow[])
     : new Map();
 
+  /*
+   * Ile dni zegarek jest do tylu.
+   *
+   * Aplikacja iOS wysyla dane recznie, jednym kliknieciem, wiec jedynym
+   * objawem awarii jest CISZA: wygasly certyfikat, cofnieta zgoda HealthKit
+   * albo po prostu niekliknięcie wygladaja identycznie, czyli jak brak
+   * odchylen. Bez tego wiersza panel wyswietlalby stare liczby jako aktualne.
+   */
+  const zegarekStan = date === todayWarsaw()
+    ? ((await db.prepare(`SELECT MAX(date) AS ostatni FROM watch`).first()) as { ostatni: string | null } | null)
+    : null;
+  const zegarekOpoznienie = (() => {
+    const ostatni = zegarekStan?.ostatni;
+    if (!ostatni) return null;
+    const dni = Math.round((Date.parse(todayWarsaw()) - Date.parse(ostatni)) / 86400000);
+    // Jeden dzien to norma, bo doba domyka sie dopiero po pobudce i wysylce.
+    return dni > 1 ? { dni, ostatni } : null;
+  })();
+
   const targets = phase
     ? await db.prepare(`SELECT metric, min_value, max_value FROM targets WHERE phase_id = ?`)
         .bind(phase.id).all<any>()
@@ -293,6 +312,7 @@ export async function renderDay(c: any, date: string) {
     zegarekPozaNorma: sygnaly(zegarek as WatchRow | null, normyZegarka).map(
       (s) => `${s.metryka.label} ${s.metryka.format(s.wartosc)}, Twoja norma to ${s.metryka.format(s.norma.mediana)}`
     ),
+    zegarekOpoznienie,
   });
 
   /*

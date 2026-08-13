@@ -32,6 +32,11 @@ export interface DashboardData {
   bilansOkna: { srednia: number; dni: number; kgTydzien: number; ostatni: number | null } | null;
   /** Metryki zegarka poza wlasna norma, zdaniami. Puste, gdy wszystko typowe. */
   zegarekPozaNorma: string[];
+  /**
+   * Zegarek do tylu o wiecej niz dobe. Null, gdy dane sa swieze.
+   * Awaria synchronizacji objawia sie cisza, nie bledem, wiec musi byc widoczna.
+   */
+  zegarekOpoznienie: { dni: number; ostatni: string } | null;
 }
 
 /**
@@ -161,6 +166,15 @@ export function dashboard(d: DashboardData): string {
       ? `<div class="panel-alert warn">
           <b>Zegarek poza Twoją normą: ${d.zegarekPozaNorma.length}</b>
           <div style="margin-top:3px">${d.zegarekPozaNorma.map(esc).join('<br>')}</div>
+        </div>`
+      : '',
+    // Brak danych z zegarka wyglada tak samo jak brak odchylen, wiec musi
+    // powiedziec o sobie sam. Bez tego wygasly certyfikat aplikacji albo
+    // cofnieta zgoda HealthKit potrafilyby zostac niezauwazone tygodniami.
+    d.zegarekOpoznienie
+      ? `<div class="panel-alert warn">
+          <b>Zegarek nie synchronizowany od ${d.zegarekOpoznienie.dni} dni</b>
+          <div style="margin-top:3px">Ostatnia doba w bazie: ${esc(d.zegarekOpoznienie.ostatni)}. Otwórz aplikację Zdrowie i kliknij Synchronizuj.</div>
         </div>`
       : '',
   ].join('');

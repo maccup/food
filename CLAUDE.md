@@ -375,17 +375,37 @@ Widok dnia trzyma wiersz „stres dnia niewpisany" z odnośnikiem także wtedy, 
 wpisu nie ma. To jedyny mechanizm przypominający o wpisie, a bez wpisów ta liczba
 nie mierzy niczego.
 
-## Zegarek: wsad, nie synchronizacja
+## Zegarek: dwa kanały do jednej tabeli
 
-Tabela `watch`, jeden wiersz na dobę, `date` jako klucz główny. Dane wchodzą
-**wsadem z ręcznego eksportu** ze Zdrowia na iPhonie, poleceniem
-`npm run watch:import`. Import jest upsertem, więc kolejny eksport wgrywa się na
-wierzch poprzedniego i nie trzeba pilnować, od kiedy dogrywać.
+Tabela `watch`, jeden wiersz na dobę, `date` jako klucz główny. Zapisują ją
+**dwa źródła** i oba są upsertami po dacie, więc kolejność i powtórki nie mają
+znaczenia. Kolumna `zrodlo` mówi, który kanał dotknął wiersza ostatni.
 
-**Nie przerabiać tego na automatyczną synchronizację.** Decyzja Maćka z 12.08.2026,
-podjęta po przedstawieniu trzech dróg: automat wymagałby oddania całego HealthKit
-zewnętrznej aplikacji albo złożenia łańcucha w Skrótach, a analiza jest wsteczna
-i robi się raz na kilka tygodni. Czas rzeczywisty nie zmienia tu żadnej decyzji.
+| Kanał | Czym | Kiedy |
+|---|---|---|
+| `export` | `npm run watch:import` z pliku XML ze Zdrowia | historia, 3838 dni do 12.08.2026 |
+| `ios` | aplikacja `ios/`, `POST /api/watch` | codziennie, jednym kliknięciem |
+
+**Zakaz automatycznej synchronizacji z 12.08.2026 już nie obowiązuje.** Maciek
+cofnął go 13.08, kupując konto deweloperskie: własna aplikacja rozwiązuje ten
+zarzut, dla którego zakaz powstał, bo HealthKit nie trafia do nikogo trzeciego.
+Wsad z XML zostaje jako droga do historii i do backfillu.
+
+**Agregacja w Swifcie musi dawać te same liczby co skrypt Node.** Mediana zamiast
+średniej, sumy dobowe per źródło z maksimum zamiast sumy, sen do dnia pobudki.
+Rozjazd między kanałami wyglądałby na wykresie jak zmiana w organizmie, a nie
+jak zmiana metody. Szczegóły i uzasadnienia: `ios/README.md`.
+
+**`/api/watch` chodzi na tokenie, nie na ciasteczku sesji** (`WATCH_TOKEN`,
+sprawdzany w `authMiddleware`). Brak tokenu w środowisku zamyka tę ścieżkę
+całkowicie, zamiast przepuszczać wszystkich. Endpoint scala przez `COALESCE`,
+więc kanał, który czegoś nie zna, nie kasuje tego, co zapisał drugi; ceną jest
+to, że **błędnej wartości nie da się wyzerować, wysyłając null**.
+
+Panel pokazuje **„Zegarek nie synchronizowany od N dni"**, gdy ostatnia doba
+w bazie jest starsza niż wczorajsza. To nie jest ozdoba: wygasły certyfikat
+aplikacji, cofnięta zgoda HealthKit i zwykłe niekliknięcie dają ten sam objaw,
+czyli ciszę, a cisza w panelu bez tego wiersza wygląda jak brak odchyleń.
 
 Osobna tabela, nie kolumny w `stress`. Zegarek mierzy dobę niezależnie od tego,
 czy cokolwiek tego dnia wpisałeś, więc wiersz istnieje także dla dni bez wpisów.
@@ -543,6 +563,7 @@ npm run db:schema      # schemat na zdalne D1
 npm run db:seed        # dane startowe i słownik produktów
 npm run export         # 7 plików CSV do Longevity Agent/CSV_Analysis
 npm run watch:import   # eksport Apple Health do tabeli watch (domyślnie ~/Downloads/apple_health_export/export.xml)
+cd ios && xcodegen generate   # projekt Xcode aplikacji na iPhone, patrz ios/README.md
 ```
 
 Migracje SQL: `src/db/migrations/`, uruchamiane ręcznie przez
