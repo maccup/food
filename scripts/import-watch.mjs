@@ -73,7 +73,16 @@ const FAZY = {
   HKCategoryValueSleepAnalysisAsleepDeep: 'gleboki',
   HKCategoryValueSleepAnalysisAsleepREM: 'rem',
   HKCategoryValueSleepAnalysisAsleepCore: 'lekki',
-  HKCategoryValueSleepAnalysisAsleepUnspecified: 'lekki',
+  /*
+   * NIE jest to synonim lekkiego snu i nie wolno tego tak liczyc.
+   * Oura zapisuje AsleepUnspecified jako parasol nad tymi samymi minutami,
+   * ktore osobno opisuje jako Core i Deep, wiec zsumowanie z reszta liczy je
+   * podwojnie. Zarazem dla starszych danych (zegarek sprzed iOS 16, Sleep
+   * Cycle) to jedyna dostepna faza i nie da sie jej po prostu wyrzucic.
+   * Rozstrzygniecie jest przy zapisie: liczy sie tylko wtedy, gdy noc nie ma
+   * ani jednej fazy szczegolowej.
+   */
+  HKCategoryValueSleepAnalysisAsleepUnspecified: 'nieokreslony',
   HKCategoryValueSleepAnalysisAwake: 'budzenia',
   HKCategoryValueSleepAnalysisInBed: 'lozko',
 };
@@ -106,7 +115,7 @@ const dni = new Map();
 const dzien = (d) => {
   if (!dni.has(d)) {
     dni.set(d, {
-      pomiary: {}, zrodla: {}, sen: {}, zasniecie: null,
+      pomiary: {}, zrodla: {}, senZrodla: {},
       // Tetno liczymy w locie, nie tablica probek: samych odczytow pulsu jest
       // 1,46 mln i trzymanie ich w pamieci nie ma po co istniec, skoro
       // potrzebujemy tylko sredniej i maksimum.
@@ -198,9 +207,19 @@ for await (const linia of rl) {
     const d = dzien(koniec.slice(0, 10));
     const minuty = (czas(koniec) - czas(start)) / 60000;
     if (!Number.isFinite(minuty) || minuty <= 0) continue;
-    d.sen[faza] = (d.sen[faza] ?? 0) + minuty;
-    if (faza !== 'budzenia' && faza !== 'lozko' && (d.zasniecie === null || start < d.zasniecie)) {
-      d.zasniecie = start;
+    /*
+     * Odcinki trzymamy OSOBNO DLA KAZDEGO ZRODLA i przy zapisie bierzemy
+     * jedno, tak samo jak przy krokach. Pierscien i zegarek opisuja te sama
+     * noc rownolegle i wlasnymi fazami, wiec sumowanie wszystkiego dawalo
+     * noce po czternascie godzin: 707 z 1739 nocy w bazie mialo ponad
+     * jedenascie. Scalanie przedzialow tego nie rozwiazuje, bo te same
+     * minuty jedno zrodlo nazywa lekkim snem, a drugie glebokim.
+     */
+    const zrodloSnu = atr(linia, 'sourceName') ?? '?';
+    const s = (d.senZrodla[zrodloSnu] ??= { fazy: {}, zasniecie: null });
+    s.fazy[faza] = (s.fazy[faza] ?? 0) + minuty;
+    if (faza !== 'budzenia' && faza !== 'lozko' && (s.zasniecie === null || start < s.zasniecie)) {
+      s.zasniecie = start;
     }
   } else if (typ === `${Q}HeartRate`) {
     const v = Number(atr(linia, 'value'));
@@ -253,8 +272,23 @@ for (const [data, d] of [...dni.entries()].sort()) {
     if (!z) return null;
     return Math.round(Math.max(...Object.values(z)) * 10 ** cyfry) / 10 ** cyfry;
   };
-  const s = (f) => (d.sen[f] ? Math.round(d.sen[f]) : null);
-  const glowny = ['gleboki', 'rem', 'lekki'].reduce((a, f) => a + (d.sen[f] ?? 0), 0);
+  /*
+   * Sen wlasciwy jednego zrodla. Fazy szczegolowe wygrywaja z parasolem:
+   * `nieokreslony` wchodzi do rachunku dopiero, gdy nie ma zadnej z nich.
+   */
+  const senWlasciwy = (fazy) => {
+    const szczegolowe = ['gleboki', 'rem', 'lekki'].reduce((a, f) => a + (fazy[f] ?? 0), 0);
+    return szczegolowe > 0 ? szczegolowe : (fazy.nieokreslony ?? 0);
+  };
+
+  // Jedno zrodlo na noc: to, ktore zapisalo najwiecej snu wlasciwego.
+  const sen = Object.values(d.senZrodla).reduce(
+    (naj, kandydat) => (naj === null || senWlasciwy(kandydat.fazy) > senWlasciwy(naj.fazy) ? kandydat : naj),
+    null
+  ) ?? { fazy: {}, zasniecie: null };
+
+  const s = (f) => (sen.fazy[f] ? Math.round(sen.fazy[f]) : null);
+  const glowny = senWlasciwy(sen.fazy);
 
   /*
    * Medytacja: zero zapisujemy JAWNIE, ale dopiero od dnia pierwszej sesji
@@ -270,7 +304,7 @@ for (const [data, d] of [...dni.entries()].sort()) {
   const w = [
     data, m('hrv_noc'), m('hrv'), (d.pomiary.hrv ?? []).length || null, m('rhr', 0),
     glowny ? Math.round(glowny) : null, s('gleboki'), s('rem'), s('budzenia'), s('lozko'),
-    d.zasniecie ? d.zasniecie.slice(11, 16) : null,
+    sen.zasniecie ? sen.zasniecie.slice(11, 16) : null,
     m('temperatura', 2), m('oddech'), m('spo2', 3),
     naj('kroki'), naj('kcal_aktywne'), naj('min_ruchu'),
     naj('kcal_bazowe'), m('vo2max', 2), m('waga', 1), m('tetno_marsz', 0),

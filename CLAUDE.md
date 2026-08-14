@@ -375,16 +375,35 @@ Widok dnia trzyma wiersz „stres dnia niewpisany" z odnośnikiem także wtedy, 
 wpisu nie ma. To jedyny mechanizm przypominający o wpisie, a bez wpisów ta liczba
 nie mierzy niczego.
 
-## Zegarek: dwa kanały do jednej tabeli
+## Zegarek: trzy kanały do jednej tabeli
 
 Tabela `watch`, jeden wiersz na dobę, `date` jako klucz główny. Zapisują ją
-**dwa źródła** i oba są upsertami po dacie, więc kolejność i powtórki nie mają
-znaczenia. Kolumna `zrodlo` mówi, który kanał dotknął wiersza ostatni.
+**trzy źródła** i wszystkie są upsertami po dacie, więc kolejność i powtórki nie
+mają znaczenia. Kolumna `zrodlo` mówi, który kanał dotknął wiersza ostatni.
 
 | Kanał | Czym | Kiedy |
 |---|---|---|
-| `export` | `npm run watch:import` z pliku XML ze Zdrowia | historia, 3838 dni do 12.08.2026 |
+| `export` | `npm run watch:import` z pliku XML ze Zdrowia | historia, 3840 dni od 10.09.2014 |
 | `ios` | aplikacja `ios/`, `POST /api/watch` | codziennie, jednym kliknięciem |
+| Oura | `npm run oura:import` z `Oura_Archive` w repo Longevity Agent | archiwum zamknięte, 02.2020 do 22.02.2026 |
+
+Pierścień **nie jest już noszony**, więc trzeci kanał to zamknięty zbiór, a nie
+źródło bieżące. Skrypt zostaje, bo import ma być powtarzalny, gdyby trzeba było
+odtworzyć bazę od zera.
+
+**Metryka niezgodna definicyjnie dostaje własną kolumnę.** Oura raportuje HRV
+jako rMSSD, Apple jako SDNN, i to są dwa różne wskaźniki o innych wartościach
+typowych, więc rMSSD ma `hrv_rmssd`, a `hrv` zostaje pusty w latach z
+pierścieniem. Tak samo temperatura: Oura podaje odchylenie od własnej linii
+bazowej (`temperatura_odchylenie`), zegarek wartość bezwzględną (`temperatura`).
+
+**AsleepUnspecified to nie jest lekki sen.** Oura zapisuje go jako parasol nad
+tymi samymi minutami, które osobno opisuje jako Core i Deep, więc doliczenie go
+do reszty liczy je podwójnie: na tym poległo 707 z 1739 nocy, pokazując ponad
+11 godzin snu. Dla starszych zapisów to jedyna dostępna faza, więc reguła brzmi:
+liczy się tylko wtedy, gdy noc nie ma ani jednej fazy szczegółowej. Do tego
+**fazy zbieramy osobno dla każdego źródła i bierzemy jedno**, tak jak przy
+sumach dobowych. Reguła obowiązuje w `import-watch.mjs` i w `CzytnikZdrowia.swift`.
 
 **Zakaz automatycznej synchronizacji z 12.08.2026 już nie obowiązuje.** Maciek
 cofnął go 13.08, kupując konto deweloperskie: własna aplikacja rozwiązuje ten

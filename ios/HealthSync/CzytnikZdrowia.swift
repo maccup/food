@@ -216,23 +216,44 @@ final class CzytnikZdrowia {
         if let typ = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) {
             do {
                 let probki = try await probkiKategorii(typ: typ, predykat: okres)
-                var fazy: [String: [String: Double]] = [:]
-                var zasniecia: [String: Date] = [:]
+                /*
+                 * Fazy zbierane OSOBNO DLA KAZDEGO ZRODLA, a na koncu brane
+                 * jedno, tak samo jak przy sumach dobowych. Dwa urzadzenia
+                 * opisujace te sama noc wlasnymi fazami dawaly po zsumowaniu
+                 * noce po czternascie godzin. Scalanie przedzialow nie pomaga,
+                 * bo te same minuty jedno zrodlo nazywa lekkim snem, a drugie
+                 * glebokim.
+                 */
+                var poZrodlach: [String: [String: [String: Double]]] = [:]
+                var zasnieciaZrodel: [String: [String: Date]] = [:]
                 for p in probki {
                     // Doba snu przypisana do dnia POBUDKI, czyli po dacie konca.
                     let k = Self.klucz(p.endDate)
                     let minuty = p.endDate.timeIntervalSince(p.startDate) / 60
                     guard minuty > 0 else { continue }
                     guard let faza = Self.fazaSnu(p.value) else { continue }
-                    fazy[k, default: [:]][faza, default: 0] += minuty
+                    let zrodlo = p.sourceRevision.source.name
+                    poZrodlach[k, default: [:]][zrodlo, default: [:]][faza, default: 0] += minuty
                     if faza != "budzenia" && faza != "lozko" {
-                        if zasniecia[k] == nil || p.startDate < zasniecia[k]! {
-                            zasniecia[k] = p.startDate
+                        let dotychczas = zasnieciaZrodel[k]?[zrodlo]
+                        if dotychczas == nil || p.startDate < dotychczas! {
+                            zasnieciaZrodel[k, default: [:]][zrodlo] = p.startDate
                         }
                     }
                 }
+
+                var fazy: [String: [String: Double]] = [:]
+                var zasniecia: [String: Date] = [:]
+                for (k, zrodla) in poZrodlach {
+                    guard let najlepsze = zrodla.max(by: {
+                        Self.senWlasciwy($0.value) < Self.senWlasciwy($1.value)
+                    }) else { continue }
+                    fazy[k] = najlepsze.value
+                    zasniecia[k] = zasnieciaZrodel[k]?[najlepsze.key]
+                }
+
                 for (k, f) in fazy where dni[k] != nil {
-                    let glowny = (f["gleboki"] ?? 0) + (f["rem"] ?? 0) + (f["lekki"] ?? 0)
+                    let glowny = Self.senWlasciwy(f)
                     if glowny > 0 { dni[k]?.pola["sen_min"] = Self.zaokr(glowny, 0) }
                     if let v = f["gleboki"] { dni[k]?.pola["sen_gleboki_min"] = Self.zaokr(v, 0) }
                     if let v = f["rem"] { dni[k]?.pola["sen_rem_min"] = Self.zaokr(v, 0) }
@@ -429,10 +450,25 @@ final class CzytnikZdrowia {
         switch HKCategoryValueSleepAnalysis(rawValue: wartosc) {
         case .asleepDeep: return "gleboki"
         case .asleepREM: return "rem"
-        case .asleepCore, .asleepUnspecified: return "lekki"
+        case .asleepCore: return "lekki"
+        /*
+         * NIE jest to synonim lekkiego snu. Oura zapisuje asleepUnspecified
+         * jako parasol nad tymi samymi minutami, ktore osobno opisuje jako
+         * Core i Deep, wiec doliczenie go do reszty liczy je podwojnie:
+         * na tym polegly 707 z 1739 nocy w bazie, pokazujac ponad 11 godzin.
+         * Zarazem dla starszych zapisow to jedyna dostepna faza, wiec liczy
+         * sie wtedy, gdy noc nie ma ani jednej fazy szczegolowej.
+         */
+        case .asleepUnspecified: return "nieokreslony"
         case .awake: return "budzenia"
         case .inBed: return "lozko"
         default: return nil
         }
+    }
+
+    /// Sen wlasciwy nocy. Fazy szczegolowe wygrywaja z parasolem.
+    private static func senWlasciwy(_ fazy: [String: Double]) -> Double {
+        let szczegolowe = (fazy["gleboki"] ?? 0) + (fazy["rem"] ?? 0) + (fazy["lekki"] ?? 0)
+        return szczegolowe > 0 ? szczegolowe : (fazy["nieokreslony"] ?? 0)
     }
 }
