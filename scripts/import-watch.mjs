@@ -14,6 +14,12 @@
  * Import jest idempotentny. Kolejny eksport wgrywa sie na wierzch poprzedniego
  * (upsert po dacie), wiec nie trzeba niczego czyscic ani pilnowac, od kiedy
  * dogrywac. Dni, ktorych nowy eksport nie zawiera, zostaja nietkniete.
+ *
+ * UWAGA na drugi kanal. Aplikacja iOS pisze do tej samej tabeli przez
+ * `/api/watch`, ale SCALA (COALESCE), a ten skrypt NADPISUJE cala kolumne,
+ * takze pusta wartoscia. Przepuszczenie starego eksportu po synchronizacji
+ * z telefonu skasowaloby to, czego eksport nie zawiera. Import z pliku robimy
+ * wiec na historii, a biezace doby zostawiamy aplikacji.
  */
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -24,6 +30,8 @@ import { join } from 'node:path';
 
 const argv = process.argv.slice(2);
 const local = argv.includes('--local');
+/** Buduje SQL i zatrzymuje sie przed zapisem, do sprawdzenia co poleci. */
+const naSucho = argv.includes('--dry');
 const plik = argv.find((a) => !a.startsWith('--'))
   ?? join(homedir(), 'Downloads', 'apple_health_export', 'export.xml');
 
@@ -39,6 +47,11 @@ const MEDIANA = {
   [`${Q}VO2Max`]: 'vo2max',
   [`${Q}BodyMass`]: 'waga',
   [`${Q}WalkingHeartRateAverage`]: 'tetno_marsz',
+  [`${Q}HeartRateRecoveryOneMinute`]: 'cardio_recovery',
+  [`${Q}BodyFatPercentage`]: 'tkanka_tluszczowa',
+  [`${Q}LeanBodyMass`]: 'masa_beztluszczowa',
+  [`${Q}BloodPressureSystolic`]: 'cisnienie_sys',
+  [`${Q}BloodPressureDiastolic`]: 'cisnienie_dia',
 };
 
 /*
@@ -51,6 +64,9 @@ const SUMA = {
   [`${Q}ActiveEnergyBurned`]: 'kcal_aktywne',
   [`${Q}AppleExerciseTime`]: 'min_ruchu',
   [`${Q}BasalEnergyBurned`]: 'kcal_bazowe',
+  [`${Q}TimeInDaylight`]: 'swiatlo_min',
+  [`${Q}DistanceWalkingRunning`]: 'dystans_km',
+  [`${Q}FlightsClimbed`]: 'pietra',
 };
 
 const FAZY = {
@@ -59,6 +75,7 @@ const FAZY = {
   HKCategoryValueSleepAnalysisAsleepCore: 'lekki',
   HKCategoryValueSleepAnalysisAsleepUnspecified: 'lekki',
   HKCategoryValueSleepAnalysisAwake: 'budzenia',
+  HKCategoryValueSleepAnalysisInBed: 'lozko',
 };
 
 const atr = (linia, nazwa) => {
@@ -88,10 +105,21 @@ const mediana = (v) => {
 const dni = new Map();
 const dzien = (d) => {
   if (!dni.has(d)) {
-    dni.set(d, { pomiary: {}, zrodla: {}, sen: {}, zasniecie: null });
+    dni.set(d, {
+      pomiary: {}, zrodla: {}, sen: {}, zasniecie: null,
+      // Tetno liczymy w locie, nie tablica probek: samych odczytow pulsu jest
+      // 1,46 mln i trzymanie ich w pamieci nie ma po co istniec, skoro
+      // potrzebujemy tylko sredniej i maksimum.
+      tetno: null, medytacja: null, stanie: 0, trening: null,
+    });
   }
   return dni.get(d);
 };
+
+/** Pierwsza sesja medytacji w calym eksporcie, patrz zerowanie przy zapisie. */
+let pierwszaMedytacja = null;
+/** Dzien trwajacego <Workout>, zeby dopiac do niego <WorkoutStatistics>. */
+let otwartyTrening = null;
 
 console.error(`czytam ${plik}`);
 let n = 0;
@@ -102,6 +130,38 @@ const rl = createInterface({
 });
 
 for await (const linia of rl) {
+  /*
+   * Trening to nie <Record>, tylko <Workout> z zagniezdzonym
+   * <WorkoutStatistics>, ktore niesie spalone kalorie. Plik idzie linia po
+   * linii, wiec zapamietujemy dzien otwartego treningu i dopinamy do niego
+   * kolejna linie ze statystyka.
+   */
+  if (linia.includes('<Workout ')) {
+    const start = atr(linia, 'startDate');
+    const minuty = Number(atr(linia, 'duration'));
+    if (start) {
+      otwartyTrening = start.slice(0, 10);
+      const d = dzien(otwartyTrening);
+      d.trening ??= { liczba: 0, minuty: 0, kcal: 0 };
+      d.trening.liczba += 1;
+      if (Number.isFinite(minuty) && atr(linia, 'durationUnit') === 'min') {
+        d.trening.minuty += minuty;
+      }
+    }
+    continue;
+  }
+  if (linia.includes('<WorkoutStatistics ')) {
+    if (otwartyTrening && atr(linia, 'type') === `${Q}ActiveEnergyBurned`) {
+      const kcal = Number(atr(linia, 'sum'));
+      if (Number.isFinite(kcal)) dzien(otwartyTrening).trening.kcal += kcal;
+    }
+    continue;
+  }
+  if (linia.includes('</Workout>')) {
+    otwartyTrening = null;
+    continue;
+  }
+
   if (!linia.includes('<Record ')) continue;
   const typ = atr(linia, 'type');
   if (!typ) continue;
@@ -139,9 +199,29 @@ for await (const linia of rl) {
     const minuty = (czas(koniec) - czas(start)) / 60000;
     if (!Number.isFinite(minuty) || minuty <= 0) continue;
     d.sen[faza] = (d.sen[faza] ?? 0) + minuty;
-    if (faza !== 'budzenia' && (d.zasniecie === null || start < d.zasniecie)) {
+    if (faza !== 'budzenia' && faza !== 'lozko' && (d.zasniecie === null || start < d.zasniecie)) {
       d.zasniecie = start;
     }
+  } else if (typ === `${Q}HeartRate`) {
+    const v = Number(atr(linia, 'value'));
+    if (!Number.isFinite(v)) continue;
+    const d = dzien(data);
+    d.tetno ??= { suma: 0, n: 0, max: 0 };
+    d.tetno.suma += v;
+    d.tetno.n += 1;
+    if (v > d.tetno.max) d.tetno.max = v;
+  } else if (typ === 'HKCategoryTypeIdentifierMindfulSession') {
+    const koniec = atr(linia, 'endDate');
+    if (!koniec) continue;
+    const minuty = (czas(koniec) - czas(start)) / 60000;
+    if (!Number.isFinite(minuty) || minuty <= 0) continue;
+    const d = dzien(data);
+    d.medytacja ??= { minuty: 0, sesji: 0 };
+    d.medytacja.minuty += minuty;
+    d.medytacja.sesji += 1;
+    if (pierwszaMedytacja === null || data < pierwszaMedytacja) pierwszaMedytacja = data;
+  } else if (typ === 'HKCategoryTypeIdentifierAppleStandHour') {
+    if (atr(linia, 'value') === 'HKCategoryValueAppleStandHourStood') dzien(data).stanie += 1;
   }
 }
 
@@ -149,8 +229,13 @@ console.error(`przetworzono ${n} rekordow, ${dni.size} dni`);
 
 const KOLUMNY = [
   'date', 'hrv_noc', 'hrv', 'hrv_pomiarow', 'rhr', 'sen_min', 'sen_gleboki_min',
-  'sen_rem_min', 'sen_budzenia_min', 'zasniecie', 'temperatura', 'oddech', 'spo2',
+  'sen_rem_min', 'sen_budzenia_min', 'sen_lozko_min', 'zasniecie',
+  'temperatura', 'oddech', 'spo2',
   'kroki', 'kcal_aktywne', 'min_ruchu', 'kcal_bazowe', 'vo2max', 'waga', 'tetno_marsz',
+  'tetno_srednie', 'tetno_max', 'dystans_km', 'pietra', 'stanie_h', 'swiatlo_min',
+  'cardio_recovery', 'medytacja_min', 'medytacja_sesji',
+  'treningi', 'trening_min', 'trening_kcal',
+  'tkanka_tluszczowa', 'masa_beztluszczowa', 'cisnienie_sys', 'cisnienie_dia',
 ];
 
 const sql = (v) => (v === null || v === undefined ? 'NULL'
@@ -163,20 +248,41 @@ for (const [data, d] of [...dni.entries()].sort()) {
     const v = mediana(d.pomiary[k] ?? []);
     return v === null ? null : Math.round(v * 10 ** cyfry) / 10 ** cyfry;
   };
-  const naj = (k) => {
+  const naj = (k, cyfry = 0) => {
     const z = d.zrodla[k];
-    return z ? Math.round(Math.max(...Object.values(z))) : null;
+    if (!z) return null;
+    return Math.round(Math.max(...Object.values(z)) * 10 ** cyfry) / 10 ** cyfry;
   };
   const s = (f) => (d.sen[f] ? Math.round(d.sen[f]) : null);
   const glowny = ['gleboki', 'rem', 'lekki'].reduce((a, f) => a + (d.sen[f] ?? 0), 0);
 
+  /*
+   * Medytacja: zero zapisujemy JAWNIE, ale dopiero od dnia pierwszej sesji
+   * w eksporcie. Wczesniej zegarek tego nie mierzyl, wiec zero znaczyloby
+   * „nie medytowal", a prawda jest „nie wiadomo". Od tamtej daty brak wpisu
+   * to juz realny dzien bez praktyki i tak ma sie liczyc, bo inaczej
+   * porownanie dni z praktyka i bez nie ma grupy kontrolnej.
+   */
+  const medytowalKiedykolwiek = pierwszaMedytacja !== null && data >= pierwszaMedytacja;
+  const medMin = d.medytacja ? Math.round(d.medytacja.minuty) : (medytowalKiedykolwiek ? 0 : null);
+  const medSesji = d.medytacja ? d.medytacja.sesji : (medytowalKiedykolwiek ? 0 : null);
+
   const w = [
     data, m('hrv_noc'), m('hrv'), (d.pomiary.hrv ?? []).length || null, m('rhr', 0),
-    glowny ? Math.round(glowny) : null, s('gleboki'), s('rem'), s('budzenia'),
+    glowny ? Math.round(glowny) : null, s('gleboki'), s('rem'), s('budzenia'), s('lozko'),
     d.zasniecie ? d.zasniecie.slice(11, 16) : null,
     m('temperatura', 2), m('oddech'), m('spo2', 3),
     naj('kroki'), naj('kcal_aktywne'), naj('min_ruchu'),
     naj('kcal_bazowe'), m('vo2max', 2), m('waga', 1), m('tetno_marsz', 0),
+    d.tetno ? Math.round(d.tetno.suma / d.tetno.n) : null,
+    d.tetno ? Math.round(d.tetno.max) : null,
+    naj('dystans_km', 2), naj('pietra'), d.stanie || null, naj('swiatlo_min'),
+    m('cardio_recovery'), medMin, medSesji,
+    d.trening ? d.trening.liczba : null,
+    d.trening ? Math.round(d.trening.minuty) : null,
+    d.trening?.kcal ? Math.round(d.trening.kcal) : null,
+    m('tkanka_tluszczowa', 3), m('masa_beztluszczowa', 1),
+    m('cisnienie_sys', 0), m('cisnienie_dia', 0),
   ];
   // Dzien bez ani jednego pomiaru poza data nie ma po co zajmowac wiersza.
   if (w.slice(1).every((x) => x === null)) continue;
@@ -199,6 +305,11 @@ for (let i = 0; i < wiersze.length; i += 200) {
 const wyjscie = join(tmpdir(), 'watch-import.sql');
 writeFileSync(wyjscie, kawalki.join('\n\n'));
 console.error(`${wiersze.length} dni do zapisu, ${kawalki.length} zapytan, plik ${wyjscie}`);
+
+if (naSucho) {
+  console.error('--dry: nic nie zapisane');
+  process.exit(0);
+}
 
 execFileSync(
   'npx',
