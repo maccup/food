@@ -19,8 +19,13 @@ open Zdrowie.xcodeproj
 
 W Xcode:
 
-1. Zakładka **Signing & Capabilities**, wybierz swój zespół. Bundle id
-   `eu.cupial.zdrowie` jest wolny, ale możesz go zmienić.
+1. Zakładka **Signing & Capabilities**, wybierz swój zespół i **trzymaj się jednego**.
+   Identyfikatory aplikacji są globalnie unikalne w całym Apple, a Xcode rejestruje
+   identyfikator na zespole w momencie wyboru. Przełączenie zespołu potem daje błąd
+   „cannot be registered to your development team because it is not available",
+   który brzmi jak zajęty przez kogoś obcego, a znaczy zajęty przez Twój drugi zespół.
+   Wyjście: wróć do poprzedniego zespołu albo zmień `PRODUCT_BUNDLE_IDENTIFIER`
+   w `project.yml` i uruchom `xcodegen generate` ponownie.
 2. Podłącz iPhone, wybierz go jako cel, **Run**.
 3. Na telefonie: Ustawienia → Ogólne → VPN i zarządzanie urządzeniem, zaufaj profilowi.
 4. W aplikacji ikona koła zębatego, wklej token z sekretu `WATCH_TOKEN`.
