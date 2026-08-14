@@ -129,6 +129,10 @@ const dzien = (d) => {
 let pierwszaMedytacja = null;
 /** Dzien trwajacego <Workout>, zeby dopiac do niego <WorkoutStatistics>. */
 let otwartyTrening = null;
+/** Wiersz trwajacego treningu w tabeli `workouts`, do dopisania kalorii. */
+let otwartyWiersz = null;
+/** Pojedyncze treningi z rodzajem, do osobnej tabeli. */
+const treningi = [];
 
 console.error(`czytam ${plik}`);
 let n = 0;
@@ -153,8 +157,15 @@ for await (const linia of rl) {
       const d = dzien(otwartyTrening);
       d.trening ??= { liczba: 0, minuty: 0, kcal: 0 };
       d.trening.liczba += 1;
-      if (Number.isFinite(minuty) && atr(linia, 'durationUnit') === 'min') {
-        d.trening.minuty += minuty;
+      const dlugosc = Number.isFinite(minuty) && atr(linia, 'durationUnit') === 'min' ? minuty : null;
+      if (dlugosc !== null) d.trening.minuty += dlugosc;
+
+      // Osobny wiersz na kazdy trening, bo bez rodzaju nie da sie powiedziec,
+      // czy w tygodniu byla sila. Typ zostaje surowy, jak przyszedl z Apple.
+      const typ = (atr(linia, 'workoutActivityType') ?? '').replace('HKWorkoutActivityType', '');
+      if (typ) {
+        otwartyWiersz = { date: otwartyTrening, start: start.slice(11, 16), typ, minuty: dlugosc, kcal: 0 };
+        treningi.push(otwartyWiersz);
       }
     }
     continue;
@@ -162,12 +173,16 @@ for await (const linia of rl) {
   if (linia.includes('<WorkoutStatistics ')) {
     if (otwartyTrening && atr(linia, 'type') === `${Q}ActiveEnergyBurned`) {
       const kcal = Number(atr(linia, 'sum'));
-      if (Number.isFinite(kcal)) dzien(otwartyTrening).trening.kcal += kcal;
+      if (Number.isFinite(kcal)) {
+        dzien(otwartyTrening).trening.kcal += kcal;
+        if (otwartyWiersz) otwartyWiersz.kcal += kcal;
+      }
     }
     continue;
   }
   if (linia.includes('</Workout>')) {
     otwartyTrening = null;
+    otwartyWiersz = null;
     continue;
   }
 
@@ -336,9 +351,24 @@ for (let i = 0; i < wiersze.length; i += 200) {
   );
 }
 
+/*
+ * Treningi ida do wlasnej tabeli, jeden wiersz na sesje. Klucz naturalny to
+ * data, rodzaj i godzina startu, wiec powtorzony import nie zdubluje niczego,
+ * a poprawiona dlugosc albo kaloryka nadpisze poprzedni odczyt.
+ */
+for (let i = 0; i < treningi.length; i += 200) {
+  const partia = treningi.slice(i, i + 200).map((t) =>
+    `(${sql(t.date)},${sql(t.start)},${sql(t.typ)},${sql(t.minuty)},${sql(t.kcal || null)},'export')`
+  );
+  kawalki.push(
+    `INSERT INTO workouts (date, start, typ_apple, minuty, kcal, zrodlo) VALUES\n${partia.join(',\n')}\n` +
+    `ON CONFLICT(date, typ_apple, start) DO UPDATE SET minuty = excluded.minuty, kcal = excluded.kcal;`
+  );
+}
+
 const wyjscie = join(tmpdir(), 'watch-import.sql');
 writeFileSync(wyjscie, kawalki.join('\n\n'));
-console.error(`${wiersze.length} dni do zapisu, ${kawalki.length} zapytan, plik ${wyjscie}`);
+console.error(`${wiersze.length} dni i ${treningi.length} treningow do zapisu, ${kawalki.length} zapytan, plik ${wyjscie}`);
 
 if (naSucho) {
   console.error('--dry: nic nie zapisane');

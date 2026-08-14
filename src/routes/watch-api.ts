@@ -38,8 +38,16 @@ function liczbaAlbo(v: unknown): number | string | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
+interface TreningZTelefonu {
+  date?: unknown;
+  start?: unknown;
+  typ?: unknown;
+  minuty?: unknown;
+  kcal?: unknown;
+}
+
 watchApi.post('/api/watch', async (c) => {
-  let body: { days?: Array<Record<string, unknown>> };
+  let body: { days?: Array<Record<string, unknown>>; treningi?: TreningZTelefonu[] };
   try {
     body = await c.req.json();
   } catch {
@@ -80,6 +88,36 @@ watchApi.post('/api/watch', async (c) => {
     );
   }
 
+  // Liczba dni musi byc zdjeta ZANIM do kolejki dojda treningi, inaczej
+  // odpowiedz melduje wiecej dob, niz telefon przyslal.
+  const dniZapisane = zapytania.length;
+
+  /*
+   * Treningi ida osobno, bo to inna ziarnistosc: kilka sesji na dobe, kazda
+   * z rodzajem. Bez rodzaju plan treningowy nie ma z czego liczyc, czy w tym
+   * tygodniu byla juz sila, wiec ten kawalek nie jest ozdoba.
+   * Klucz naturalny to data, rodzaj i godzina startu, wiec powtorna wysylka
+   * tego samego okna niczego nie dubluje.
+   */
+  let treningow = 0;
+  for (const t of body?.treningi ?? []) {
+    const date = String(t?.date ?? '');
+    const typ = String(t?.typ ?? '');
+    if (!DATA_OK.test(date) || !typ) {
+      odrzucone.push(`zly trening: ${JSON.stringify(t)}`);
+      continue;
+    }
+    zapytania.push(
+      c.env.DB.prepare(
+        `INSERT INTO workouts (date, start, typ_apple, minuty, kcal, zrodlo)
+         VALUES (?, ?, ?, ?, ?, 'ios')
+         ON CONFLICT(date, typ_apple, start) DO UPDATE SET
+           minuty = excluded.minuty, kcal = excluded.kcal, zrodlo = 'ios'`
+      ).bind(date, t?.start ? String(t.start) : null, typ, liczbaAlbo(t?.minuty), liczbaAlbo(t?.kcal))
+    );
+    treningow++;
+  }
+
   if (!zapytania.length) {
     return c.json({ error: 'Zaden dzien nie przeszedl walidacji', odrzucone }, 400);
   }
@@ -88,7 +126,8 @@ watchApi.post('/api/watch', async (c) => {
 
   return c.json({
     ok: true,
-    dni: zapytania.length,
+    dni: dniZapisane,
+    treningow,
     pol,
     odrzucone,
     // Aplikacja pokazuje to w logu, zeby bylo widac, ze serwer faktycznie zapisal

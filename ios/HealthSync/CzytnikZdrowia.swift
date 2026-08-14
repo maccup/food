@@ -1,6 +1,23 @@
 import Foundation
 import HealthKit
 
+/// Pojedyncza sesja treningowa z rodzajem. Bez rodzaju plan treningowy nie ma
+/// z czego policzyc, czy w tym tygodniu byla juz sila, a wiekszosc zapisanych
+/// „treningow" to spacery.
+struct TreningWyslany {
+    let data: String
+    let start: String
+    let typ: String
+    let minuty: Double
+    let kcal: Double?
+
+    func slownik() -> [String: Any] {
+        var s: [String: Any] = ["date": data, "start": start, "typ": typ, "minuty": minuty]
+        if let k = kcal { s["kcal"] = k }
+        return s
+    }
+}
+
 /// Jedna doba gotowa do wyslania. Klucze odpowiadaja kolumnom tabeli `watch`.
 struct Dzien {
     let data: String
@@ -110,12 +127,14 @@ final class CzytnikZdrowia {
 
     // MARK: - Zbieranie
 
-    func zbierz(dniWstecz: Int, log: @escaping (String, Dziennik.Waga) -> Void) async -> [Dzien] {
+    func zbierz(dniWstecz: Int, log: @escaping (String, Dziennik.Waga) -> Void)
+        async -> (dni: [Dzien], sesje: [TreningWyslany]) {
+        var sesje: [TreningWyslany] = []
         let dzisPoczatek = kalendarz.startOfDay(for: Date())
         guard let od = kalendarz.date(byAdding: .day, value: -(dniWstecz - 1), to: dzisPoczatek),
               let doKonca = kalendarz.date(byAdding: .day, value: 1, to: dzisPoczatek) else {
             log("Nie udalo sie policzyc zakresu dat", .blad)
-            return []
+            return ([], [])
         }
 
         var dni: [String: Dzien] = [:]
@@ -337,12 +356,27 @@ final class CzytnikZdrowia {
                 dni[k]?.pola["trening_min"] = Self.zaokr(minuty[k] ?? 0, 0)
                 if let c = kcal[k], c > 0 { dni[k]?.pola["trening_kcal"] = Self.zaokr(c, 0) }
             }
-            log("treningi: \(treningi.count) w oknie, \(liczba.count) dni", .ok)
+
+            // Kazda sesja osobno, z rodzajem. Sumy dobowe wyzej zostaja,
+            // bo odpowiadaja na inne pytanie: ile bylo, a nie czego.
+            sesje = treningi.compactMap { t in
+                let typ = Self.nazwaTypu(t.workoutActivityType)
+                guard !typ.isEmpty else { return nil }
+                return TreningWyslany(
+                    data: Self.klucz(t.startDate),
+                    start: Self.godzina(t.startDate),
+                    typ: typ,
+                    minuty: Self.zaokr(t.duration / 60, 1),
+                    kcal: t.statistics(for: HKQuantityType(.activeEnergyBurned))?
+                        .sumQuantity()?.doubleValue(for: .kilocalorie()).rounded()
+                )
+            }
+            log("treningi: \(treningi.count) w oknie, \(liczba.count) dni, \(sesje.count) z rodzajem", .ok)
         } catch {
             log("treningi: BLAD zapytania, \(error.localizedDescription)", .blad)
         }
 
-        return dni.values.sorted { $0.data < $1.data }
+        return (dni.values.sorted { $0.data < $1.data }, sesje)
     }
 
     // MARK: - Zapytania
@@ -430,6 +464,42 @@ final class CzytnikZdrowia {
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
+
+    /*
+     * Nazwy MUSZA byc takie same jak w eksporcie XML, czyli nazwa przypadku
+     * HKWorkoutActivityType bez przedrostka. Klasyfikacja na sile, cardio
+     * i reszte siedzi po stronie serwera i dopasowuje sie wlasnie do tych
+     * napisow, wiec inna pisownia oznacza cichy trening bez kategorii.
+     * Switch zamiast tablicy z surowymi numerami: kompilator sprawdza nazwy,
+     * a numery trzeba byloby przepisac z dokumentacji i uwierzyc.
+     */
+    private static func nazwaTypu(_ t: HKWorkoutActivityType) -> String {
+        switch t {
+        case .traditionalStrengthTraining: return "TraditionalStrengthTraining"
+        case .functionalStrengthTraining: return "FunctionalStrengthTraining"
+        case .coreTraining: return "CoreTraining"
+        case .highIntensityIntervalTraining: return "HighIntensityIntervalTraining"
+        case .running: return "Running"
+        case .cycling: return "Cycling"
+        case .swimming: return "Swimming"
+        case .rowing: return "Rowing"
+        case .elliptical: return "Elliptical"
+        case .stairClimbing: return "StairClimbing"
+        case .stairs: return "Stairs"
+        case .mixedCardio: return "MixedCardio"
+        case .crossTraining: return "CrossTraining"
+        case .hiking: return "Hiking"
+        case .tennis: return "Tennis"
+        case .walking: return "Walking"
+        case .yoga: return "Yoga"
+        case .mindAndBody: return "MindAndBody"
+        case .pilates: return "Pilates"
+        case .flexibility: return "Flexibility"
+        case .cooldown: return "Cooldown"
+        case .underwaterDiving: return "UnderwaterDiving"
+        default: return "Other"
+        }
+    }
 
     private static func klucz(_ d: Date) -> String { kluczFormat.string(from: d) }
     private static func godzina(_ d: Date) -> String { godzinaFormat.string(from: d) }

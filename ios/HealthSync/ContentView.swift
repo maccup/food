@@ -318,7 +318,7 @@ struct ContentView: View {
                 return
             }
 
-            let dni = await czytnik.zbierz(dniWstecz: ustawienia.dniWstecz, log: zapisz)
+            let (dni, sesje) = await czytnik.zbierz(dniWstecz: ustawienia.dniWstecz, log: zapisz)
 
             let zPolami = dni.filter { !$0.pola.isEmpty }
             zapisz("Zebrano \(dni.count) dni, z czego \(zPolami.count) ma jakiekolwiek dane", .info)
@@ -338,7 +338,7 @@ struct ContentView: View {
             }
 
             do {
-                let n = try await wysylka.wyslij(zPolami, log: zapisz)
+                let n = try await wysylka.wyslij(zPolami, sesje: sesje, log: zapisz)
                 let stan = await wysylka.status(log: zapisz)
                 await MainActor.run {
                     ustawienia.ostatniaSynchronizacja = Date()

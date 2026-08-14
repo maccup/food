@@ -26,7 +26,8 @@ struct Wysylka {
 
     private static let wielkoscPaczki = 50
 
-    func wyslij(_ dni: [Dzien], log: @escaping (String, Dziennik.Waga) -> Void) async throws -> Int {
+    func wyslij(_ dni: [Dzien], sesje: [TreningWyslany],
+                log: @escaping (String, Dziennik.Waga) -> Void) async throws -> Int {
         guard let baza = URL(string: adres.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             throw Blad.zlyAdres(adres)
         }
@@ -38,7 +39,13 @@ struct Wysylka {
         }
 
         for (i, paczka) in paczki.enumerated() {
-            let cialo: [String: Any] = ["days": paczka.map { $0.slownik() }]
+            var cialo: [String: Any] = ["days": paczka.map { $0.slownik() }]
+            // Sesje treningowe ida z pierwsza paczka w calosci. Jest ich rzedu
+            // stu na trzydziesci dni, wiec dzielenie ich niczego nie ratuje,
+            // a zapis jest idempotentny, wiec powtorka nic nie kosztuje.
+            if i == 0 && !sesje.isEmpty {
+                cialo["treningi"] = sesje.map { $0.slownik() }
+            }
             let dane = try JSONSerialization.data(withJSONObject: cialo)
 
             var zadanie = URLRequest(url: cel)

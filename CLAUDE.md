@@ -391,6 +391,19 @@ Pierścień **nie jest już noszony**, więc trzeci kanał to zamknięty zbiór,
 źródło bieżące. Skrypt zostaje, bo import ma być powtarzalny, gdyby trzeba było
 odtworzyć bazę od zera.
 
+**Treningi mają własną tabelę `workouts`, jeden wiersz na sesję.** Kolumny
+`treningi` i `trening_min` w `watch` mówią ile, a nie czego, a przy medianie
+czterech aktywności dziennie większość to spacery. `typ_apple` trzymamy surowy,
+prosto z HealthKit; klasyfikacja na siłę, cardio i resztę siedzi wyłącznie
+w `src/utils/trening.ts`, żeby oba kanały i widok liczyły tak samo.
+
+**Plan treningowy na `/statystyki` nie zależy od wybranego zakresu.** Reszta
+ekranu odpowiada na „jak było", ten kawałek na „co dziś", i zawsze liczy się
+z ostatnich 60 dób. Reguły i ich źródła są w nagłówku `src/utils/trening.ts`:
+HRV kroczące z progiem SWC (Plews i Buchheit), próg wzrostu tętna spoczynkowego,
+struktura tygodnia z WHO 2020 skalibrowana do jego danych. ACWR świadomie
+pominięty, bo metryka jest podważona i nie ma podstaw do opierania na niej decyzji.
+
 **Metryka niezgodna definicyjnie dostaje własną kolumnę.** Oura raportuje HRV
 jako rMSSD, Apple jako SDNN, i to są dwa różne wskaźniki o innych wartościach
 typowych, więc rMSSD ma `hrv_rmssd`, a `hrv` zostaje pusty w latach z

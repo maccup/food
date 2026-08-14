@@ -3,6 +3,7 @@ import { Env } from '../types';
 import { page, card, blockTitle, emptyState, esc, pl, todayWarsaw, shiftDate, daysBetween, DAY_NAMES, poniedzialek } from '../views/ui';
 import { loadSettings } from '../utils/settings';
 import { statystykaPrzerw, PosilekDoPrzerw } from '../utils/gaps-stats';
+import { ulozPlan, DobaZegarka, TreningWpis, Zalecenie } from '../utils/trening';
 
 /**
  * Statystyki z dowolnego zakresu dat.
@@ -384,6 +385,95 @@ stats.get('/statystyki', async (c) => {
       ${dzienPoDniu}`)
     : emptyState('Żadnego wpisu o stresie w tym zakresie. Wpisuje się go wieczorem, w zakładce Dopisz.');
 
+  /*
+   * Plan treningowy NIE zalezy od wybranego zakresu i to jest celowe. Reszta
+   * ekranu odpowiada na pytanie „jak bylo", ten kawalek na „co dzisiaj", a to
+   * drugie zawsze liczy sie z ostatnich 60 dob, niezaleznie od tego, co akurat
+   * ustawione jest w filtrze. Inaczej wybranie roku zmienialoby zalecenie na
+   * dzis, co nie mialoby zadnego sensu.
+   */
+  const dzis = todayWarsaw();
+  const [zegarekPlan, treningiPlan] = await Promise.all([
+    db.prepare(
+      `SELECT date, hrv_noc, hrv, rhr, sen_min FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`
+    ).bind(shiftDate(dzis, -59), dzis).all<DobaZegarka>(),
+    db.prepare(
+      `SELECT date, typ_apple, minuty, kcal FROM workouts WHERE date BETWEEN ? AND ? ORDER BY date`
+    ).bind(shiftDate(dzis, -59), dzis).all<TreningWpis>(),
+  ]);
+
+  const plan = ulozPlan(zegarekPlan.results ?? [], treningiPlan.results ?? [], dzis);
+
+  const KOLOR_ZALECENIA: Record<Zalecenie, string> = {
+    sila: 'var(--ok)',
+    interwaly: 'var(--bad)',
+    cardio: 'var(--accent, #14B8A6)',
+    mobilnosc: 'var(--muted)',
+    odpoczynek: 'var(--warn)',
+  };
+
+  const kolorGotowosci = plan.gotowosc.stan === 'zielona' ? 'var(--ok)'
+    : plan.gotowosc.stan === 'zolta' ? 'var(--warn)' : 'var(--bad)';
+
+  const liczbaGotowosci = (etykieta: string, wartosc: string, dopisek = '') => `
+    <div>
+      <div style="font-size:12px;color:var(--muted)">${etykieta}</div>
+      <b style="font-size:17px">${wartosc}</b>
+      ${dopisek ? `<div style="font-size:11px;color:var(--muted)">${dopisek}</div>` : ''}
+    </div>`;
+
+  const g = plan.gotowosc;
+  const tyg = plan.tydzien;
+
+  const planHtml = (zegarekPlan.results ?? []).length
+    ? card(`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px">
+        <span style="font-size:13px;color:var(--muted)">Gotowość</span>
+        <b style="font-size:19px;color:${kolorGotowosci};text-transform:capitalize">${g.stan}</b>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+        ${liczbaGotowosci('HRV 7 dni', g.hrv7 === null ? '–' : `${pl(g.hrv7, 1)} ms`,
+          g.hrvDolnaGranica === null ? 'brak progu' : `granica ${pl(g.hrvDolnaGranica, 1)}`)}
+        ${liczbaGotowosci('Tętno spocz.', g.rhr7 === null ? '–' : `${pl(g.rhr7, 0)}`,
+          g.rhrDelta === null ? '' : `${g.rhrDelta >= 0 ? '+' : ''}${pl(g.rhrDelta, 1)} wobec normy`)}
+        ${liczbaGotowosci('Niedobór snu', g.dlugSnuMin === null ? '–' : `${pl(g.dlugSnuMin / 60, 1)} h`, 'z 3 dób')}
+      </div>
+      ${g.powody.length
+        ? `<div style="font-size:12px;color:${kolorGotowosci};margin-bottom:12px">${g.powody.map(esc).join('<br>')}</div>`
+        : `<div style="font-size:12px;color:var(--ok);margin-bottom:12px">Wszystkie trzy sygnały w Twojej normie.</div>`}
+
+      <div style="border-top:1px solid var(--hairline);padding-top:10px;margin-bottom:10px;font-size:12px;color:var(--muted)">
+        Ten tydzień: siła ${tyg.silaDni} dni, aerobowo ${tyg.aerobMin} min,
+        intensywnie ${tyg.intensywneSesje} ${tyg.intensywneSesje === 1 ? 'sesja' : 'sesji'},
+        ${tyg.dniZRzedu} ${tyg.dniZRzedu === 1 ? 'dzień' : 'dni'} z rzędu bez przerwy
+      </div>
+
+      ${plan.dni.map((d, i) => {
+        const dow = DAY_NAMES[new Date(`${d.date}T12:00:00Z`).getUTCDay()];
+        const kolor = KOLOR_ZALECENIA[d.zalecenie];
+        return `<div style="display:flex;gap:10px;padding:8px 0${i ? ';border-top:1px solid var(--hairline)' : ''}">
+          <div style="width:4px;border-radius:2px;background:${kolor};flex:0 0 4px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+              <b style="font-size:14px;color:${kolor}">${esc(d.tytul)}</b>
+              <span style="font-size:12px;color:var(--muted);white-space:nowrap">
+                ${i === 0 ? 'dziś' : `${dow.slice(0, 3)} ${d.date.slice(8)}.${d.date.slice(5, 7)}`}
+              </span>
+            </div>
+            ${i === 0 || d.zalecenie !== plan.dni[i - 1].zalecenie
+              ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(d.opis)}</div>`
+              : ''}
+          </div>
+        </div>`;
+      }).join('')}
+
+      <p class="hint" style="margin:10px 0 0">
+        Dzisiejsze zalecenie liczy się z pomiarów. Kolejne dni to szkielet tygodnia przy założeniu,
+        że wykonasz poprzednie i że gotowość się nie zmieni, więc jutro przelicz je od nowa.
+        <a href="/zegarek">Skąd te liczby ›</a>
+      </p>`)
+    : emptyState('Brak danych z zegarka z ostatnich 60 dni, więc nie ma z czego liczyć gotowości.');
+
   const przycisk = (wartosc: string, label: string) =>
     `<a href="/statystyki?zakres=${wartosc}" class="button button-small ${o.zakres === wartosc ? 'button-fill' : ''}">${label}</a>`;
 
@@ -408,6 +498,9 @@ stats.get('/statystyki', async (c) => {
         ${esc(o.od)} do ${esc(o.do)}, ${dniZakresu} dni${phase ? `, faza: ${esc(phase.name)}` : ''}
       </p>
     </div>
+
+    ${blockTitle('Trening na najbliższe dni', 'z ostatnich 60 dób, niezależnie od filtra')}
+    ${planHtml}
 
     ${blockTitle('Ile tego jest')}
     ${kompletnosc}

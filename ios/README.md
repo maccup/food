@@ -131,3 +131,11 @@ dystans, piętra, czas w świetle dziennym.
 
 Reszta: fazy snu i czas w łóżku, godzina zaśnięcia, tętno średnie i maksymalne,
 godziny ze wstaniem, medytacja, treningi (liczba, minuty, kalorie).
+
+Osobno leci **każda sesja treningowa z rodzajem** (`treningi` w ciele żądania,
+tabela `workouts` po drugiej stronie). Bez rodzaju plan treningowy na
+`/statystyki` nie ma z czego policzyć, czy w tym tygodniu była już siła,
+a większość zapisanych aktywności to spacery. Nazwy typów muszą się zgadzać
+co do znaku z tymi z eksportu XML, bo po nich idzie klasyfikacja na serwerze;
+mapowanie siedzi w `nazwaTypu()` i jest switchem po to, żeby kompilator
+pilnował nazw zamiast przepisywanych z dokumentacji numerów.
