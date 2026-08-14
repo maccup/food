@@ -186,6 +186,29 @@ Widoki SQL są **jedynym** miejscem liczenia sum: `v_day_macros`, `v_day_totals`
 czytają z nich, żeby nie mogły się rozjechać. `v_day_totals` stoi na `v_day_macros`
 i różni się od niego jednym warunkiem: bierze tylko posiłki zjedzone.
 
+### Dzień ma dwie sumy makro i to jest celowe
+
+`v_day_totals` liczy jedzenie, `v_day_supplement_macros` liczy suplementy.
+**Nie scalać ich.** Pasma fazy w `targets` są ustawione na samo jedzenie: cel
+błonnika 20 do 30 g ma w `source` wprost napisane, że PHGG dokłada swoje 5 g
+z góry. Doklejenie suplementów do sumy jedzenia przesunęłoby każdy dzień
+względem celu, który tego dodatku nie oczekuje, a przy okazji przemalowałoby
+kalendarz, bo kolor kratki liczy się z tłuszczu i błonnika.
+
+Skala jest realna, nie kosmetyczna: płynna omega to ok. 9 g tłuszczu dziennie,
+jedna saszetka FIBEgastrinu 5 g błonnika, od 18.08 dwie saszetki, czyli 10 g.
+
+Makra siedzą na `supplement_schedule`, nie na `supplements`, bo **jeden wiersz
+harmonogramu odpowiada dokładnie jednej dawce w `supplement_log`** (przez
+`schedule_id`). Kreatyna ma dwa wiersze po 5 g, FIBEgastrin w fazie 2 dwie
+saszetki o różnych porach: przy makrach trzymanych na produkcie trzeba by je
+mnożyć przez liczbę, której w bazie nie ma. Liczą się wyłącznie dawki odhaczone
+(`taken = 1`), tak samo jak w jedzeniu liczą się posiłki `zjedzony`.
+
+**Zero i NULL znaczą co innego.** Zero to sprawdzone i nieistotne (tabletka,
+kapsułka), NULL to niesprawdzone i widok zgłasza je jako `doses_without_macros`.
+Nowy preparat bez wypełnionych makr sam się w ten sposób upomni.
+
 ### Stan posiłku
 
 `meals.stan` ma trzy wartości i to jest model, nie flaga:

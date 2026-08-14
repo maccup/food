@@ -292,7 +292,8 @@ CREATE TABLE IF NOT EXISTS supplements (
   status    TEXT NOT NULL DEFAULT 'active',  -- active | paused | planned | discontinued
   rx        INTEGER NOT NULL DEFAULT 0,
   notes     TEXT,
-  source    TEXT
+  source    TEXT,
+  macros_note TEXT     -- skad wziete makra dawki, np. etykieta albo szacunek
 );
 
 -- Rozklad dnia. Rozdzielony od supplements, bo ten sam preparat potrafi
@@ -307,7 +308,15 @@ CREATE TABLE IF NOT EXISTS supplement_schedule (
   amount        TEXT,
   date_from     TEXT NOT NULL,
   date_to       TEXT,
-  notes         TEXT
+  notes         TEXT,
+  -- Makra JEDNEJ dawki tego wiersza, bo wiersz harmonogramu odpowiada
+  -- dokladnie jednemu wpisowi w supplement_log. NULL = nie sprawdzone,
+  -- zero = sprawdzone i nieistotne (tabletka, kapsulka).
+  kcal          REAL,
+  protein_g     REAL,
+  fat_g         REAL,
+  carbs_g       REAL,
+  fiber_g       REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_supp_sched_supp ON supplement_schedule(supplement_id);
@@ -415,3 +424,26 @@ SELECT
 FROM v_day_totals d
 JOIN phases p  ON d.date >= p.date_from AND (p.date_to IS NULL OR d.date <= p.date_to)
 JOIN targets t ON t.phase_id = p.id;
+
+-- Makra z suplementow, DRUGA suma dnia, celowo osobna od v_day_totals.
+-- Pasma fazy sa ustawione na jedzenie (cel blonnika 20 do 30 g ma w zrodle
+-- wprost napisane, ze PHGG dokłada swoje 5 g z gory), a kolor kratki liczy sie
+-- z tluszczu i blonnika. Wpuszczenie tych liczb do sumy jedzenia przesuneloby
+-- kazdy dzien wzgledem celu, ktory tego dodatku nie oczekuje. Nie scalac.
+-- Licza sie wylacznie dawki odhaczone, tak jak w jedzeniu licza sie posilki
+-- ze stanem "zjedzony".
+DROP VIEW IF EXISTS v_day_supplement_macros;
+CREATE VIEW v_day_supplement_macros AS
+SELECT
+  l.date,
+  ROUND(SUM(COALESCE(sc.kcal, 0)), 1)      AS kcal,
+  ROUND(SUM(COALESCE(sc.protein_g, 0)), 1) AS protein_g,
+  ROUND(SUM(COALESCE(sc.fat_g, 0)), 1)     AS fat_g,
+  ROUND(SUM(COALESCE(sc.carbs_g, 0)), 1)   AS carbs_g,
+  ROUND(SUM(COALESCE(sc.fiber_g, 0)), 1)   AS fiber_g,
+  COUNT(*)                                 AS doses,
+  SUM(CASE WHEN sc.kcal IS NULL THEN 1 ELSE 0 END) AS doses_without_macros
+FROM supplement_log l
+LEFT JOIN supplement_schedule sc ON sc.id = l.schedule_id
+WHERE l.taken = 1
+GROUP BY l.date;

@@ -99,8 +99,9 @@ interface MealRow {
 export async function renderDay(c: any, date: string) {
   const db = c.env.DB;
 
-  const [totals, phase, meals, breaches, symptoms, stools, stres, zegarek] = await Promise.all([
+  const [totals, suppMacros, phase, meals, breaches, symptoms, stools, stres, zegarek] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date = ?`).bind(date).first<any>(),
+    db.prepare(`SELECT * FROM v_day_supplement_macros WHERE date = ?`).bind(date).first<any>(),
     db.prepare(
       `SELECT * FROM phases WHERE ? >= date_from AND (date_to IS NULL OR ? <= date_to) LIMIT 1`
     ).bind(date, date).first<any>(),
@@ -248,6 +249,34 @@ export async function renderDay(c: any, date: string) {
       unit: m.unit,
     });
   }).join('');
+
+  /*
+   * Makra suplementow stoja OBOK paskow, nie w nich. Pasma fazy sa ustawione
+   * na jedzenie: cel blonnika 20 do 30 g ma w zrodle wprost napisane, ze PHGG
+   * dokłada swoje 5 g z gory. Wliczenie tych liczb do paska przesunęłoby kazdy
+   * dzien wzgledem celu, ktory tego dodatku nie oczekuje.
+   */
+  const suppMacroParts = suppMacros
+    ? ([
+        ['kcal', Number(suppMacros.kcal), 'kcal'],
+        ['tłuszcz', Number(suppMacros.fat_g), 'g'],
+        ['błonnik', Number(suppMacros.fiber_g), 'g'],
+        ['białko', Number(suppMacros.protein_g), 'g'],
+        ['węglowodany', Number(suppMacros.carbs_g), 'g'],
+      ] as [string, number, string][]).filter(([, v]) => v > 0)
+    : [];
+
+  const suppMacroHtml = suppMacroParts.length
+    ? `<div class="supp-macro">
+        <b>Z suplementów, poza powyższą sumą:</b>
+        ${suppMacroParts.map(([n, v, u]) => `${esc(n)} ${pl(v)}${u === 'g' ? ' g' : ''}`).join(', ')}
+        <br><span style="color:var(--muted)">Cele fazy są ustawione na samo jedzenie, dlatego te liczby stoją obok pasków, a nie w nich.${
+          suppMacros.doses_without_macros > 0
+            ? ` ${suppMacros.doses_without_macros} dawka bez sprawdzonych makr.`
+            : ''
+        }</span>
+      </div>`
+    : '';
 
   const caveats: string[] = [];
   if (totals?.meals_without_macros > 0)
@@ -501,7 +530,7 @@ export async function renderDay(c: any, date: string) {
 
     ${blockTitle('Makro wobec celu')}
     ${totals
-      ? card(macroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
+      ? card(macroHtml + suppMacroHtml + (caveats.length ? `<div style="margin-top:10px;font-size:12px;color:var(--warn)">${caveats.map(esc).join('<br>')}</div>` : ''))
       : emptyState('Nic jeszcze nie zjedzone tego dnia, więc nie ma czego porównywać z celem.')}
 
     ${blockTitle('Posiłki', `cel: przerwy min. ${minGap} h`)}

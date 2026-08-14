@@ -437,6 +437,12 @@ details > summary { list-style: none; }
   align-items: center; gap: 10px; padding: 6px 0;
 }
 .macro-label { font-size: 13px; color: var(--muted); }
+/* Suplementy sa druga suma dnia, nie czescia paskow, wiec dostaja wlasny
+   blok pod kreska, a nie kolejny wiersz siatki makro. */
+.supp-macro {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hairline);
+  font-size: 12px; line-height: 1.5;
+}
 .macro-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 .macro-track {
   height: 8px; background: var(--hairline); border-radius: 4px;

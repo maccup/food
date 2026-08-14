@@ -179,3 +179,16 @@ ON CONFLICT(id) DO UPDATE SET
   supplement_id = excluded.supplement_id, time_of_day = excluded.time_of_day,
   with_meal = excluded.with_meal, days = excluded.days, amount = excluded.amount,
   date_from = excluded.date_from, date_to = excluded.date_to, notes = excluded.notes;
+
+-- Makra jednej dawki. Osobnym blokiem, a nie w liscie kolumn wyzej, bo zero
+-- przy tabletce i NULL przy dawce niesprawdzonej to dwie rozne rzeczy, a przy
+-- dwudziestu wierszach kolumna zer czytalaby sie jak literowka.
+-- Widok v_day_supplement_macros trzyma te liczby OSOBNO od v_day_totals,
+-- bo pasma fazy sa ustawione na jedzenie. Patrz migracja 044.
+UPDATE supplement_schedule SET kcal = 0, protein_g = 0, fat_g = 0, carbs_g = 0, fiber_g = 0;
+UPDATE supplement_schedule SET kcal = 83, fat_g = 9.2 WHERE id = 7;          -- omega, 2 lyzeczki oleju
+UPDATE supplement_schedule SET kcal = 10, fiber_g = 5 WHERE id IN (4, 15, 16, 18);  -- FIBEgastrin, 5 g PHGG
+
+UPDATE supplements SET macros_note = 'SZACUNEK: 2 lyzeczki to ok. 10 ml, olej rybi 0,92 g/ml, czyli 9,2 g tluszczu i 83 kcal. Do zastapienia etykieta Osavi' WHERE id = 7;
+UPDATE supplements SET macros_note = 'Saszetka to 5 g PHGG: blonnik 5 g, 10 kcal przy 2 kcal na gram blonnika rozpuszczalnego' WHERE id = 3;
+UPDATE supplements SET macros_note = 'Monohydrat nie jest zrodlem energii, etykieta podaje 0 kcal' WHERE id = 9;
