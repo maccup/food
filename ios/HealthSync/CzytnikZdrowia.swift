@@ -45,7 +45,9 @@ final class CzytnikZdrowia {
         (.respiratoryRate, "oddech", tetno, 1),
         (.oxygenSaturation, "spo2", .percent(), 3),
         (.appleSleepingWristTemperature, "temperatura", .degreeCelsius(), 2),
-        (.vo2Max, "vo2max", HKUnit(from: "ml/kg*min"), 1),
+        // Dwie cyfry, nie jedna: historia z eksportu XML ma 64.54, a nie 64.5,
+        // i przy jednej cyfrze co drugi dzien rozjezdzal sie na styku kanalow.
+        (.vo2Max, "vo2max", HKUnit(from: "ml/kg*min"), 2),
         (.bodyMass, "waga", .gramUnit(with: .kilo), 1),
         (.walkingHeartRateAverage, "tetno_marsz", tetno, 0),
         (.heartRateRecoveryOneMinute, "cardio_recovery", tetno, 1),
@@ -160,7 +162,16 @@ final class CzytnikZdrowia {
                 }
                 log("\(kolumna): \(probki.count) probek, \(poDniach.count) dni", probki.isEmpty ? .uwaga : .ok)
             } catch {
-                log("\(kolumna): BLAD zapytania, \(error.localizedDescription)", .blad)
+                /*
+                 * „Authorization not determined" to nie awaria, tylko typ, na
+                 * ktory nikt nie odpowiedzial w oknie zgod, bo nie ma z czego
+                 * czytac (cisnienie: zero pomiarow w calej historii). Bez tego
+                 * rozroznienia dziennik pokazywalby dwa czerwone bledy przy
+                 * kazdej synchronizacji i przestalbys je czytac.
+                 */
+                let nieokreslone = (error as NSError).code == HKError.errorAuthorizationNotDetermined.rawValue
+                log("\(kolumna): \(nieokreslone ? "brak zgody, pewnie brak danych tego typu" : "BLAD zapytania, \(error.localizedDescription)")",
+                    nieokreslone ? .uwaga : .blad)
             }
         }
 
