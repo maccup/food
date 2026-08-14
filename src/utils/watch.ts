@@ -1,7 +1,7 @@
 /**
  * Dane z zegarka: definicje metryk, norma liczona z wlasnej historii i sygnaly.
  *
- * Jedno miejsce, bo czytaja to dwa ekrany (dzien i /zegarek), a rozjazd progu
+ * Jedno miejsce, bo czytaja to dwa ekrany (dzien i statystyki), a rozjazd progu
  * miedzy nimi znaczylby, ze ten sam dzien raz jest w normie, a raz poza.
  *
  * NORMA JEST WLASNA, nie populacyjna. HRV zdrowych doroslych rozciaga sie od

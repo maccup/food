@@ -37,6 +37,16 @@ export interface DashboardData {
    * Awaria synchronizacji objawia sie cisza, nie bledem, wiec musi byc widoczna.
    */
   zegarekOpoznienie: { dni: number; ostatni: string } | null;
+  /**
+   * Zalecenie treningowe na dzis, jedna linijka. Pelny tydzien jest
+   * w statystykach; tutaj chodzi o odpowiedz „co dzis", nie o rozklad.
+   */
+  treningDzis: {
+    tytul: string;
+    zalecenie: 'sila' | 'cardio' | 'interwaly' | 'mobilnosc' | 'odpoczynek';
+    gotowosc: 'zielona' | 'zolta' | 'czerwona';
+    powod: string | null;
+  } | null;
 }
 
 /**
@@ -131,6 +141,29 @@ export function dashboard(d: DashboardData): string {
       </div>`
     : '';
 
+  /*
+   * Trening pod suplementami i oknem jedzenia, nad faza. Kolejnosc idzie za
+   * pora dnia: suple bierze sie rano, jedzenie w oknach, trening kiedys w
+   * ciagu dnia, a faza jest tlem na tygodnie i nie wymaga decyzji.
+   */
+  const treningLine = d.treningDzis
+    ? `<div class="panel-row">
+        <div>
+          <div class="panel-row-label">Trening</div>
+          <div class="panel-row-main">${esc(d.treningDzis.tytul)}</div>
+          <div class="panel-row-why">${d.treningDzis.powod
+            ? esc(d.treningDzis.powod)
+            : 'HRV, tętno i sen w Twojej normie'}</div>
+        </div>
+        <div class="panel-row-side">
+          <span style="color:${d.treningDzis.gotowosc === 'zielona' ? 'var(--ok)'
+            : d.treningDzis.gotowosc === 'zolta' ? 'var(--warn)' : 'var(--bad)'};font-weight:600">
+            gotowość ${esc(d.treningDzis.gotowosc)}
+          </span>
+        </div>
+      </div>`
+    : '';
+
   const phaseLine = d.phaseName
     ? `<div class="panel-row">
         <div>
@@ -200,7 +233,7 @@ export function dashboard(d: DashboardData): string {
           <div class="panel-row-why">
             ${esc(zdanieMasy(d.bilansOkna.kgTydzien))}.
             Średnia z ${d.bilansOkna.dni} ${d.bilansOkna.dni === 1 ? 'pełnego dnia' : 'pełnych dni'}.
-            <a href="/zegarek" style="white-space:nowrap">Jak to liczone ›</a>
+            <a href="/statystyki?zakres=30" style="white-space:nowrap">Jak to liczone ›</a>
           </div>
         </div>
       </div>`
@@ -222,6 +255,7 @@ export function dashboard(d: DashboardData): string {
     <div class="panel-main">
       ${suppLine}
       ${nextWindow}
+      ${treningLine}
       ${bilansLine}
       ${phaseLine}
       ${gapLine}

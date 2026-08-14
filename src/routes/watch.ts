@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import {
-  page, card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween, poniedzialek,
+  card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween, poniedzialek,
 } from '../views/ui';
 import { loadSettings } from '../utils/settings';
 import {
@@ -20,13 +20,6 @@ import {
  */
 const watch = new Hono<{ Bindings: Env }>();
 
-const ZAKRESY: Array<[string, string]> = [
-  ['14', '14 dni'],
-  ['30', '30 dni'],
-  ['90', '90 dni'],
-  ['rok', 'rok'],
-];
-
 /*
  * Norma liczy sie ZAWSZE z tego samego okna, niezaleznie od wybranego zakresu.
  * Inaczej przelaczenie na „14 dni" zwezaloby norme do dwoch tygodni i dzien
@@ -34,14 +27,6 @@ const ZAKRESY: Array<[string, string]> = [
  * a nie stan organizmu.
  */
 const OKNO_NORMY = 180;
-
-function okres(zakres: string) {
-  const dzis = todayWarsaw();
-  if (zakres === 'rok') return { od: shiftDate(dzis, -364), do: dzis, zakres };
-  if (zakres === '90') return { od: shiftDate(dzis, -89), do: dzis, zakres };
-  if (zakres === '14') return { od: shiftDate(dzis, -13), do: dzis, zakres };
-  return { od: shiftDate(dzis, -29), do: dzis, zakres: '30' };
-}
 
 function mediana(v: number[]): number | null {
   if (!v.length) return null;
@@ -110,10 +95,19 @@ function wykres(dni: WatchRow[], n: Norma | undefined, zwin: boolean): string {
     </p>`);
 }
 
-watch.get('/zegarek', async (c) => {
-  const db = c.env.DB;
-  const o = okres(c.req.query('zakres') ?? '30');
-  const dniZakresu = daysBetween(o.od, o.do) + 1;
+/**
+ * Sekcje zegarka do wstawienia w ekran statystyk.
+ *
+ * Do 15.08.2026 byl to osobny ekran pod `/zegarek`, z wlasnym przelacznikiem
+ * zakresu i wlasna sekcja „Ile tego jest". Dwa ekrany odpowiadaly na to samo
+ * pytanie w dwoch miejscach, a nazwa „Zegarek" przestala byc prawdziwa, gdy
+ * do tabeli zaczely pisac trzy zrodla. Zostaje jeden ekran i jeden zakres.
+ */
+export async function sekcjeZegarka(
+  db: D1Database,
+  o: { od: string; do: string },
+  dniZakresu: number
+): Promise<string> {
   const dzis = todayWarsaw();
 
   const [wZakresie, doNormy, ostatni, zjedzone, ostatniaWaga] = await Promise.all([
@@ -133,12 +127,9 @@ watch.get('/zegarek', async (c) => {
   const bmrWlasny = Number((await loadSettings(db)).get('bmr_kcal') || 0) || null;
 
   if (!ostatni) {
-    return c.html(page({
-      title: 'Zegarek', tab: 'watch', header: 'Zegarek',
-      content: `${blockTitle('Pusto')}${emptyState(
-        'Żadnych danych z zegarka. Wgrywa się je poleceniem npm run watch:import po eksporcie ze Zdrowia na iPhonie.'
-      )}`,
-    }));
+    return `${blockTitle('Zegarek')}${emptyState(
+      'Żadnych danych z zegarka. Dosyła je aplikacja Health Sync na telefonie, przyciskiem Synchronizuj.'
+    )}`;
   }
 
   const brakDni = daysBetween(ostatni.date, dzis);
@@ -153,7 +144,7 @@ watch.get('/zegarek', async (c) => {
     </div>
     ${brakDni > 2
       ? `<p class="hint" style="margin:8px 0 0;color:var(--warn)">
-          Dane kończą się ${brakDni} dni temu. Zrób eksport ze Zdrowia i wgraj go poleceniem npm run watch:import.
+          Dane kończą się ${brakDni} dni temu. Otwórz Health Sync na telefonie i kliknij Synchronizuj.
         </p>`
       : ''}
     ${n.size === 0
@@ -351,19 +342,9 @@ watch.get('/zegarek', async (c) => {
     </div></div></li>`).join('')}
   </ul></div>`;
 
-  const przycisk = (wartosc: string, label: string) =>
-    `<a href="/zegarek?zakres=${wartosc}" class="button button-small ${o.zakres === wartosc ? 'button-fill' : ''}">${label}</a>`;
-
-  const content = `
-    <div class="block" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-      ${ZAKRESY.map(([w, l]) => przycisk(w, l)).join('')}
-    </div>
-
-    ${blockTitle('Na co zwrócić uwagę')}
+  return `
+    ${blockTitle('Na co zwrócić uwagę', 'zegarek wobec Twojej normy')}
     ${uwaga}
-
-    ${blockTitle('Ile tego jest')}
-    ${stanDanych}
 
     ${blockTitle('Bilans kalorii', 'zjedzone wobec spalonego')}
     ${bilansHtml}
@@ -371,17 +352,20 @@ watch.get('/zegarek', async (c) => {
     ${blockTitle('Trend HRV', `${esc(o.od)} do ${esc(o.do)}`)}
     ${wykres(lista, n.get('hrv_noc'), dniZakresu > 92)}
 
-    ${blockTitle('Dzień po dniu')}
+    ${blockTitle('Zegarek dzień po dniu')}
     ${card(tabela)}
 
+    <div id="norma"></div>
     ${blockTitle('Twoja norma', `ostatnie ${OKNO_NORMY} dni`)}
     ${card(normyHtml)}
+    ${card(stanDanych)}
 
     ${blockTitle('Co śledzimy i po co')}
     ${coSledzimy}
   `;
+}
 
-  return c.html(page({ title: 'Zegarek', tab: 'watch', header: 'Zegarek', content }));
-});
+/** Stary adres zostaje zywy, zeby nie psuc zakladek i linkow w rozmowach. */
+watch.get('/zegarek', (c) => c.redirect('/statystyki?zakres=30#norma'));
 
 export default watch;

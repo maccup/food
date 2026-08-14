@@ -6,6 +6,7 @@ import {
   hhmmToMinutes, minutyNaHhmm,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
+import { ulozPlan, DobaZegarka, TreningWpis } from '../utils/trening';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
 import { przerwyDnia, koniecOstatniegoPodejscia, przerywaPrzerwe, RegulyPrzerw } from '../utils/gaps-stats';
 import {
@@ -148,6 +149,34 @@ export async function renderDay(c: any, date: string) {
     // Jeden dzien to norma, bo doba domyka sie dopiero po pobudce i wysylce.
     return dni > 1 ? { dni, ostatni } : null;
   })();
+
+  /*
+   * Zalecenie treningowe na dzis. Pelny plan tygodnia siedzi w statystykach,
+   * tutaj jest tylko jedna linijka, bo panel odpowiada na pytanie „co teraz",
+   * a nie „jak rozlozyc tydzien". Liczy sie wylacznie dla dnia dzisiejszego:
+   * dla dnia z przeszlosci zalecenie nie ma sensu, a wygladaloby na ocene.
+   */
+  const treningDzis = date === todayWarsaw()
+    ? await (async () => {
+        const [zegarek60, treningi60] = await Promise.all([
+          db.prepare(`SELECT date, hrv_noc, hrv, rhr, sen_min FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
+            .bind(shiftDate(date, -59), date).all(),
+          db.prepare(`SELECT date, typ_apple, minuty, kcal FROM workouts WHERE date BETWEEN ? AND ? ORDER BY date`)
+            .bind(shiftDate(date, -59), date).all(),
+        ]);
+        // Bez parametrow typu przy .all(): renderDay ma nietypowany `db`,
+        // wiec kazdy taki argument dokladalby blad do zastanej listy tsc.
+        const doby = (zegarek60.results ?? []) as unknown as DobaZegarka[];
+        if (!doby.length) return null;
+        const plan = ulozPlan(doby, (treningi60.results ?? []) as unknown as TreningWpis[], date, 1);
+        return {
+          tytul: plan.dni[0].tytul,
+          zalecenie: plan.dni[0].zalecenie,
+          gotowosc: plan.gotowosc.stan,
+          powod: plan.gotowosc.powody[0] ?? null,
+        };
+      })()
+    : null;
 
   const targets = phase
     ? await db.prepare(`SELECT metric, min_value, max_value FROM targets WHERE phase_id = ?`)
@@ -313,6 +342,7 @@ export async function renderDay(c: any, date: string) {
       (s) => `${s.metryka.label} ${s.metryka.format(s.wartosc)}, Twoja norma to ${s.metryka.format(s.norma.mediana)}`
     ),
     zegarekOpoznienie,
+    treningDzis,
   });
 
   /*
@@ -400,7 +430,7 @@ export async function renderDay(c: any, date: string) {
           const poza = stan(m, v, normyZegarka.get(m.key as string)) === 'poza';
           return `<span${poza ? ' style="color:var(--warn);font-weight:600"' : ''}>${esc(m.krotko)} ${esc(m.format(v))}</span>`;
         }).filter(Boolean).join(', ')}</span>
-        <span class="ev-right"><a href="/zegarek" class="ev-akcja">Trendy</a></span>
+        <span class="ev-right"><a href="/statystyki?zakres=30#norma" class="ev-akcja">Trendy</a></span>
       </li>`
     : '';
 
@@ -416,7 +446,7 @@ export async function renderDay(c: any, date: string) {
         <span>zjadłeś ${Math.round(b.zjedzone)} kcal, spaliłeś ${Math.round(b.spalone)}</span>
         <span class="ev-right">
           <span class="ev-wartosc">${Math.abs(Math.round(b.saldo))} kcal ${b.saldo < 0 ? 'mniej' : 'więcej'}</span>
-          <a href="/zegarek" class="ev-akcja">Bilans</a>
+          <a href="/statystyki?zakres=30" class="ev-akcja">Bilans</a>
         </span>
       </li>`
     : '';

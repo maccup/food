@@ -24,12 +24,10 @@ const NAV: Array<{
 }> = [
   { href: '/', icon: '🍽️', label: 'Dziś', key: 'today', tab: true },
   { href: '/statystyki', icon: '📊', label: 'Statystyki', key: 'stats', tab: true,
-    opis: 'Dowolny zakres dat: makro, przerwy między podejściami, objawy' },
+    opis: 'Trening na dziś, makro, przerwy, objawy, HRV i sen wobec Twojej normy' },
   { href: '/log', icon: '➕', label: 'Dopisz', key: 'log', tab: true },
   { href: '/suplementy', icon: '💊', label: 'Suple', key: 'supplements', tab: true },
   { href: '/wiecej', icon: '☰', label: 'Więcej', key: 'more', tab: true, hub: true },
-  { href: '/zegarek', icon: '⌚', label: 'Zegarek', key: 'watch', tab: false,
-    opis: 'HRV, sen i tętno spoczynkowe z Apple Watch wobec Twojej normy' },
   { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: false,
     opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
   { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: false,

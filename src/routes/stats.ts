@@ -4,6 +4,7 @@ import { page, card, blockTitle, emptyState, esc, pl, todayWarsaw, shiftDate, da
 import { loadSettings } from '../utils/settings';
 import { statystykaPrzerw, PosilekDoPrzerw } from '../utils/gaps-stats';
 import { ulozPlan, DobaZegarka, TreningWpis, Zalecenie } from '../utils/trening';
+import { sekcjeZegarka } from './watch';
 
 /**
  * Statystyki z dowolnego zakresu dat.
@@ -16,7 +17,7 @@ const stats = new Hono<{ Bindings: Env }>();
 const ZAKRESY: Array<[string, string]> = [
   ['7', '7 dni'],
   ['30', '30 dni'],
-  ['miesiac', 'ten miesiąc'],
+  ['90', '90 dni'],
   ['rok', 'rok'],
 ];
 
@@ -24,7 +25,7 @@ function okres(zakres: string, od: string | undefined, doDnia: string | undefine
   const dzis = todayWarsaw();
   if (od && doDnia) return { od, do: doDnia, zakres: 'wlasny' };
 
-  if (zakres === 'miesiac') return { od: `${dzis.slice(0, 7)}-01`, do: dzis, zakres };
+  if (zakres === '90') return { od: shiftDate(dzis, -89), do: dzis, zakres };
   if (zakres === 'rok') return { od: shiftDate(dzis, -364), do: dzis, zakres };
   if (zakres === '30') return { od: shiftDate(dzis, -29), do: dzis, zakres };
   return { od: shiftDate(dzis, -6), do: dzis, zakres: '7' };
@@ -470,9 +471,12 @@ stats.get('/statystyki', async (c) => {
       <p class="hint" style="margin:10px 0 0">
         Dzisiejsze zalecenie liczy się z pomiarów. Kolejne dni to szkielet tygodnia przy założeniu,
         że wykonasz poprzednie i że gotowość się nie zmieni, więc jutro przelicz je od nowa.
-        <a href="/zegarek">Skąd te liczby ›</a>
+        <a href="#norma">Skąd te liczby ›</a>
       </p>`)
     : emptyState('Brak danych z zegarka z ostatnich 60 dni, więc nie ma z czego liczyć gotowości.');
+
+  // Sekcje zegarka: byly osobnym ekranem pod /zegarek, teraz sa czescia tego.
+  const zegarekHtml = await sekcjeZegarka(db, o, dniZakresu);
 
   const przycisk = (wartosc: string, label: string) =>
     `<a href="/statystyki?zakres=${wartosc}" class="button button-small ${o.zakres === wartosc ? 'button-fill' : ''}">${label}</a>`;
@@ -522,6 +526,8 @@ stats.get('/statystyki', async (c) => {
 
     ${blockTitle('Stres a stolec', 'dzień napięty kontra spokojny')}
     ${stresHtml}
+
+    ${zegarekHtml}
   `;
 
   return c.html(page({ title: 'Statystyki', tab: 'stats', header: 'Statystyki', content }));
