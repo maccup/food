@@ -173,7 +173,12 @@ export async function renderDay(c: any, date: string) {
           tytul: plan.dni[0].tytul,
           zalecenie: plan.dni[0].zalecenie,
           gotowosc: plan.gotowosc.stan,
-          powod: plan.gotowosc.powody[0] ?? null,
+          // Dla dnia juz zrobionego liczy sie, CO bylo, a nie stan gotowosci.
+          powod: plan.dni[0].zalecenie === 'zrobione'
+            ? (plan.tydzien.dzisCo.length
+                ? `Dziś było: ${plan.tydzien.dzisCo.join(', ')}`
+                : 'Dziś już był trening')
+            : (plan.gotowosc.powody[0] ?? null),
         };
       })()
     : null;

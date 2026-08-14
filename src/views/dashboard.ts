@@ -1,6 +1,7 @@
 import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui';
 import { stanMakro } from '../utils/day-status';
 import { zdanieBilansu, zdanieMasy } from '../utils/watch';
+import { Zalecenie } from '../utils/trening';
 
 export interface DashboardData {
   date: string;
@@ -43,7 +44,7 @@ export interface DashboardData {
    */
   treningDzis: {
     tytul: string;
-    zalecenie: 'sila' | 'cardio' | 'interwaly' | 'mobilnosc' | 'odpoczynek';
+    zalecenie: Zalecenie;
     gotowosc: 'zielona' | 'zolta' | 'czerwona';
     powod: string | null;
   } | null;
@@ -156,9 +157,10 @@ export function dashboard(d: DashboardData): string {
             : 'HRV, tętno i sen w Twojej normie'}</div>
         </div>
         <div class="panel-row-side">
-          <span style="color:${d.treningDzis.gotowosc === 'zielona' ? 'var(--ok)'
+          <span style="color:${d.treningDzis.zalecenie === 'zrobione' ? 'var(--muted)'
+            : d.treningDzis.gotowosc === 'zielona' ? 'var(--ok)'
             : d.treningDzis.gotowosc === 'zolta' ? 'var(--warn)' : 'var(--bad)'};font-weight:600">
-            gotowość ${esc(d.treningDzis.gotowosc)}
+            ${d.treningDzis.zalecenie === 'zrobione' ? 'zrobione' : `gotowość ${esc(d.treningDzis.gotowosc)}`}
           </span>
         </div>
       </div>`

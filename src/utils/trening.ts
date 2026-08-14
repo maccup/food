@@ -203,6 +203,10 @@ export interface PodsumowanieTygodnia {
   dniBezTreningu: number;
   dniZRzedu: number;
   odOstatniejSily: number | null;
+  /** Czy dzis juz cos bylo. Patrz komentarz przy pierwszej regule w ulozPlan. */
+  dzisZrobione: boolean;
+  /** Co dzis bylo, do wypisania zamiast zalecenia. */
+  dzisCo: string[];
 }
 
 /** Dzien tygodnia liczony od poniedzialku, bez zaleznosci od strefy czasowej. */
@@ -261,7 +265,20 @@ export function podsumujTydzien(treningi: TreningWpis[], dzis: string): Podsumow
   const ostatniaSila = dniSily.length ? dniSily[dniSily.length - 1] : null;
   const odOstatniejSily = ostatniaSila ? roznicaDni(ostatniaSila, dzis) : null;
 
-  return { silaDni, aerobMin: Math.round(aerobMin), intensywneSesje, dniBezTreningu, dniZRzedu, odOstatniejSily };
+  const dzisiejsze = treningi.filter((t) => t.date === dzis);
+  const NAZWY: Record<Kategoria, string> = {
+    sila: 'siła', cardio: 'cardio', spacer: 'spacer', mobilnosc: 'mobilność', inne: 'inne',
+  };
+  const dzisCo = [...new Set(
+    dzisiejsze
+      .filter((t) => kategoria(t.typ_apple) !== 'spacer' && (t.minuty ?? 0) >= 10)
+      .map((t) => NAZWY[kategoria(t.typ_apple)])
+  )];
+
+  return {
+    silaDni, aerobMin: Math.round(aerobMin), intensywneSesje, dniBezTreningu, dniZRzedu,
+    odOstatniejSily, dzisZrobione: zTrescia.has(dzis), dzisCo,
+  };
 }
 
 function przesun(data: string, o: number): string {
@@ -276,7 +293,7 @@ function roznicaDni(od: string, doDnia: string): number {
   );
 }
 
-export type Zalecenie = 'sila' | 'cardio' | 'interwaly' | 'mobilnosc' | 'odpoczynek';
+export type Zalecenie = 'sila' | 'cardio' | 'interwaly' | 'mobilnosc' | 'odpoczynek' | 'zrobione';
 
 export interface DzienPlanu {
   date: string;
@@ -307,6 +324,10 @@ const OPISY: Record<Zalecenie, { tytul: string; opis: string }> = {
   odpoczynek: {
     tytul: 'Odpoczynek',
     opis: 'Bez treningu. Spacer i tak się liczy, ale nic, co podnosi tętno na dłużej.',
+  },
+  zrobione: {
+    tytul: 'Na dziś zrobione',
+    opis: 'Druga mocna sesja tego samego dnia nie dokłada bodźca, tylko obciążenie do odrobienia.',
   },
 };
 
@@ -344,7 +365,18 @@ export function ulozPlan(doby: DobaZegarka[], treningi: TreningWpis[], dzis: str
     let zalecenie: Zalecenie;
     let powod: string;
 
-    if (i === 0 && gotowosc.stan === 'czerwona') {
+    /*
+     * Dzien, w ktorym cos juz bylo, nie dostaje kolejnego zalecenia i to jest
+     * regula PIERWSZA, przed gotowoscia. Bez niej ekran po sesji silowej
+     * proponowal jeszcze interwaly tego samego popoludnia, bo licznik sily
+     * dobil do celu i przeszedl do nastepnego braku w tygodniu.
+     */
+    if (i === 0 && tydzien.dzisZrobione) {
+      zalecenie = 'zrobione';
+      powod = tydzien.dzisCo.length
+        ? `Dziś było: ${tydzien.dzisCo.join(', ')}.`
+        : 'Dziś już był trening.';
+    } else if (i === 0 && gotowosc.stan === 'czerwona') {
       zalecenie = 'odpoczynek';
       powod = 'Organizm nie odrobił: ' + gotowosc.powody.join(', ') + '.';
     } else if (zRzedu >= CELE.maxDniZRzedu) {
@@ -379,7 +411,9 @@ export function ulozPlan(doby: DobaZegarka[], treningi: TreningWpis[], dzis: str
     });
 
     // Symulacja nastepnego dnia: zakladamy, ze zalecenie zostalo wykonane.
-    if (zalecenie === 'odpoczynek') {
+    if (zalecenie === 'zrobione') {
+      // Liczniki juz to maja, bo pochodza z faktycznych treningow tego dnia.
+    } else if (zalecenie === 'odpoczynek') {
       zRzedu = 0;
     } else {
       zRzedu++;

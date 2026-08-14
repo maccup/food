@@ -411,6 +411,7 @@ stats.get('/statystyki', async (c) => {
     cardio: 'var(--accent, #14B8A6)',
     mobilnosc: 'var(--muted)',
     odpoczynek: 'var(--warn)',
+    zrobione: 'var(--muted)',
   };
 
   const kolorGotowosci = plan.gotowosc.stan === 'zielona' ? 'var(--ok)'
