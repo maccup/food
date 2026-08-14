@@ -22,6 +22,8 @@ targets:
         # Zespol ustawiany w Xcode, nie tutaj: identyfikator zespolu to dana
         # z konta Apple i nie ma powodu trzymac go w repo.
         CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         ENABLE_USER_SCRIPT_SANDBOXING: YES

@@ -37,6 +37,32 @@ W Xcode:
 `.xcodeproj` **nie jest w repo**, bo to artefakt generowany z `project.yml`.
 Po każdym pobraniu zmian uruchom `xcodegen generate` ponownie.
 
+Ikona powstaje z `zrodlo-ikony.svg` (poza katalogiem źródeł, żeby nie wylądowała
+w gotowej aplikacji). Po zmianie:
+
+```bash
+rsvg-convert -w 1024 -h 1024 zrodlo-ikony.svg -o HealthSync/Assets.xcassets/AppIcon.appiconset/ikona1024.png
+```
+
+## Przypomnienie
+
+Ustawienia → Przypominaj codziennie, domyślnie 9:00. Sen domyka się dopiero po
+pobudce i dojeżdża z zegarka z opóźnieniem, więc wcześniejsza godzina wysyłałaby
+niepełną dobę.
+
+Nie ma jednego powtarzalnego wyzwalacza, tylko **14 pojedynczych przypomnień**
+planowanych naprzód. Powtarzalny przypominałby także w dniu, w którym
+synchronizacja już się odbyła, a powiadomienie o rzeczy zrobionej uczy ignorować
+powiadomienia. Po każdej udanej synchronizacji cały zestaw jest przestawiany
+i dzisiejszy dzień wypada.
+
+**Świadome ograniczenie:** aplikacja nieotwierana przez 14 dni przestaje
+przypominać. Od tego jest drugi czujnik, niezależny od telefonu: panel webowy
+pokazuje „Zegarek nie synchronizowany od N dni".
+
+Stopka w ustawieniach podaje, ile przypomnień faktycznie czeka w kolejce iOS.
+Zero przy włączonym przełączniku znaczy, że zgoda została cofnięta w systemie.
+
 ## Skąd biorą się liczby
 
 Cała agregacja siedzi w `CzytnikZdrowia.swift` i musi dawać **identyczne wyniki

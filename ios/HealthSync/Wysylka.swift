@@ -69,9 +69,18 @@ struct Wysylka {
         return zapisanych
     }
 
-    /// Co serwer ma teraz. Wolane przed wysylka, zeby w logu zostal stan przed i po.
-    func status(log: @escaping (String, Dziennik.Waga) -> Void) async {
-        guard let baza = URL(string: adres.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
+    /// Stan bazy po drugiej stronie, do pokazania na ekranie.
+    struct Stan {
+        let ostatniDzien: String
+        let dni: Int
+        let zAplikacji: Int
+    }
+
+    /// Co serwer ma teraz. Wolane przed wysylka i po niej, zeby w dzienniku
+    /// zostal stan przed i po, a na ekranie ten swiezszy.
+    @discardableResult
+    func status(log: @escaping (String, Dziennik.Waga) -> Void) async -> Stan? {
+        guard let baza = URL(string: adres.trimmingCharacters(in: .whitespacesAndNewlines)) else { return nil }
         var zadanie = URLRequest(url: baza.appendingPathComponent("api/watch/status"))
         zadanie.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         zadanie.timeoutInterval = 30
@@ -80,8 +89,17 @@ struct Wysylka {
             let kod = (meta as? HTTPURLResponse)?.statusCode ?? 0
             let tresc = String(data: dane, encoding: .utf8) ?? ""
             log("Stan serwera (\(kod)): \(tresc)", kod == 200 ? .info : .blad)
+            guard kod == 200,
+                  let json = try? JSONSerialization.jsonObject(with: dane) as? [String: Any]
+            else { return nil }
+            return Stan(
+                ostatniDzien: json["ostatni_dzien"] as? String ?? "?",
+                dni: json["dni"] as? Int ?? 0,
+                zAplikacji: json["z_aplikacji"] as? Int ?? 0
+            )
         } catch {
             log("Nie udalo sie odpytac serwera: \(error.localizedDescription)", .blad)
+            return nil
         }
     }
 }
