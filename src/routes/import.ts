@@ -123,10 +123,25 @@ importRoutes.post('/api/import/hfood', async (c) => {
       const externalId = chosen.dishScheduleId ? String(chosen.dishScheduleId) : null;
 
       const existing = await c.env.DB.prepare(
-        `SELECT id, external_id FROM meals WHERE date = ? AND slot = ? AND source = 'hfood'`
+        `SELECT id, external_id, stan FROM meals WHERE date = ? AND slot = ? AND source = 'hfood'`
       )
         .bind(date, slot)
-        .first<{ id: number; external_id: string | null }>();
+        .first<{ id: number; external_id: string | null; stan: string }>();
+
+      /*
+       * Posilek ZJEDZONY jest historia, nie planem, i import go nie dotyka.
+       *
+       * Bez tego kazde uruchomienie /hfood po cichu cofalo poprawki wpisane
+       * po fakcie: „dipu nie zjadlem", „dosypalem borowek", polowa pudelka.
+       * Menu w panelu opisuje, co catering przyslal, a nie co Maciek zjadl,
+       * i od momentu zjedzenia to druga rzecz jest prawdziwa. Kasowanie tego
+       * nie dawaloby zadnego bledu, tylko ciche cofniecie sie liczb do stanu
+       * z pudelka, czyli najgorszy rodzaj utraty danych.
+       */
+      if (existing?.stan === 'zjedzony') {
+        stats.mealsSkipped++;
+        continue;
+      }
 
       const values = [
         dish.dishName,
