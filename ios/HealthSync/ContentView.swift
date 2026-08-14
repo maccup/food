@@ -16,7 +16,7 @@ struct ContentView: View {
                 Divider()
                 dziennikWidok
             }
-            .navigationTitle("Zdrowie")
+            .navigationTitle("Health Sync")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { pokazUstawienia = true } label: { Image(systemName: "gearshape") }

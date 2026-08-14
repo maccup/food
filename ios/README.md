@@ -1,4 +1,4 @@
-# Zdrowie: aplikacja iOS
+# Health Sync: aplikacja iOS
 
 Czyta Apple Health na telefonie i wysyła dobowe podsumowania do `/api/watch`
 w tej samej aplikacji, która trzyma dziennik jedzenia. Dane idą **telefon →
@@ -13,19 +13,22 @@ odblokowany po restarcie, więc dokładałby dwa ciche tryby awarii do listy pon
 
 ```bash
 cd ios
-xcodegen generate        # tworzy Zdrowie.xcodeproj z project.yml
-open Zdrowie.xcodeproj
+xcodegen generate        # tworzy HealthSync.xcodeproj z project.yml
+open HealthSync.xcodeproj
 ```
 
 W Xcode:
 
-1. Zakładka **Signing & Capabilities**, wybierz swój zespół i **trzymaj się jednego**.
-   Identyfikatory aplikacji są globalnie unikalne w całym Apple, a Xcode rejestruje
-   identyfikator na zespole w momencie wyboru. Przełączenie zespołu potem daje błąd
-   „cannot be registered to your development team because it is not available",
-   który brzmi jak zajęty przez kogoś obcego, a znaczy zajęty przez Twój drugi zespół.
-   Wyjście: wróć do poprzedniego zespołu albo zmień `PRODUCT_BUNDLE_IDENTIFIER`
-   w `project.yml` i uruchom `xcodegen generate` ponownie.
+1. Zakładka **Signing & Capabilities**, zespół MPR.
+
+   Jeżeli status pokaże **„Failed Registering Bundle Identifier"**, automat Xcode
+   nie potrafi utworzyć wpisu i trzeba go zrobić ręcznie w portalu Apple:
+   Identifiers → **+** → App IDs → App, Description bez polskich znaków,
+   Bundle ID **Explicit** równy `PRODUCT_BUNDLE_IDENTIFIER` z `project.yml`,
+   z uprawnień zaznaczone **wyłącznie HealthKit**. Potem w Xcode **Try Again**.
+
+   Komunikat mówi „identifier not available", więc wygląda na zajętą nazwę,
+   ale zmiana nazwy nic nie daje. Problem jest po stronie rejestracji, nie nazwy.
 2. Podłącz iPhone, wybierz go jako cel, **Run**.
 3. Na telefonie: Ustawienia → Ogólne → VPN i zarządzanie urządzeniem, zaufaj profilowi.
 4. W aplikacji ikona koła zębatego, wklej token z sekretu `WATCH_TOKEN`.
@@ -81,7 +84,7 @@ Wszystkie trzy awarie dają ten sam objaw: **ciszę, nie błąd**.
 
 1. **Certyfikat wygasa po roku.** Aplikacja przestaje się otwierać. Podłącz telefon, Run.
 2. **Cofnięta zgoda HealthKit.** Dziennik pokaże `0 probek` przy każdej metryce.
-   Ustawienia → Prywatność → Zdrowie → Zdrowie.
+   Ustawienia → Prywatność → Zdrowie → Health Sync.
 3. **Zmieniony token.** Dziennik pokaże `401: Zly token`.
 
 Dlatego panel w aplikacji webowej pokazuje **„Zegarek nie synchronizowany od N dni"**,

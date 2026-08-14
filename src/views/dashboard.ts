@@ -174,7 +174,7 @@ export function dashboard(d: DashboardData): string {
     d.zegarekOpoznienie
       ? `<div class="panel-alert warn">
           <b>Zegarek nie synchronizowany od ${d.zegarekOpoznienie.dni} dni</b>
-          <div style="margin-top:3px">Ostatnia doba w bazie: ${esc(d.zegarekOpoznienie.ostatni)}. Otwórz aplikację Zdrowie i kliknij Synchronizuj.</div>
+          <div style="margin-top:3px">Ostatnia doba w bazie: ${esc(d.zegarekOpoznienie.ostatni)}. Otwórz Health Sync na telefonie i kliknij Synchronizuj.</div>
         </div>`
       : '',
   ].join('');

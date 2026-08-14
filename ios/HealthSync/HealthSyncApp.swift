@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ZdrowieApp: App {
+struct HealthSyncApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

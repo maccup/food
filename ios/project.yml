@@ -1,4 +1,4 @@
-name: Zdrowie
+name: HealthSync
 options:
   bundleIdPrefix: com.maciejcupial
   deploymentTarget:
@@ -6,19 +6,19 @@ options:
   createIntermediateGroups: true
 
 targets:
-  Zdrowie:
+  HealthSync:
     type: application
     platform: iOS
     sources:
-      - path: Zdrowie
+      - path: HealthSync
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.maciejcupial.zdrowie
-        PRODUCT_NAME: Zdrowie
+        PRODUCT_BUNDLE_IDENTIFIER: com.maciejcupial.healthsync
+        PRODUCT_NAME: HealthSync
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-        INFOPLIST_FILE: Zdrowie/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Zdrowie/Zdrowie.entitlements
+        INFOPLIST_FILE: HealthSync/Info.plist
+        CODE_SIGN_ENTITLEMENTS: HealthSync/HealthSync.entitlements
         # Zespol ustawiany w Xcode, nie tutaj: identyfikator zespolu to dana
         # z konta Apple i nie ma powodu trzymac go w repo.
         CODE_SIGN_STYLE: Automatic
