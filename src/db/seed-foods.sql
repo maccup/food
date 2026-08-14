@@ -62,7 +62,7 @@ INSERT INTO foods (id, name, group_id, fodmap, fodmap_note, fermented, histamine
   (36, 'kiełbasa',            18, 'low',      NULL,        0, 'high',     'none',      1, 0, 'Azotyny'),
   (37, 'parówki',             18, 'low',      NULL,        0, 'high',     'none',      1, 0, 'Azotyny'),
   -- nabiał bez laktozy
-  (38, 'mleko bez laktozy',   13, 'low',      NULL,        0, 'low',      'none',      0, 0, NULL),
+  (38, 'mleko bez laktozy',   13, 'low',      NULL,        0, 'low',      'none',      0, 0, 'Carrefour bez laktozy, etykieta 14.08.2026: 44 kcal/100 ml, T 1,5 (nasycone 1,0), W 4,7 (cukry 4,7), B 3,0, sol 0,10'),
   (39, 'jogurt bez laktozy',  13, 'low',      NULL,        0, 'moderate', 'none',      0, 0, NULL),
   (40, 'twaróg bez laktozy',  13, 'low',      NULL,        0, 'moderate', 'none',      0, 0, NULL),
   (41, 'ser dojrzewający',    13, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Gouda, parmezan, camembert, feta. Śladowa laktoza, ale histamina wysoka'),
