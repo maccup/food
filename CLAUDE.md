@@ -310,6 +310,24 @@ liczą wyłącznie `zjedzony`.
   (`sitting` 0 albo NULL) zostają osobnymi zdarzeniami, każdy z własnym kluczem.
   **Ta funkcja ma jedną kopię** i korzystają z niej widok dnia oraz statystyki: dwie
   implementacje rozjechałyby się przy pierwszej zmianie reguł, a to najważniejsza liczba w bazie.
+- **Odhaczenie posiłku znaczy „skończyłem", a `eaten_at` trzyma początek.**
+  Do 15.08.2026 kliknięcie stemplowało „teraz" jako początek, czyli każde pudełko
+  wchodziło do bazy pół godziny za późno i przerwy liczyły się od złej godziny.
+  Teraz kliknięcie zapisuje początek cofnięty o `default_meal_min`, a pod pozycją
+  pojawia się pytanie o obie pory, `od` i `do`, z wpisanymi wartościami.
+  Trwanie liczy się z odejmowania, więc przestaje być założeniem.
+  - **Zapis idzie przed odpowiedzią, nie po niej.** Posiłek bez godziny psuje
+    przerwy do końca dnia, więc pytanie jest doprecyzowaniem, nie warunkiem.
+    Pominięcie go zostawia sensowne przybliżenie, a nie dziurę.
+  - **Obie pory są do edycji, nie sam początek.** Koniec jest wiarygodny tylko
+    przy odhaczeniu na bieżąco; przy odhaczeniu z pamięci jest tak samo zmyślony
+    jak początek.
+  - **Przy dniu wcześniejszym podpowiedź bierze się z okna jedzenia** dla tego
+    podejścia (`sittingTimes`), bo „teraz" nic tam nie znaczy. Pytanie pada tak
+    samo, bo to ten sam przypadek: godzina do wpisania z pamięci.
+  - Start późniejszy niż koniec to literówka, nie posiłek przez północ: zostaje
+    sama godzina, a `duration_min` wraca do NULL, czyli „nieznane". Ujemna
+    długość rozjechałaby wszystkie przerwy dnia.
 - **Ustawienia mają grupy, nie jedną płaską listę.** `settings.grupa` decyduje,
   w którym zwijanym bloku pole się pojawi (`okna`, `przerwy`). Nowy klucz bez
   przypisania trafia do bloku „Pozostałe" i nie znika z ekranu.

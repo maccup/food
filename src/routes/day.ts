@@ -99,6 +99,10 @@ interface MealRow {
 export async function renderDay(c: any, date: string) {
   const db = c.env.DB;
 
+  // Ktory posilek ma pod soba pytanie o godziny. Ustawia to przekierowanie
+  // po odhaczeniu, wiec pytanie znika samo przy kazdym kolejnym wejsciu.
+  const pytajOGodziny = Number(c.req.query('start') ?? 0);
+
   const [totals, suppMacros, phase, meals, breaches, symptoms, stools, stres, zegarek] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date = ?`).bind(date).first<any>(),
     db.prepare(`SELECT * FROM v_day_supplement_macros WHERE date = ?`).bind(date).first<any>(),
@@ -412,7 +416,7 @@ export async function renderDay(c: any, date: string) {
       </div>`);
     }
 
-    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [], regulyPrzerw)}</ul></div>`);
+    wiersze.push(`<div class="list" style="margin:0"><ul>${mealItem(m, breachBy.get(m.id) ?? [], regulyPrzerw, m.id === pytajOGodziny)}</ul></div>`);
   }
 
   const mealsHtml = lista.length
@@ -602,7 +606,27 @@ function godziny(m: MealRow, reguly: RegulyPrzerw): string {
     &middot; `;
 }
 
-function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
+/*
+ * Pytanie o godziny, pokazywane tuz po odhaczeniu posilku. Obie pory sa
+ * wypelnione z gory (koniec to moment klikniecia, poczatek to koniec minus
+ * `default_meal_min`), wiec przy odhaczeniu na biezaco wystarczy "Zapisz",
+ * a przy odhaczeniu z pamieci poprawia sie obie.
+ */
+function pytanieOGodziny(m: MealRow, reguly: RegulyPrzerw): string {
+  const start = m.eaten_at ?? '';
+  const koniec = start
+    ? minutyNaHhmm(hhmmToMinutes(start) + (m.duration_min ?? reguly.domyslneTrwanie))
+    : '';
+
+  return `<form method="POST" action="/meal/${m.id}/start" class="czas-pytanie">
+    <div class="czas-pytanie-tytul">O której jadłeś? Zapisane godziny są tylko wstępne.</div>
+    <label>od <input type="time" name="start" value="${esc(start)}" required></label>
+    <label>do <input type="time" name="koniec" value="${esc(koniec)}"></label>
+    <button type="submit" class="button button-small">Zapisz</button>
+  </form>`;
+}
+
+function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw, pytaj = false): string {
   const forbidden = breaches.filter((b) => b.level === 'forbidden');
   const limits = breaches.filter((b) => b.level === 'limit');
 
@@ -627,7 +651,7 @@ function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
     ? '<span style="color:var(--warn)">bez makr</span>'
     : `${pl(m.kcal, 0)} kcal &middot; B ${pl(m.protein_g)} &middot; T ${pl(m.fat_g)} &middot; W ${pl(m.carbs_g)} &middot; bł ${pl(m.fiber_g)}`;
 
-  return `<li class="${m.stan === 'pominiety' ? 'meal-skipped' : m.stan === 'plan' ? 'meal-plan' : ''}">
+  return `<li id="posilek-${m.id}" class="${m.stan === 'pominiety' ? 'meal-skipped' : m.stan === 'plan' ? 'meal-plan' : ''}">
     <div class="item-content">
       <div class="item-inner" style="display:block;padding-top:10px;padding-bottom:10px">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
@@ -651,6 +675,7 @@ function mealItem(m: MealRow, breaches: any[], reguly: RegulyPrzerw): string {
           </form>
           <a href="/meal/${m.id}/edit" class="button button-small" style="margin-left:auto">Edytuj</a>
         </div>
+        ${pytaj ? pytanieOGodziny(m, reguly) : ''}
       </div>
     </div>
   </li>`;
@@ -670,23 +695,74 @@ day.post('/meal/:id/stan', async (c) => {
   const stan = STANY.some(([v]) => v === body.stan) ? String(body.stan) : 'zjedzony';
   const fraction = Number(body.fraction ?? 1) || 1;
 
-  const row = await c.env.DB.prepare(`SELECT date, eaten_at FROM meals WHERE id = ?`)
-    .bind(id).first<{ date: string; eaten_at: string | null }>();
+  const row = await c.env.DB.prepare(`SELECT date, eaten_at, sitting FROM meals WHERE id = ?`)
+    .bind(id).first<{ date: string; eaten_at: string | null; sitting: number | null }>();
 
-  // Przejscie w "zjedzone" stempluje godzine, jesli jeszcze jej nie ma i chodzi
-  // o dzisiaj. Bez tego pudelka z cateringu nigdy nie maja godziny, a wtedy nie
-  // da sie policzyc przerw miedzy posilkami, czyli jedynej rzeczy, ktora tu
-  // realnie pracuje na motoryke. Godzine mozna potem poprawic w edycji posilku.
-  const stempel =
-    stan === 'zjedzony' && !row?.eaten_at && row?.date === todayWarsaw()
-      ? new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false,
-        }).format(new Date())
-      : null;
+  /*
+   * Odhaczasz posilek, kiedy go SKONCZYLES, a `eaten_at` trzyma godzine
+   * POCZATKU. Do 15.08.2026 klikniecie stemplowalo "teraz" jako poczatek,
+   * czyli kazde pudelko z cateringu wchodzilo do bazy pol godziny za pozno
+   * i przerwy miedzy podejsciami, jedyna rzecz, ktora tu realnie pracuje na
+   * motoryke, liczyly sie od zlej godziny.
+   *
+   * Teraz klikniecie znaczy koniec: poczatek cofa sie o `default_meal_min`
+   * i od razu ma trwanie, a strona pyta o obie godziny z tymi wartosciami
+   * wpisanymi z gory. Zapis idzie od razu, jeszcze przed odpowiedzia, bo posilek
+   * bez godziny psulby przerwy do konca dnia, gdyby pytanie zostalo bez echa.
+   *
+   * Przy dniu wczesniejszym "teraz" nic nie znaczy, wiec podpowiedz bierze sie
+   * z okna jedzenia dla tego podejscia. Pytanie pada tak samo, bo odhaczenie
+   * z jednodniowym opoznieniem jest tym samym przypadkiem: godzina jest do
+   * wpisania z pamieci, a nie do zgadniecia przez aplikacje.
+   */
+  const pytajOStart = stan === 'zjedzony' && !row?.eaten_at;
+  let stempel: string | null = null;
+  let trwanie: number | null = null;
+
+  if (pytajOStart) {
+    const settings = await loadSettings(c.env.DB);
+    trwanie = Number(settings.get('default_meal_min') || 30);
+    stempel = row?.date === todayWarsaw()
+      ? minutyNaHhmm(nowMinutesWarsaw() - trwanie)
+      : sittingTimes(settings)[row?.sitting ?? 0] ?? '12:00';
+  }
 
   await c.env.DB.prepare(
-    `UPDATE meals SET stan = ?, eaten_fraction = ?, eaten_at = COALESCE(?, eaten_at) WHERE id = ?`
-  ).bind(stan, fraction, stempel, id).run();
+    `UPDATE meals SET stan = ?, eaten_fraction = ?, eaten_at = COALESCE(?, eaten_at),
+            duration_min = COALESCE(?, duration_min) WHERE id = ?`
+  ).bind(stan, fraction, stempel, trwanie, id).run();
+
+  const date = row?.date ?? todayWarsaw();
+  return c.redirect(pytajOStart ? `/day/${date}?start=${id}#posilek-${id}` : `/day/${date}`);
+});
+
+/*
+ * Odpowiedz na pytanie o godziny. Obie sa do poprawki, bo moment odhaczenia
+ * jest dobrym domyslnym koncem tylko wtedy, gdy klikniecie poszlo od razu po
+ * jedzeniu. Przy odhaczeniu z opoznieniem konieć jest tak samo zmyslony jak
+ * poczatek, wiec pole musi byc jedno i drugie, nie samo pierwsze.
+ * Trwanie liczy sie z odejmowania, wiec przestaje byc zalozeniem.
+ */
+day.post('/meal/:id/start', async (c) => {
+  const id = Number(c.req.param('id'));
+  const body = await c.req.parseBody();
+  const start = String(body.start ?? '');
+  const koniec = String(body.koniec ?? '');
+
+  const row = await c.env.DB.prepare(`SELECT date FROM meals WHERE id = ?`)
+    .bind(id).first<{ date: string }>();
+
+  if (/^\d{2}:\d{2}$/.test(start)) {
+    // Start po koncu znaczy pomylke przy wpisywaniu, nie posilek przez polnoc.
+    // Wtedy zostaje sama godzina, a trwanie wraca do NULL, czyli "nieznane",
+    // bo ujemna dlugosc posilku rozjechalaby wszystkie przerwy tego dnia.
+    const minuty = /^\d{2}:\d{2}$/.test(koniec)
+      ? hhmmToMinutes(koniec) - hhmmToMinutes(start)
+      : 0;
+    const trwanie = minuty > 0 ? minuty : null;
+    await c.env.DB.prepare(`UPDATE meals SET eaten_at = ?, duration_min = ? WHERE id = ?`)
+      .bind(start, trwanie, id).run();
+  }
 
   return c.redirect(`/day/${row?.date ?? todayWarsaw()}`);
 });

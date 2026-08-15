@@ -444,6 +444,17 @@ details > summary { list-style: none; }
   font-size: 12px; line-height: 1.5;
 }
 .macro-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Pytanie o godziny po odhaczeniu posilku. Pola sa w jednym wierszu, bo to
+   jedna decyzja, nie formularz: od, do, zapisz. Zawija sie na waskim ekranie. */
+.czas-pytanie {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin: 10px 0 0; padding: 10px; border-radius: 8px;
+  background: var(--hairline);
+}
+.czas-pytanie-tytul { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+.czas-pytanie label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.czas-pytanie input[type="time"] { width: auto; min-height: 36px; font-size: 13px; padding: 4px 8px; }
+
 .macro-track {
   height: 8px; background: var(--hairline); border-radius: 4px;
   overflow: hidden; position: relative;
