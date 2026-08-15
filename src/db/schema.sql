@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS foods (
   fiber_type      TEXT,                             -- soluble | insoluble | mixed | none
   processed_meat  INTEGER NOT NULL DEFAULT 0,
   refined_oil     INTEGER NOT NULL DEFAULT 0,
+  -- 'porcja' liczy sie do pokrycia grupy, 'dodatek' nie. Natka pietruszki
+  -- posypana na krem to nie jest dzien zielonych lisci. Patrz migracja 045.
+  portion_role    TEXT NOT NULL DEFAULT 'porcja',
   notes           TEXT
 );
 
@@ -377,7 +380,7 @@ FROM meals m
 JOIN meal_foods mf ON mf.meal_id = m.id
 JOIN foods f       ON f.id = mf.food_id
 JOIN food_groups g ON g.id = f.group_id
-WHERE m.stan = 'zjedzony'
+WHERE m.stan = 'zjedzony' AND f.portion_role = 'porcja'
 GROUP BY m.date, g.id;
 
 -- Posilki naruszajace aktywne wykluczenie albo limit, z powodem.

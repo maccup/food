@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { page, card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, prettyDate } from '../views/ui';
-import { loadDayGaps } from './gaps';
+import { loadWeekGaps } from './gaps';
 
 /**
  * Lista zakupow.
@@ -33,7 +33,7 @@ shopping.get('/zakupy', async (c) => {
       `SELECT id, label, note, bought_on FROM shopping WHERE bought = 1
        ORDER BY bought_on DESC, id DESC LIMIT 30`
     ).all<any>(),
-    loadDayGaps(db, date, weekStart),
+    loadWeekGaps(db, date, weekStart),
   ]);
 
   const pozycja = (s: any) => `<li>
@@ -59,10 +59,12 @@ shopping.get('/zakupy', async (c) => {
   /*
    * Podpowiedzi z regul pokrycia. Sedno przeniesienia: wczesniej te propozycje
    * zylly tylko w widoku dnia, wiec lista zakupow nigdy sama sie nie zapelniala.
-   * Pokazujemy tylko to, czego w tym tygodniu jest za malo i czego nie ma juz na liscie.
+   * Pokazujemy tylko to, czego w tym tygodniu zabraknie PO doliczeniu pudelek
+   * z cateringu i czego nie ma juz na liscie. Bez tego warunku lista kazala
+   * kupowac ryby w dniu, w ktorym pudelko z tunczykiem czekalo na jutro.
    */
   const doPodpowiedzi = braki
-    .filter((g) => g.daysThisWeek < g.needDays && !g.onShoppingList)
+    .filter((g) => g.brakuje > 0 && !g.onShoppingList)
     .sort((a, b) =>
       (a.severity === 'critical' ? 0 : a.severity === 'important' ? 1 : 2) -
       (b.severity === 'critical' ? 0 : b.severity === 'important' ? 1 : 2)
@@ -74,7 +76,7 @@ shopping.get('/zakupy', async (c) => {
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
             <b>${esc(g.name)}</b>
             <span style="color:${g.severity === 'critical' ? 'var(--bad)' : 'var(--warn)'};
-                         font-weight:700;white-space:nowrap;font-size:13px">${g.daysThisWeek} z ${g.needDays} dni</span>
+                         font-weight:700;white-space:nowrap;font-size:13px">${g.dniZjedzone + g.dniPlan} z ${g.need} dni</span>
           </div>
           ${g.examples ? `<div style="font-size:13px;margin-top:3px">${esc(g.examples)}</div>` : ''}
           <form method="POST" action="/zakupy/dodaj" style="margin-top:8px">

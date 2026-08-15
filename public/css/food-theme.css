@@ -444,6 +444,44 @@ details > summary { list-style: none; }
   font-size: 12px; line-height: 1.5;
 }
 .macro-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+/* ==========================================================================
+   TYDZIEN POKRYCIA GRUP
+   Kropka na dzien tygodnia. Pelna to fakt z dziennika, obrys to zamowione
+   pudelko, pusta to brak. Trzy stany, trzy ksztalty, zaden nie zalezy od
+   samego koloru, bo wtedy wiersz jest nieczytelny bez rozrozniania barw.
+   ========================================================================== */
+.tydzien-kropki { display: flex; gap: 6px; margin: 8px 0 6px; }
+.tydzien-dzien { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.tydzien-etykieta { font-size: 10px; color: var(--muted); }
+.kropka {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--hairline); box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.kropka.zjedzone { background: var(--ok); box-shadow: none; }
+.kropka.plan { background: transparent; box-shadow: inset 0 0 0 2px var(--ok); }
+.kropka.brak { background: transparent; box-shadow: inset 0 0 0 1px var(--hairline); }
+.kropka.dzis { outline: 2px solid var(--muted); outline-offset: 2px; }
+
+.tydzien-licznik { font-weight: 700; white-space: nowrap; font-size: 13px; }
+.tydzien-werdykt { font-size: 12px; }
+.tydzien-licznik.ok, .tydzien-werdykt.ok { color: var(--ok); }
+.tydzien-licznik.warn, .tydzien-werdykt.warn { color: var(--warn); }
+.tydzien-licznik.bad, .tydzien-werdykt.bad { color: var(--bad); }
+.tydzien-licznik.muted, .tydzien-werdykt.muted { color: var(--muted); }
+
+.tydzien-dzis {
+  padding: 12px 14px; border-radius: 10px; background: var(--hairline);
+  font-size: 14px; line-height: 1.45;
+}
+.tydzien-dzis.ok { color: var(--muted); }
+.tydzien-legenda {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 10px 2px 4px; font-size: 11px; color: var(--muted);
+}
+.tydzien-legenda > span { display: flex; gap: 5px; align-items: center; }
+.tydzien-legenda .kropka { width: 11px; height: 11px; }
+.tydzien-zrodlo { flex-basis: 100%; }
+
 /* Pytanie o godziny po odhaczeniu posilku. Pola sa w jednym wierszu, bo to
    jedna decyzja, nie formularz: od, do, zapisz. Zawija sie na waskim ekranie. */
 .czas-pytanie {

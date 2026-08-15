@@ -1,119 +1,261 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
-import { esc, todayWarsaw } from '../views/ui';
+import { esc, todayWarsaw, shiftDate } from '../views/ui';
 
 const gaps = new Hono<{ Bindings: Env }>();
 
-export interface DayGap {
+const DNI = ['pon', 'wt', 'śr', 'czw', 'pt', 'sob', 'nd'];
+
+export type StatusDnia = 'zjedzone' | 'plan' | 'brak';
+
+export interface DzienGrupy {
+  date: string;
+  status: StatusDnia;
+  produkty: string[];
+}
+
+export interface WeekGap {
   group_id: number;
   name: string;
   provides: string | null;
   examples: string | null;
   severity: string;
-  needDays: number;
-  daysThisWeek: number;
-  todayCovered: boolean;
+  need: number;
+  dni: DzienGrupy[];
+  dniZjedzone: number;
+  dniPlan: number;
+  /** Ile dni brakuje PO doliczeniu zaplanowanych pudełek. Zero znaczy: nic nie rób. */
+  brakuje: number;
+  /** Dni od dzisiaj do niedzieli, w których nie ma ani wpisu, ani pudełka. */
+  dniWolne: number;
+  dzisStatus: StatusDnia;
   onShoppingList: boolean;
 }
 
 /**
- * Czego brakuje dzisiaj.
+ * Pokrycie grup w CAŁYM tygodniu, nie w jednym dniu.
  *
- * Tydzień odpowiada na pytanie "jak było", ten widok na pytanie "co zrobić
- * jeszcze dzisiaj". Dlatego liczy dwie rzeczy naraz: czy grupa pojawiła się
- * dziś, i ile dni w tym tygodniu już ma, bo reguła jest tygodniowa.
+ * Reguły w `coverage_rules` są tygodniowe („kiwi 7 dni", „ryby 2 dni"), więc
+ * pytanie „czy ta grupa była dzisiaj" było pytaniem o co innego niż reguła.
+ * Do 15.08.2026 sekcja liczyła wyłącznie posiłki zjedzone, przez co pokazywała
+ * brak ryb w dniu, w którym pudełko z tuńczykiem leżało już w bazie na jutro.
+ *
+ * Liczą się dwa stany posiłku i każdy znaczy co innego:
+ * `zjedzony` to fakt, `plan` to pudełko z cateringu, które dopiero przyjdzie.
+ * Dzień z jednym i drugim jest dniem zjedzonym, bo fakt bije zapowiedź.
+ * `pominiety` nie liczy się nigdzie, bo to jedzenie, którego nie było.
  */
-export async function loadDayGaps(db: D1Database, date: string, weekStart: string): Promise<DayGap[]> {
-  const [rules, today, week, shopping] = await Promise.all([
+export async function loadWeekGaps(
+  db: D1Database, date: string, weekStart: string
+): Promise<WeekGap[]> {
+  const dniTygodnia = Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i));
+  const weekEnd = dniTygodnia[6];
+
+  const [rules, pokrycie, shopping] = await Promise.all([
     db.prepare(
       `SELECT r.group_id, r.min_days_per_week, r.severity, g.name, g.provides, g.examples
        FROM coverage_rules r JOIN food_groups g ON g.id = r.group_id
        WHERE (r.active_from IS NULL OR r.active_from <= ?) AND (r.active_to IS NULL OR r.active_to >= ?)
        ORDER BY CASE r.severity WHEN 'critical' THEN 1 WHEN 'important' THEN 2 ELSE 3 END, g.name`
     ).bind(date, date).all<any>(),
-    db.prepare(`SELECT group_id FROM v_group_coverage WHERE date = ?`).bind(date).all<any>(),
+    /*
+     * Nazwy produktow jada razem ze stanem, bo bez nich wiersz mowi „masz
+     * 2 z 5 dni" i nie da sie sprawdzic, z czego to policzone.
+     *
+     * `portion_role = 'porcja'` odsiewa posypki: natka pietruszki na kremie
+     * zaliczala wczesniej dzien zielonych lisci tak samo jak miska szpinaku.
+     * Ocene nowych skladnikow robi Claude przy /hfood, patrz migracja 045.
+     */
     db.prepare(
-      `SELECT group_id, COUNT(DISTINCT date) AS days FROM v_group_coverage
-       WHERE date BETWEEN ? AND ? GROUP BY group_id`
-    ).bind(weekStart, date).all<any>(),
+      `SELECT f.group_id, m.date, m.stan, GROUP_CONCAT(DISTINCT f.name) AS produkty
+       FROM meals m
+       JOIN meal_foods mf ON mf.meal_id = m.id
+       JOIN foods f       ON f.id = mf.food_id
+       WHERE m.date BETWEEN ? AND ? AND f.group_id IS NOT NULL
+         AND f.portion_role = 'porcja'
+         AND m.stan IN ('zjedzony', 'plan')
+       GROUP BY f.group_id, m.date, m.stan`
+    ).bind(weekStart, weekEnd).all<any>(),
     db.prepare(
       `SELECT s.food_id, f.group_id FROM shopping s
        LEFT JOIN foods f ON f.id = s.food_id WHERE s.bought = 0`
     ).all<any>(),
   ]);
 
-  const todaySet = new Set((today.results ?? []).map((r: any) => r.group_id));
-  const weekBy = new Map<number, number>((week.results ?? []).map((r: any) => [r.group_id, r.days]));
   const shopSet = new Set((shopping.results ?? []).map((r: any) => r.group_id).filter(Boolean));
 
-  return (rules.results ?? []).map((r: any) => ({
-    group_id: r.group_id,
-    name: r.name,
-    provides: r.provides,
-    examples: r.examples,
-    severity: r.severity,
-    needDays: r.min_days_per_week ?? 0,
-    daysThisWeek: weekBy.get(r.group_id) ?? 0,
-    todayCovered: todaySet.has(r.group_id),
-    onShoppingList: shopSet.has(r.group_id),
-  }));
+  // klucz: "grupa|data" -> stan -> produkty
+  const bierz = new Map<string, { zjedzone?: string[]; plan?: string[] }>();
+  for (const r of pokrycie.results ?? []) {
+    const klucz = `${r.group_id}|${r.date}`;
+    const wpis = bierz.get(klucz) ?? {};
+    const produkty = String(r.produkty ?? '').split(',').filter(Boolean);
+    if (r.stan === 'zjedzony') wpis.zjedzone = produkty;
+    else wpis.plan = produkty;
+    bierz.set(klucz, wpis);
+  }
+
+  return (rules.results ?? []).map((r: any) => {
+    const dni: DzienGrupy[] = dniTygodnia.map((d) => {
+      const wpis = bierz.get(`${r.group_id}|${d}`);
+      if (wpis?.zjedzone) return { date: d, status: 'zjedzone', produkty: wpis.zjedzone };
+      if (wpis?.plan) return { date: d, status: 'plan', produkty: wpis.plan };
+      return { date: d, status: 'brak', produkty: [] };
+    });
+
+    const dniZjedzone = dni.filter((d) => d.status === 'zjedzone').length;
+    const dniPlan = dni.filter((d) => d.status === 'plan').length;
+    const need = r.min_days_per_week ?? 0;
+
+    return {
+      group_id: r.group_id,
+      name: r.name,
+      provides: r.provides,
+      examples: r.examples,
+      severity: r.severity,
+      need,
+      dni,
+      dniZjedzone,
+      dniPlan,
+      brakuje: Math.max(0, need - dniZjedzone - dniPlan),
+      dniWolne: dni.filter((d) => d.status === 'brak' && d.date >= date).length,
+      dzisStatus: dni.find((d) => d.date === date)?.status ?? 'brak',
+      onShoppingList: shopSet.has(r.group_id),
+    };
+  });
 }
 
-export function renderGaps(list: DayGap[], date: string, doKupienia: number): string {
-  const missing = list.filter((g) => !g.todayCovered);
-  const done = list.filter((g) => g.todayCovered);
+function kropki(g: WeekGap, date: string): string {
+  return `<div class="tydzien-kropki">${g.dni.map((d, i) => {
+    const dzis = d.date === date ? ' dzis' : '';
+    const opis = d.produkty.length
+      ? `${d.date}: ${d.produkty.join(', ')}`
+      : `${d.date}: nic z tej grupy`;
+    return `<span class="tydzien-dzien">
+      <span class="kropka ${d.status}${dzis}" title="${esc(opis)}"></span>
+      <span class="tydzien-etykieta">${DNI[i]}</span>
+    </span>`;
+  }).join('')}</div>`;
+}
 
-  const row = (g: DayGap) => {
-    const behind = g.daysThisWeek < g.needDays;
-    const color =
-      !behind ? 'var(--ok)' : g.severity === 'critical' ? 'var(--bad)' : 'var(--warn)';
+/** Jedno zdanie werdyktu. To ono ma odpowiedzieć, czy w ogóle trzeba coś robić. */
+function werdykt(g: WeekGap): { tekst: string; klasa: string } {
+  if (g.brakuje === 0 && g.dniPlan === 0)
+    return { tekst: `zrobione, ${g.dniZjedzone} z ${g.need} dni`, klasa: 'ok' };
+  if (g.brakuje === 0)
+    return {
+      tekst: `domknie się samo: masz ${g.dniZjedzone}, w pudełkach jeszcze ${g.dniPlan}`,
+      klasa: 'ok',
+    };
+  if (g.brakuje > g.dniWolne)
+    return {
+      tekst: `w tym tygodniu już nie do nadrobienia, ${
+        g.dniWolne === 0
+          ? 'nie ma wolnego dnia'
+          : g.dniWolne === 1
+            ? 'został 1 wolny dzień'
+            : `zostały ${g.dniWolne} wolne dni`
+      }`,
+      klasa: 'muted',
+    };
+  return {
+    tekst: `dorzuć ${g.brakuje === 1 ? 'w 1 dniu' : `w ${g.brakuje} dniach`}: masz ${
+      g.dniZjedzone
+    }, w pudełkach ${g.dniPlan}, cel ${g.need}`,
+    klasa: g.severity === 'critical' ? 'bad' : 'warn',
+  };
+}
+
+export function renderGaps(list: WeekGap[], date: string, doKupienia: number): string {
+  // Kolejność: najpierw to, co wymaga ruchu, na końcu to, co zamknięte.
+  const waga = (g: WeekGap) =>
+    (g.brakuje === 0 ? 2 : g.brakuje > g.dniWolne ? 1 : 0) * 10 +
+    (g.severity === 'critical' ? 0 : g.severity === 'important' ? 1 : 2);
+  const posortowane = [...list].sort((a, b) => waga(a) - waga(b));
+
+  const doZrobienia = posortowane.filter((g) => g.brakuje > 0 && g.brakuje <= g.dniWolne);
+  /*
+   * Do dzisiejszej listy wchodzi tez grupa, ktorej tygodnia juz nie da sie
+   * domknac. Cel tygodniowy jest przegrany, ale zjedzenie kiwi dzis dalej ma
+   * sens, a wersja, ktora takie grupy chowala, potrafila napisac „nic nie
+   * trzeba dokladac" w dniu z dwoma niedomkniętymi grupami.
+   */
+  const naDzis = posortowane.filter((g) => g.brakuje > 0 && g.dzisStatus === 'brak');
+
+  const wiersz = (g: WeekGap) => {
+    const w = werdykt(g);
+    const dzisiaj =
+      g.dzisStatus === 'zjedzone' ? 'dziś już było'
+      : g.dzisStatus === 'plan' ? 'dziś jest w pudełku'
+      : 'dziś jeszcze nie';
 
     return `<li>
       <div class="item-content"><div class="item-inner" style="display:block;padding:12px 0">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
           <b>${esc(g.name)}</b>
-          <span style="color:${color};font-weight:700;white-space:nowrap;font-size:13px">
-            ${g.daysThisWeek} z ${g.needDays} dni
-          </span>
+          <span class="tydzien-licznik ${w.klasa}">${g.dniZjedzone + g.dniPlan} z ${g.need} dni</span>
         </div>
-        ${g.examples ? `<div style="font-size:13px;margin-top:3px">${esc(g.examples)}</div>` : ''}
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">daje: ${esc(g.provides ?? '')}</div>
-
-        <div class="gap-actions">
-          <form method="POST" action="/braki/zjedzone">
-            <input type="hidden" name="group_id" value="${g.group_id}">
-            <input type="hidden" name="date" value="${date}">
-            <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
-          </form>
-          ${
-            g.onShoppingList
-              ? `<span class="flag info" style="align-self:center">na liście zakupów</span>`
-              : `<form method="POST" action="/zakupy/dodaj">
-                  <input type="hidden" name="group_id" value="${g.group_id}">
-                  <input type="hidden" name="date" value="${date}">
-                  <button type="submit" class="button button-small" style="width:100%">Do kupienia</button>
-                </form>`
-          }
-        </div>
+        ${kropki(g, date)}
+        <div class="tydzien-werdykt ${w.klasa}">${esc(w.tekst)} &middot; ${dzisiaj}</div>
+        ${g.examples ? `<div style="font-size:13px;margin-top:4px">${esc(g.examples)}</div>` : ''}
+        ${
+          g.brakuje > 0
+            ? `<div class="gap-actions">
+                ${g.dzisStatus === 'brak'
+                  ? `<form method="POST" action="/braki/zjedzone">
+                      <input type="hidden" name="group_id" value="${g.group_id}">
+                      <input type="hidden" name="date" value="${date}">
+                      <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
+                    </form>`
+                  : ''}
+                ${
+                  g.onShoppingList
+                    ? `<span class="flag info" style="align-self:center">na liście zakupów</span>`
+                    : `<form method="POST" action="/zakupy/dodaj">
+                        <input type="hidden" name="group_id" value="${g.group_id}">
+                        <input type="hidden" name="date" value="${date}">
+                        <button type="submit" class="button button-small" style="width:100%">Do kupienia</button>
+                      </form>`
+                }
+              </div>`
+            : ''
+        }
       </div></div>
     </li>`;
   };
 
+  /*
+   * Naglowek odpowiada na pytanie „co mam jeszcze dzisiaj zjesc" jednym zdaniem,
+   * zeby nie trzeba bylo czytac siedmiu wierszy, zeby to wiedziec.
+   */
+  const przepadle = posortowane.filter((g) => g.brakuje > 0 && g.brakuje > g.dniWolne);
+  // Nazwy w ogonie tylko wtedy, gdy naglowek ich jeszcze nie wymienil.
+  const nowePrzepadle = przepadle.filter((g) => !naDzis.includes(g));
+  const ogon = !przepadle.length
+    ? ''
+    : nowePrzepadle.length
+      ? ` Pełnego tygodnia nie zrobisz już w: ${nowePrzepadle
+          .map((g) => esc(g.name.toLowerCase())).join(', ')}, ale każdy dzień się liczy.`
+      : ' Pełnego tygodnia już nie domkniesz, ale każdy dzień się liczy.';
+
+  const naglowek = naDzis.length
+    ? `<div class="tydzien-dzis">Dziś dorzuć: <b>${naDzis
+        .map((g) => esc(g.name.toLowerCase())).join(', ')}</b>.${ogon}</div>`
+    : doZrobienia.length
+      ? `<div class="tydzien-dzis">Na dziś nic dodatkowego, dzisiejsze pudełka mają wszystko.
+          Do końca tygodnia zostaje: <b>${doZrobienia
+            .map((g) => esc(g.name.toLowerCase())).join(', ')}</b>.${ogon}</div>`
+      : `<div class="tydzien-dzis ok">Nic nie trzeba dokładać, resztę tygodnia domykają zamówione pudełka.${ogon}</div>`;
+
   return `
-    ${
-      missing.length
-        ? `<div class="list" style="margin:0"><ul>${missing.map(row).join('')}</ul></div>`
-        : `<div style="padding:18px 16px;text-align:center;color:var(--ok);font-size:14px">
-             Wszystkie grupy z reguł pojawiły się dzisiaj.
-           </div>`
-    }
-    ${
-      done.length
-        ? `<div style="padding:10px 16px 0;font-size:12px;color:var(--muted)">
-             Dzisiaj już było: ${done.map((g) => esc(g.name.toLowerCase())).join(', ')}
-           </div>`
-        : ''
-    }
+    ${naglowek}
+    <div class="tydzien-legenda">
+      <span><span class="kropka zjedzone"></span> zjedzone</span>
+      <span><span class="kropka plan"></span> pudełko w planie</span>
+      <span><span class="kropka brak"></span> nic z tej grupy</span>
+      <span class="tydzien-zrodlo">liczone z twoich wpisów i składów z cateringu, dotknij kropki, żeby zobaczyć produkt</span>
+    </div>
+    <div class="list" style="margin:0"><ul>${posortowane.map(wiersz).join('')}</ul></div>
     <div class="block" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <span style="font-size:13px;color:var(--muted)">
         ${doKupienia ? `Na liście zakupów: ${doKupienia} ${doKupienia === 1 ? 'pozycja' : 'pozycji'}` : 'Lista zakupów pusta'}

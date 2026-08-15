@@ -155,6 +155,11 @@ ON CONFLICT(id) DO UPDATE SET
   processed_meat = excluded.processed_meat, refined_oil = excluded.refined_oil,
   notes = excluded.notes;
 
+-- Rola w posilku: 'porcja' liczy sie do pokrycia grupy, 'dodatek' nie.
+-- Osobnym blokiem, bo to ocena, ktora dochodzi z czasem, produkt po produkcie,
+-- a nie kolumna do wypelnienia przy kazdym wierszu slownika. Patrz migracja 045.
+UPDATE foods SET portion_role = 'dodatek' WHERE id = 9;   -- pietruszka liście, posypka
+
 -- ---------------------------------------------------------------------------
 -- MAPOWANIE ALIASOW ZE Składów HFOOD
 -- ---------------------------------------------------------------------------

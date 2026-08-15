@@ -12,7 +12,7 @@ import { przerwyDnia, koniecOstatniegoPodejscia, przerywaPrzerwe, RegulyPrzerw }
 import {
   MAKRA_KALENDARZA, MAKRA_POZOSTALE, Odchylenie, odchylenia, opisOdchylenia,
 } from '../utils/day-status';
-import { loadDayGaps, renderGaps } from './gaps';
+import { loadWeekGaps, renderGaps } from './gaps';
 import { METRYKI, WatchRow, normy, stan, sygnaly, bilans, kgNaTydzien } from '../utils/watch';
 
 const day = new Hono<{ Bindings: Env }>();
@@ -299,7 +299,7 @@ export async function renderDay(c: any, date: string) {
   const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
   const weekStart = shiftDate(date, -dow);
   const [dayGaps, doKupienia] = await Promise.all([
-    loadDayGaps(db, date, weekStart),
+    loadWeekGaps(db, date, weekStart),
     db.prepare(`SELECT COUNT(*) AS n FROM shopping WHERE bought = 0`).first<{ n: number }>(),
   ]);
 
@@ -543,7 +543,7 @@ export async function renderDay(c: any, date: string) {
     ${blockTitle('Stres, zegarek, objawy i stolec')}
     ${eventsHtml}
 
-    ${blockTitle('Czego dziś brakuje', 'tydzień liczony od poniedziałku')}
+    ${blockTitle('Czego brakuje w tym tygodniu', 'poniedziałek do niedzieli')}
     ${renderGaps(dayGaps, date, doKupienia?.n ?? 0)}
 
     ${blockTitle('Dlaczego kalendarz to zaznacza', 'wszystkie ostrzeżenia dnia')}

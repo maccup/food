@@ -105,6 +105,45 @@ przekierowuje, żeby nie psuć zakładek.
   **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
   zakłamałaby ją całkowicie.
 
+## Czego brakuje: tydzień, nie dzień
+
+Reguły w `coverage_rules` są tygodniowe („kiwi 7 dni", „ryby 2 dni"), więc sekcja
+pytająca „czy ta grupa była dzisiaj" pytała o co innego niż reguła. Liczy
+`loadWeekGaps()` w `routes/gaps.ts` i czytają go dwa ekrany: widok dnia i podpowiedzi
+na liście zakupów. **Jedna funkcja, bo dwa liczenia rozjechałyby się przy pierwszej
+zmianie reguły**, a wtedy zakupy kazałyby kupować to, co widok dnia uważa za zrobione.
+
+- **Plan liczy się jako dzień pokryty.** Pudełka na resztę tygodnia siedzą w bazie od
+  importu, więc aplikacja wie, że tuńczyk przyjdzie w sobotę. Do 15.08.2026 sekcja
+  liczyła wyłącznie `zjedzony` i alarmowała o rybach w dniu, w którym pudełko
+  z tuńczykiem leżało już zamówione. Dzień z wpisem i pudełkiem jest dniem zjedzonym:
+  fakt bije zapowiedź.
+- **Trzy liczby zamiast jednej**: ile dni zjedzone, ile dojdzie z pudełek, ile zostaje
+  do zrobienia przez Maćka. Werdykt wiersza mówi wprost, czy trzeba cokolwiek robić.
+- **Grupa, której tygodnia już nie da się domknąć, zostaje na dzisiejszej liście.**
+  Cel tygodniowy jest przegrany, ale zjedzenie kiwi dziś dalej ma sens. Wersja, która
+  takie grupy chowała, potrafiła napisać „nic nie trzeba dokładać" w dniu z dwiema
+  niedomkniętymi grupami.
+- **`dniWolne` to dni od dzisiaj bez wpisu i bez pudełka.** Dzień, w którym grupa już
+  jest w planie, nie jest wolny: dorzucenie tam drugiej porcji nie doda dnia do reguły.
+- **Kropki mają trzy kształty, nie trzy kolory**: pełna to fakt, obrys to zamówione
+  pudełko, pusta to brak. `title` na kropce wymienia produkt, więc każdą liczbę
+  da się sprawdzić bez otwierania bazy.
+
+### Porcja a dodatek
+
+`foods.portion_role` rozstrzyga, czy wystąpienie produktu zalicza dzień grupy.
+Natka pietruszki posypana na krem zaliczała „zielone warzywa liściaste" identycznie
+jak miska szpinaku i tydzień wyglądał na 4 z 5 dni zamiast prawdziwych 2 z 5.
+
+- Wartości są dwie i mają nazwy: `porcja` liczy się do pokrycia, `dodatek` nie.
+  Produkt zostaje w swojej grupie i dalej działa na nim silnik wykluczeń.
+- **Tej oceny nie wyciągnie żadna reguła ze składu.** Ustawia ją Claude przy komendzie
+  `/hfood`, bo tylko tam ktoś czyta składy ze zrozumieniem. Krok jest opisany w sekcji 7
+  tej komendy i jest obowiązkowy przy każdym imporcie nowych dni.
+- Gdyby kiedyś pojawił się produkt raz jako porcja, raz jako posypka, wtedy dopiero
+  warto przenieść to na `meal_foods`. Nie robić tego z góry.
+
 ## Dlaczego kalendarz zaznacza dzień
 
 Regułę koloru kratki liczy `utils/day-status.ts` i **korzystają z niej dwa ekrany**: kalendarz
