@@ -71,7 +71,7 @@ log.get('/log', async (c) => {
   const szablony = co === 'posilek'
     ? (await db.prepare(
         `SELECT id, name, kcal, slot FROM meal_templates
-         WHERE archived = 0 ORDER BY times_used DESC, last_used DESC, name LIMIT 12`
+         WHERE archived = 0 ORDER BY times_used DESC, last_used DESC, name LIMIT 20`
       ).all<any>()).results ?? []
     : [];
 
