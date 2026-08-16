@@ -273,29 +273,31 @@ gaps.post('/braki/zjedzone', async (c) => {
   const group = await c.env.DB.prepare(`SELECT name, examples FROM food_groups WHERE id = ?`)
     .bind(groupId).first<{ name: string; examples: string | null }>();
 
-  // Bierzemy pierwszy produkt z tej grupy, ktory nie jest aktualnie zakazany.
-  const food = await c.env.DB.prepare(
+  // Produkt z tej grupy, ktory nie jest aktualnie zakazany. Wersja z szablonem
+  // idzie pierwsza, bo szablon niesie makra i realna porcje. Bez niego wpis
+  // wchodzil z pustymi kaloriami i dzien liczyl sie tak, jakby nic nie zjadl.
+  const wolne = `NOT EXISTS (
+      SELECT 1 FROM restrictions r
+      WHERE (r.food_id = f.id OR r.group_id = f.group_id)
+        AND r.level = 'forbidden' AND r.status = 'active'
+        AND ? >= r.date_from AND (r.date_to IS NULL OR ? <= r.date_to)
+    )`;
+
+  const zSzablonem = await c.env.DB.prepare(
+    `SELECT f.id, f.name, t.name AS t_name, t.kcal, t.protein_g, t.fat_g, t.carbs_g, t.fiber_g
+     FROM foods f
+     JOIN meal_templates t ON lower(t.ingredients) = lower(f.name) AND t.archived = 0
+     WHERE f.group_id = ? AND ${wolne}
+     ORDER BY t.times_used DESC, f.id LIMIT 1`
+  ).bind(groupId, date, date).first<any>();
+
+  const food = zSzablonem ?? await c.env.DB.prepare(
     `SELECT f.id, f.name FROM foods f
-     WHERE f.group_id = ?
-       AND NOT EXISTS (
-         SELECT 1 FROM restrictions r
-         WHERE (r.food_id = f.id OR r.group_id = f.group_id)
-           AND r.level = 'forbidden' AND r.status = 'active'
-           AND ? >= r.date_from AND (r.date_to IS NULL OR ? <= r.date_to)
-       )
+     WHERE f.group_id = ? AND ${wolne}
      ORDER BY f.id LIMIT 1`
   ).bind(groupId, date, date).first<{ id: number; name: string }>();
 
-  // Makra bierzemy z szablonu opisujacego ten produkt, jesli taki jest.
-  // Bez tego odhaczenie grupy wstawialo posilek z pustymi kaloriami i dzien
-  // liczyl sie tak, jakby nic nie zjadl.
-  const szablon = food
-    ? await c.env.DB.prepare(
-        `SELECT name, kcal, protein_g, fat_g, carbs_g, fiber_g FROM meal_templates
-         WHERE archived = 0 AND lower(ingredients) = lower(?)
-         ORDER BY times_used DESC LIMIT 1`
-      ).bind(food.name).first<any>()
-    : null;
+  const szablon = zSzablonem;
 
   const inserted = await c.env.DB.prepare(
     `INSERT INTO meals (date, slot, sitting, source, name, ingredients_raw,
@@ -304,7 +306,7 @@ gaps.post('/braki/zjedzone', async (c) => {
      RETURNING id`
   ).bind(
     date,
-    szablon?.name ?? (group?.name ? `Dodatek: ${group.name.toLowerCase()}` : 'Dodatek'),
+    szablon?.t_name ?? (group?.name ? `Dodatek: ${group.name.toLowerCase()}` : 'Dodatek'),
     group?.examples ?? null,
     szablon?.kcal ?? null, szablon?.protein_g ?? null, szablon?.fat_g ?? null,
     szablon?.carbs_g ?? null, szablon?.fiber_g ?? null
