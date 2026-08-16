@@ -286,14 +286,28 @@ gaps.post('/braki/zjedzone', async (c) => {
      ORDER BY f.id LIMIT 1`
   ).bind(groupId, date, date).first<{ id: number; name: string }>();
 
+  // Makra bierzemy z szablonu opisujacego ten produkt, jesli taki jest.
+  // Bez tego odhaczenie grupy wstawialo posilek z pustymi kaloriami i dzien
+  // liczyl sie tak, jakby nic nie zjadl.
+  const szablon = food
+    ? await c.env.DB.prepare(
+        `SELECT name, kcal, protein_g, fat_g, carbs_g, fiber_g FROM meal_templates
+         WHERE archived = 0 AND lower(ingredients) = lower(?)
+         ORDER BY times_used DESC LIMIT 1`
+      ).bind(food.name).first<any>()
+    : null;
+
   const inserted = await c.env.DB.prepare(
-    `INSERT INTO meals (date, slot, sitting, source, name, ingredients_raw, estimated, notes)
-     VALUES (?, 'inne', 0, 'dom', ?, ?, 1, 'dopisane z sekcji o brakach')
+    `INSERT INTO meals (date, slot, sitting, source, name, ingredients_raw,
+       kcal, protein_g, fat_g, carbs_g, fiber_g, estimated, notes)
+     VALUES (?, 'inne', 0, 'dom', ?, ?, ?, ?, ?, ?, ?, 1, 'dopisane z sekcji o brakach')
      RETURNING id`
   ).bind(
     date,
-    group?.name ? `Dodatek: ${group.name.toLowerCase()}` : 'Dodatek',
-    group?.examples ?? null
+    szablon?.name ?? (group?.name ? `Dodatek: ${group.name.toLowerCase()}` : 'Dodatek'),
+    group?.examples ?? null,
+    szablon?.kcal ?? null, szablon?.protein_g ?? null, szablon?.fat_g ?? null,
+    szablon?.carbs_g ?? null, szablon?.fiber_g ?? null
   ).first<{ id: number }>();
 
   if (inserted && food) {
