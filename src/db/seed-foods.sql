@@ -186,7 +186,7 @@ INSERT INTO food_aliases (alias, food_id, ignored) VALUES
   ('ser gouda bez laktozy', 41, 0), ('ser typu "feta" bez laktozy', 41, 0),
   ('ser parmezan', 41, 0), ('wegańska feta', 41, 0), ('ser wegański', 41, 0),
   ('mozzarella bez laktozy', 42, 0), ('wegańska mozzarella', 42, 0),
-  ('ryż', 45, 0), ('ryż biały ugotowany', 45, 0), ('kasza gryczana', 47, 0), ('kasza jaglana', 48, 0),
+  ('ryż', 45, 0), ('ryż biały ugotowany', 45, 0), ('ryż basmati ugotowany', 45, 0), ('kasza gryczana', 47, 0), ('kasza jaglana', 48, 0),
   ('kasza kukurydziana', 49, 0), ('komosa ryżowa', 50, 0),
   ('płatki owsiane bezglutenowe', 51, 0), ('mąka ryżowa', 52, 0),
   ('mąka gryczana', 52, 0), ('skrobia kukurydziana', 53, 0),
