@@ -5,6 +5,7 @@ import { loadSettings } from '../utils/settings';
 import { statystykaPrzerw, PosilekDoPrzerw } from '../utils/gaps-stats';
 import { ulozPlan, DobaZegarka, TreningWpis, Zalecenie } from '../utils/trening';
 import { ulozWnioski, Wniosek } from '../utils/wnioski';
+import { stanMakro } from '../utils/day-status';
 import { slupkowy, zwinDoTygodni, etykietaDnia, Slupek } from '../views/charts';
 import { sekcjeZegarka } from './watch';
 
@@ -84,11 +85,12 @@ stats.get('/statystyki', async (c) => {
     db.prepare(
       `SELECT date, level, powod FROM stress WHERE date BETWEEN ? AND ? ORDER BY date`
     ).bind(o.od, o.do).all<any>(),
-    // Doba przed poczatkiem i dwie po koncu zakresu, bo kazdy dzien ze stresem
-    // ogladamy z czterema przesunieciami, od minus jednego do plus dwoch.
+    // Wstecz o caly poprzedni zakres (kierunek zmiany stolca liczy sie wobec
+    // poprzedniego okna tej samej dlugosci), w przod o dwie doby dla przesuniec
+    // sekcji stresu.
     db.prepare(
       `SELECT date, bristol FROM stools WHERE date BETWEEN ? AND ? ORDER BY date`
-    ).bind(shiftDate(o.od, -1), shiftDate(o.do, 2)).all<any>(),
+    ).bind(shiftDate(o.od, -dniZakresu - 1), shiftDate(o.do, 2)).all<any>(),
   ]);
 
   // Medytacja z zegarka, do sekcji stresu i wnioskow. Zero i NULL znacza co
@@ -210,7 +212,6 @@ stats.get('/statystyki', async (c) => {
       </div>
       <p class="hint" style="margin:0">
         Zielone słupki mieszczą się w paśmie fazy, bursztynowe są poza nim, przerywane kreski to granice pasma.
-        Skala zaczyna się od najniższego ${poTygodniach ? 'tygodnia' : 'dnia'}, nie od zera, więc różnice wyglądają na większe, niż są.
       </p>`)
     : '';
 
@@ -225,18 +226,8 @@ stats.get('/statystyki', async (c) => {
       </table></div>`
     : emptyState('Brak wpisów z tego zakresu.');
 
-  /*
-   * Kompletnosc na samej gorze i celowo przed kazda inna liczba. Srednia z trzech
-   * dni wyglada na ekranie identycznie jak srednia z trzydziestu, a znaczy co innego.
-   */
-  const kompletnosc = card(`
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
-      <span style="font-size:13px;color:var(--muted)">Dni z wpisami</span>
-      <b style="font-size:19px">${lista.length} <span style="font-size:13px;font-weight:400;color:var(--muted)">z ${dniZakresu}</span></b>
-    </div>
-    ${lista.length < dniZakresu
-      ? `<p class="hint" style="margin:6px 0 0">Reszta liczb dotyczy tylko dni z wpisami. Puste dni nie są wliczane do średnich.</p>`
-      : ''}`);
+  // Kompletnosc danych nie jest juz osobna sekcja: siedzi jako podpis
+  // w karcie statusu na gorze, bo to kwalifikacja kazdej sredniej, nie temat.
 
   const przerwyHtml = przerwy.przerwy
     ? card(`
@@ -523,6 +514,15 @@ stats.get('/statystyki', async (c) => {
   const stolcePoLagach = (dni: string[]) =>
     dni.flatMap((data) => [1, 2].flatMap((lag) => stolceWgDat.get(shiftDate(data, lag)) ?? []));
 
+  // Bristole z zakresu i z poprzedniego okna tej samej dlugosci: pierwszy
+  // zbior czyta silnik wnioskow, oba razem daja kierunek zmiany na wierzchu.
+  const bristoleZakresu = (stolceDat.results ?? [])
+    .filter((s: any) => s.date >= o.od && s.date <= o.do)
+    .map((s: any) => Number(s.bristol));
+  const bristolePoprzednie = (stolceDat.results ?? [])
+    .filter((s: any) => s.date >= shiftDate(o.od, -dniZakresu) && s.date < o.od)
+    .map((s: any) => Number(s.bristol));
+
   const wnioski = ulozWnioski({
     dniZakresu,
     dniZWpisami: lista.length,
@@ -539,9 +539,7 @@ stats.get('/statystyki', async (c) => {
     grupyPonizej: grupyStatus
       .filter((g: any) => !g.ok)
       .map((g: any) => ({ nazwa: g.name, naTydzien: g.naTydzien, celDni: g.need, krytyczna: g.severity === 'critical' })),
-    bristole: (stolceDat.results ?? [])
-      .filter((s: any) => s.date >= o.od && s.date <= o.do)
-      .map((s: any) => Number(s.bristol)),
+    bristole: bristoleZakresu,
     stres: stresLista.length ? { dni: stresLista.length, srednia: sredniStres, napiete: napiete.length } : null,
     medytacja,
     stresStolec: napiete.length && spokojne.length
@@ -552,27 +550,139 @@ stats.get('/statystyki', async (c) => {
     gotowosc: doby60.length ? plan.gotowosc : null,
   });
 
+  /*
+   * Trzy warstwy zamiast jednej dlugiej listy (audyt UX 17.08.2026, po
+   * skardze Macka "nie przetworze tego, bede ignorowal"):
+   *
+   *   warstwa 1, 3 sekundy: karta statusu z JEDNA najwazniejsza rzecza,
+   *   warstwa 2, 30 sekund: max 2 kolejne "tez warto" (rozwijane), dzisiejszy
+   *                         trening jednym zdaniem, stolec jednym zdaniem,
+   *   warstwa 3, na zadanie: wszystko inne w zwijanych blokach details.
+   *
+   * Kolejnosc wewnatrz `zrob` ustawia ranga z wnioski.ts (klinika przed
+   * komfortem). Zielone OK nigdy nie dostaje wlasnej karty na wierzchu:
+   * w zwinietych obserwacjach idzie jako jedna zbiorcza linia.
+   */
   const KOLOR_WNIOSKU: Record<Wniosek['poziom'], string> = {
     zrob: 'var(--warn)', uwaga: 'var(--muted)', ok: 'var(--ok)',
   };
-  const wnioskiHtml = wnioski.length
-    ? card(wnioski.map((w, i) => `
-        <div style="display:flex;gap:10px;padding:8px 0${i ? ';border-top:1px solid var(--hairline)' : ''}">
-          <div style="width:4px;border-radius:2px;background:${KOLOR_WNIOSKU[w.poziom]};flex:0 0 4px"></div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-              <b style="font-size:14px">${esc(w.tytul)}</b>
-              <span style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(w.obszar)}</span>
-            </div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(w.opis)}</div>
-          </div>
-        </div>`).join('') + `
-        <p class="hint" style="margin:10px 0 0">
-          Bursztyn to rzecz do zrobienia, szary to obserwacja, zielony to obszar, który działa.
-          Każda liczba w opisie pochodzi z sekcji niżej na tym ekranie, więc da się ją sprawdzić.
-          To podpowiedzi liczone regułami, nie porada lekarska.
-        </p>`)
-    : emptyState('Za mało danych w tym zakresie, żeby cokolwiek doradzać.');
+  const zrobList = wnioski.filter((w) => w.poziom === 'zrob');
+  const uwagaList = wnioski.filter((w) => w.poziom === 'uwaga');
+  const okList = wnioski.filter((w) => w.poziom === 'ok');
+  const [top, ...dalszeZrob] = zrobList;
+  const tezWarto = dalszeZrob.slice(0, 2);
+  const pozostale = [...dalszeZrob.slice(2), ...uwagaList];
+
+  const statusKolor = top ? 'var(--warn)' : 'var(--ok)';
+  const statusCard = card(`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${statusKolor};flex:0 0 10px"></span>
+      <span style="font-size:12px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase">
+        ${top ? (zrobList.length === 1 ? 'jedna rzecz do zrobienia' : `do zrobienia: ${zrobList.length}, zacznij od tej`) : 'wszystko gra'}
+      </span>
+    </div>
+    ${top
+      ? `<div style="font-size:17px;font-weight:700;line-height:1.3">${esc(top.tytul)}</div>
+         <div style="font-size:13px;color:var(--muted);margin-top:6px">${esc(top.opis)}</div>`
+      : wnioski.length
+        ? `<div style="font-size:15px">Żadnych zaległości. Obserwacje i szczegóły są w zwijanych blokach niżej.</div>`
+        : `<div style="font-size:15px">Za mało danych w tym zakresie, żeby cokolwiek doradzać.</div>`}
+    <p class="hint" style="margin:10px 0 0">
+      Dni z wpisami: ${lista.length} z ${dniZakresu}${lista.length < dniZakresu ? ', średnie liczą tylko dni z wpisami' : ''}.
+    </p>`);
+
+  // "Tez warto": tytul widoczny, opis po tapnieciu. Kazdy wiersz jest wlasnym
+  // details, wiec pelna tresc nie musi byc powtorzona nigdzie indziej.
+  const wierszRozwijany = (w: Wniosek) => `
+    <details style="padding:6px 0;border-top:1px solid var(--hairline)">
+      <summary class="ocena-summary" style="display:flex;gap:10px;align-items:baseline">
+        <span style="width:4px;height:14px;border-radius:2px;background:${KOLOR_WNIOSKU[w.poziom]};flex:0 0 4px;align-self:center"></span>
+        <b style="font-size:14px;color:var(--text);flex:1">${esc(w.tytul)}</b>
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(w.obszar)} ›</span>
+      </summary>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 4px 14px">${esc(w.opis)}</div>
+    </details>`;
+
+  const tezWartoHtml = tezWarto.length
+    ? card(`
+      <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Też warto</div>
+      ${tezWarto.map(wierszRozwijany).join('')}`)
+    : '';
+
+  const pozostaleHtml = (pozostale.length || okList.length)
+    ? `${pozostale.map(wierszRozwijany).join('')}
+       ${okList.length
+         ? `<div style="padding:10px 0;border-top:1px solid var(--hairline)">
+              <div style="font-size:13px"><b style="color:var(--ok)">Działa:</b> ${okList.map((w) => esc(w.obszar.toLowerCase())).join(', ')}</div>
+              ${okList.map((w) => `<div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(w.tytul)}</div>`).join('')}
+            </div>`
+         : ''}
+       <p class="hint" style="margin:8px 0 0">
+         Bursztyn to rzecz do zrobienia, szary to obserwacja. Każda liczba pochodzi
+         z bloków szczegółów niżej, więc da się ją sprawdzić. To podpowiedzi liczone
+         regułami, nie porada lekarska.
+       </p>`
+    : '';
+
+  /*
+   * Warstwa 2: dwie linie odpowiadajace na "co dzis z treningiem" i "jak
+   * stoi leczenie". Pelne sekcje, z ktorych te zdania sie biora, siedza
+   * zwiniete nizej, wiec kazda liczbe da sie rozwinac i sprawdzic.
+   */
+  const dzisTreningHtml = (zegarekPlan.results ?? []).length
+    ? card(`
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+        <span style="font-size:13px;color:var(--muted)">Dziś</span>
+        <b style="font-size:15px">${esc(plan.dni[0].tytul)}</b>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        ${esc(plan.gotowosc.powody[0] ?? 'HRV, tętno i sen w Twojej normie.')}
+      </div>`)
+    : '';
+
+  const wNormieB = (arr: number[]) => arr.filter((b) => b >= 3 && b <= 4).length;
+  const stolecKierunek = (() => {
+    if (bristoleZakresu.length < 4 || bristolePoprzednie.length < 4) return '';
+    const teraz = wNormieB(bristoleZakresu) / bristoleZakresu.length;
+    const przedtem = wNormieB(bristolePoprzednie) / bristolePoprzednie.length;
+    const roznica = (teraz - przedtem) * 100;
+    return roznica >= 10 ? '↗ lepiej niż w poprzednim okresie'
+      : roznica <= -10 ? '↘ gorzej niż w poprzednim okresie'
+      : '→ podobnie jak w poprzednim okresie';
+  })();
+  const stolecLiniaHtml = bristoleZakresu.length
+    ? card(`
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+        <span style="font-size:13px;color:var(--muted)">Stolec</span>
+        <b style="font-size:15px">${wNormieB(bristoleZakresu)} z ${bristoleZakresu.length} wpisów w normie</b>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        Norma to typ 3 do 4 w skali Bristol.${stolecKierunek ? ` ${esc(stolecKierunek)}.` : ''}
+      </div>`)
+    : '';
+
+  /** Zwiniety blok warstwy 3: naglowek zawsze widoczny, tresc na tapniecie. */
+  const zwijane = (tytul: string, podtytul: string, inner: string) => `
+    <details class="block" style="margin-top:14px">
+      <summary class="ocena-summary" style="font-size:14px;font-weight:600;color:var(--text)">
+        ${esc(tytul)}${podtytul ? ` <span style="font-weight:400;font-size:12px;color:var(--muted)">${esc(podtytul)}</span>` : ''} ›
+      </summary>
+      <div style="margin-top:8px">${inner}</div>
+    </details>`;
+
+  // Zdania makro zamiast wykresow na wierzchu bloku jedzenia: "ile dni
+  // w pasmie" mowi wiecej niz slupki, ktorych Maciek (jak sam mowi) nie czyta.
+  const dniWPasmie = (key: string) =>
+    lista.filter((d: any) => stanMakro(Number(d[key] ?? 0), t.get(key)) === 'ok').length;
+  const makroZdania = lista.length
+    ? card(`<div style="font-size:13px;line-height:1.7">
+        ${[['kcal', 'Kalorie'], ['protein_g', 'Białko'], ['fiber_g', 'Błonnik']]
+          .filter(([k]) => t.get(k))
+          .map(([k, nazwa]) => `<b>${nazwa}</b>: ${dniWPasmie(k)} z ${lista.length} dni w paśmie`)
+          .join(' · ')}
+        · <b>Tłuszcz</b>: bez celu, średnio ${pl(srednia('fat_g'), 0)} g
+      </div>`)
+    : '';
 
   const KOLOR_ZALECENIA: Record<Zalecenie, string> = {
     sila: 'var(--ok)',
@@ -679,35 +789,46 @@ stats.get('/statystyki', async (c) => {
       </p>
     </div>
 
-    ${blockTitle('Wnioski i rekomendacje', 'liczone z Twoich danych')}
-    ${wnioskiHtml}
+    ${statusCard}
+    ${tezWartoHtml}
+    ${dzisTreningHtml}
+    ${stolecLiniaHtml}
 
-    ${blockTitle('Trening na najbliższe dni', 'z ostatnich 60 dób, niezależnie od filtra')}
-    ${planHtml}
+    ${zwijane('Pozostałe obserwacje', pozostale.length + okList.length ? `${pozostale.length + okList.length}` : '', pozostaleHtml || emptyState('Nic więcej w tym zakresie.'))}
 
-    ${blockTitle('Ile tego jest')}
-    ${kompletnosc}
+    ${zwijane('Jedzenie', 'makra, przerwy, grupy, naruszenia', `
+      ${makroZdania}
+      ${wykresyMakro}
+      ${card(table)}
+      ${blockTitle('Przerwy między podejściami', `cel: min. ${minGap} h`)}
+      ${przerwyHtml}
+      ${blockTitle('Pokrycie grup produktów')}
+      <div class="list media-list" style="margin:0"><ul>${gaps || emptyState('Brak reguł.')}</ul></div>
+      ${blockTitle('Naruszenia wykluczeń')}
+      ${breachList}
+    `)}
 
-    ${blockTitle('Przerwy między podejściami', `cel: min. ${minGap} h`)}
-    ${przerwyHtml}
+    ${zwijane('Stolec i objawy', 'wykres, rozkład, stres', `
+      ${zdrowiaHtml}
+      ${blockTitle('Stres a stolec', 'dzień napięty kontra spokojny')}
+      ${stresHtml}
+    `)}
 
-    ${blockTitle('Makro', poTygodniach ? 'średnie tygodniowe' : 'dzień po dniu')}
-    ${wykresyMakro}
-    ${card(table)}
+    ${zwijane('Trening', 'plan na 7 dni i gotowość', planHtml)}
 
-    ${blockTitle('Pokrycie grup produktów')}
-    <div class="list media-list" style="margin:0"><ul>${gaps || emptyState('Brak reguł.')}</ul></div>
+    ${zwijane('Zegarek', 'HRV, sen, kroki, bilans kalorii', zegarekHtml)}
 
-    ${blockTitle('Naruszenia wykluczeń')}
-    ${breachList}
-
-    ${blockTitle('Objawy i stolce')}
-    ${zdrowiaHtml}
-
-    ${blockTitle('Stres a stolec', 'dzień napięty kontra spokojny')}
-    ${stresHtml}
-
-    ${zegarekHtml}
+    ${zwijane('Jak to liczymy', '', card(`
+      <p class="hint" style="margin:0">
+        Rekomendacje liczą reguły z Twoich danych: makra, stolec i stres z wybranego zakresu,
+        sen, ruch i regeneracja z ostatnich tygodni. Kolejność ustawia priorytet kliniczny:
+        stolec i objawy przed dietą, dieta przed treningiem i snem, bo dziennik jelitowy jest
+        jedynym miernikiem leczenia. Wszystkie wykresy zaczynają skalę od najniższego punktu,
+        nie od zera, więc różnice wyglądają na większe, niż są; wyjątkiem jest stolec, który ma
+        sztywną skalę 0 do 7. Normy zegarka to Twoje własne ostatnie 180 dni, nie tabele
+        populacyjne. To podpowiedzi, nie porada lekarska.
+      </p>
+    `))}
   `;
 
   return c.html(page({ title: 'Statystyki', tab: 'stats', header: 'Statystyki', content }));

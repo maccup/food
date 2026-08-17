@@ -24,6 +24,13 @@ export interface Wniosek {
   obszar: string;
   tytul: string;
   opis: string;
+  /**
+   * Kolejnosc pokazywania wewnatrz poziomu `zrob`. Klinika przed komfortem,
+   * bo dziennik stolca i objawow jest jedynym miernikiem skutecznosci
+   * leczenia IMO: 1 stolec, 2 zakazane, 3 dieta protokolu (blonnik, grupy),
+   * 4 regeneracja, 5 sen, 6 stres, 7 ruch, 8 rytm posilkow, 9 dane.
+   */
+  ranga: number;
 }
 
 export interface DaneWnioskow {
@@ -68,14 +75,14 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     const brakuje = POTRZEBA_SNU_MIN - senSr;
     if (brakuje >= 20) {
       zrob.push({
-        poziom: 'zrob', obszar: 'Sen',
+        poziom: 'zrob', obszar: 'Sen', ranga: 5,
         tytul: `Kładź się o ${pl(Math.ceil(brakuje / 15) * 15)} minut wcześniej`,
         opis: `Ostatnie ${d.sen14.length} nocy to średnio ${godz(senSr)} snu, a Twoja potrzeba liczona z własnej historii to około ${godz(POTRZEBA_SNU_MIN)}. ` +
           `Najprościej domknąć to stałą porą gaszenia światła, nie odsypianiem w weekend.`,
       });
     } else {
       ok.push({
-        poziom: 'ok', obszar: 'Sen',
+        poziom: 'ok', obszar: 'Sen', ranga: 5,
         tytul: `Sen w porządku: średnio ${godz(senSr)}`,
         opis: `Z ${d.sen14.length} ostatnich nocy z pomiarem. Potrzeba to około ${godz(POTRZEBA_SNU_MIN)}.`,
       });
@@ -85,9 +92,9 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
   /* ── Regeneracja ─────────────────────────────────────────────────── */
   if (d.gotowosc && d.gotowosc.stan !== 'zielona') {
     uwaga.push({
-      poziom: 'uwaga', obszar: 'Regeneracja',
+      poziom: 'uwaga', obszar: 'Regeneracja', ranga: 4,
       tytul: d.gotowosc.stan === 'czerwona' ? 'Dziś odpuść intensywny wysiłek' : 'Dziś objętość tak, intensywność nie',
-      opis: `${d.gotowosc.powody.join(', ')}. Szczegóły i plan na kolejne dni są w sekcji treningowej niżej.`,
+      opis: `${d.gotowosc.powody.join(', ')}. Szczegóły i plan na kolejne dni są w bloku Trening niżej.`,
     });
   }
 
@@ -116,21 +123,21 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
           ? ' Zegarek nie widzi w tym zakresie ani jednej sesji uważności, a to najprostszy start: 10 minut o stałej porze.'
           : '';
       zrob.push({
-        poziom: 'zrob', obszar: 'Stres',
+        poziom: 'zrob', obszar: 'Stres', ranga: 6,
         tytul: 'Wstaw w dzień stały moment wyciszenia',
         opis: `${d.stres.napiete} z ${d.stres.dni} wpisanych dni miało napięcie 6 lub więcej, średnia to ${pl(d.stres.srednia, 1)}/10. ` +
           `10 minut oddechu, medytacji albo spaceru bez telefonu, codziennie o tej samej porze, działa lepiej niż długi odpoczynek raz w tygodniu.${praktyka}${jelito}`,
       });
     } else {
       ok.push({
-        poziom: 'ok', obszar: 'Stres',
+        poziom: 'ok', obszar: 'Stres', ranga: 6,
         tytul: `Napięcie pod kontrolą: średnio ${pl(d.stres.srednia, 1)}/10`,
         opis: `${d.stres.napiete} z ${d.stres.dni} wpisanych dni z oceną 6 lub więcej.${jelito}`,
       });
     }
   } else if (d.stres && d.stres.dni > 0) {
     uwaga.push({
-      poziom: 'uwaga', obszar: 'Stres',
+      poziom: 'uwaga', obszar: 'Stres', ranga: 6,
       tytul: 'Wpisuj stres wieczorem, żeby było z czego liczyć',
       opis: `W zakresie jest ${d.stres.dni} ${d.stres.dni === 1 ? 'wpis' : 'wpisy'} o stresie. ` +
         `Porównanie dni napiętych ze spokojnymi rusza od kilku dni po każdej stronie.`,
@@ -142,7 +149,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     const bristolSr = d.bristole.length >= 5 ? sr(d.bristole) : null;
     if (d.krokiMediana < 7000) {
       zrob.push({
-        poziom: 'zrob', obszar: 'Ruch',
+        poziom: 'zrob', obszar: 'Ruch', ranga: 7,
         tytul: 'Dołóż codzienny spacer 20 do 30 minut',
         opis: `Mediana z ostatnich 30 dni to ${pl(d.krokiMediana)} kroków dziennie. Spacer pół godziny dokłada około 3000. ` +
           `Ruch niezależnie od wszystkiego przyspiesza pracę jelita` +
@@ -150,7 +157,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
       });
     } else {
       ok.push({
-        poziom: 'ok', obszar: 'Ruch',
+        poziom: 'ok', obszar: 'Ruch', ranga: 7,
         tytul: `Ruchu wystarcza: mediana ${pl(d.krokiMediana)} kroków dziennie`,
         opis: 'Struktura treningów jest w sekcji treningowej niżej.',
       });
@@ -161,7 +168,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
   if (d.przerwy && d.przerwy.dni >= 3) {
     if (d.przerwy.dniPonizejProgu > d.przerwy.dni / 4) {
       zrob.push({
-        poziom: 'zrob', obszar: 'Rytm posiłków',
+        poziom: 'zrob', obszar: 'Rytm posiłków', ranga: 8,
         tytul: `Pilnuj przerw co najmniej ${pl(d.minGapH)} h`,
         opis: `${d.przerwy.dniPonizejProgu} z ${d.przerwy.dni} dni miało przerwę krótszą niż ${pl(d.minGapH)} h. ` +
           `Fala oczyszczająca jelito rusza dopiero po opróżnieniu żołądka, więc dojadanie między podejściami ją gasi. ` +
@@ -169,7 +176,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
       });
     } else {
       ok.push({
-        poziom: 'ok', obszar: 'Rytm posiłków',
+        poziom: 'ok', obszar: 'Rytm posiłków', ranga: 8,
         tytul: 'Przerwy między podejściami trzymają się progu',
         opis: `${d.przerwy.dniPonizejProgu} z ${d.przerwy.dni} dni poniżej ${pl(d.minGapH)} h.`,
       });
@@ -208,7 +215,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
           ? 'U Ciebie więcej błonnika to twardszy stolec, dlatego góra pasma jest tu granicą, nie sugestią.'
           : 'Pasmo błonnika to Twoja własna kalibracja z obserwacji stolca, a PHGG dokłada swoje z góry.';
         zrob.push({
-          poziom: 'zrob', obszar: 'Dieta',
+          poziom: 'zrob', obszar: 'Dieta', ranga: 3,
           tytul: `${m.nazwa}: wróć do pasma fazy`,
           opis: `${zdanie}. ${powod}`,
         });
@@ -218,14 +225,14 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     }
     if (poza.length) {
       uwaga.push({
-        poziom: 'uwaga', obszar: 'Dieta',
+        poziom: 'uwaga', obszar: 'Dieta', ranga: 3,
         tytul: 'Pozostałe makra odjeżdżają od pasma',
         opis: poza.join('. ') + '. Te makra nie mają u Ciebie powodu klinicznego, więc to obserwacja, nie alarm.',
       });
     }
     if (!zrob.some((w) => w.obszar === 'Dieta') && !poza.length) {
       ok.push({
-        poziom: 'ok', obszar: 'Dieta',
+        poziom: 'ok', obszar: 'Dieta', ranga: 3,
         tytul: 'Makra siedzą w pasmach fazy',
         opis: `Średnie z ${d.dniZWpisami} dni z wpisami mieszczą się w celach.`,
       });
@@ -236,10 +243,10 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
   if (d.zakazane.length) {
     const lista = d.zakazane.slice(0, 3).map((z) => `${z.nazwa} (${z.n}x)`).join(', ');
     zrob.push({
-      poziom: 'zrob', obszar: 'Dieta',
+      poziom: 'zrob', obszar: 'Dieta', ranga: 2,
       tytul: 'Wytnij produkty z listy zakazanych',
       opis: `W zakresie zjedzone: ${lista}${d.zakazane.length > 3 ? ' i dalej' : ''}. ` +
-        `Pełna lista z posiłkami jest w sekcji naruszeń niżej. Zakazy w tej fazie są po to, żeby dało się cokolwiek wnioskować z objawów.`,
+        `Pełna lista z posiłkami jest w bloku Jedzenie niżej. Zakazy w tej fazie są po to, żeby dało się cokolwiek wnioskować z objawów.`,
     });
   }
 
@@ -248,7 +255,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     const lista = d.grupyPonizej.slice(0, 3)
       .map((g) => `${g.nazwa} ${pl(g.naTydzien, 1)} z ${g.celDni} dni/tydz.`).join(', ');
     zrob.push({
-      poziom: 'zrob', obszar: 'Dieta',
+      poziom: 'zrob', obszar: 'Dieta', ranga: 3,
       tytul: `Dołóż brakujące grupy produktów`,
       opis: `Poniżej reguły tygodniowej: ${lista}${d.grupyPonizej.length > 3 ? ' i dalej' : ''}. ` +
         `Podpowiedzi, w które dni je wstawić, są na widoku dnia i na liście zakupów.`,
@@ -262,21 +269,21 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     const luzne = d.bristole.filter((x) => x >= 6).length;
     if (b < 2.75) {
       zrob.push({
-        poziom: 'zrob', obszar: 'Stolec',
+        poziom: 'zrob', obszar: 'Stolec', ranga: 1,
         tytul: 'Przeważa zaparcie: woda i ruch przed zmianami w diecie',
         opis: `Średnia z ${d.bristole.length} wpisów to ${pl(b, 1)} w skali Bristol, ${twarde} z nich to stolce twarde (typ 1 lub 2), a pasmo prawidłowe to 3 do 4. ` +
           `Zacznij od najtańszych dźwigni: 2 litry wody dziennie i codzienny spacer. Błonnika nie podnoś ponad pasmo, bo u Ciebie działa w drugą stronę.`,
       });
     } else if (b > 5) {
       zrob.push({
-        poziom: 'zrob', obszar: 'Stolec',
+        poziom: 'zrob', obszar: 'Stolec', ranga: 1,
         tytul: 'Przeważa stolec luźny: przejrzyj ostatnie dni w kalendarzu',
         opis: `Średnia z ${d.bristole.length} wpisów to ${pl(b, 1)} w skali Bristol, ${luzne} z nich to stolce luźne (typ 6 lub 7). ` +
           `Zestaw dni z luźnym stolcem z posiłkami dzień wcześniej: kalendarz kropkuje dni z wpisami, więc łatwo je znaleźć.`,
       });
     } else {
       ok.push({
-        poziom: 'ok', obszar: 'Stolec',
+        poziom: 'ok', obszar: 'Stolec', ranga: 1,
         tytul: `Stolec blisko normy: średnio ${pl(b, 1)} w skali Bristol`,
         opis: `Z ${d.bristole.length} wpisów ${twarde} to stolce twarde, a ${luzne} luźne. Pasmo prawidłowe to 3 do 4.`,
       });
@@ -286,12 +293,15 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
   /* ── Kompletnosc danych ──────────────────────────────────────────── */
   if (d.dniZWpisami < d.dniZakresu * 0.7) {
     uwaga.push({
-      poziom: 'uwaga', obszar: 'Dane',
+      poziom: 'uwaga', obszar: 'Dane', ranga: 9,
       tytul: 'Sporo dni bez wpisów',
       opis: `${d.dniZWpisami} z ${d.dniZakresu} dni ma wpisane jedzenie. Wszystkie wnioski wyżej stoją na dniach z wpisami, ` +
         `więc im więcej dziur, tym łatwiej o wniosek z przypadku.`,
     });
   }
 
+  // Wewnatrz `zrob` decyduje ranga (klinika przed komfortem), nie kolejnosc
+  // regul w pliku. Pierwszy element listy trafia na sam wierzch ekranu.
+  zrob.sort((a, b) => a.ranga - b.ranga);
   return [...zrob, ...uwaga, ...ok];
 }

@@ -104,14 +104,30 @@ przekierowuje, żeby nie psuć zakładek.
 - Przerwy liczy `statystykaPrzerw()` z `utils/gaps-stats.ts`, ta sama funkcja co widok dnia.
   **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
   zakłamałaby ją całkowicie.
-- **Pierwsza sekcja ekranu to „Wnioski i rekomendacje"**, liczone regułami w `utils/wnioski.ts`
-  (sen, stres, ruch, przerwy, makra, stolec, wykluczenia, pokrycie grup, kompletność danych).
-  Każdy wniosek wypisuje liczby, z których powstał, żeby dało się go sprawdzić bez bazy.
-  Makra, stolec i stres liczą się z wybranego zakresu; sen, ruch i regeneracja z ostatnich
-  tygodni niezależnie od filtra, z tego samego powodu co plan treningowy: odpowiadają na
-  „co teraz robić". Ton bez straszenia: odchylenie to obserwacja, nie diagnoza. To częściowe
-  odejście od zasady „aplikacja nie ocenia": proste reguły liczbowe ocenia aplikacja na
-  bieżąco, pełną ocenę kliniczną dalej robi Claude na żądanie (decyzja Maćka 17.08.2026).
+- **Ekran ma trzy warstwy i to jest wynik audytu UX z 17.08.2026**, po skardze Maćka
+  „nie przetworzę tego, będę ignorował" (pierwsza wersja: 18 sekcji, 9 wniosków,
+  7 wykresów, ~2700 słów naraz). Warstwa 1: karta statusu z JEDNĄ najważniejszą
+  rekomendacją i kompletnością danych jako podpisem. Warstwa 2: maks. 2 wnioski
+  „też warto" (tytuł widoczny, opis po tapnięciu), trening dziś jednym zdaniem,
+  stolec jednym zdaniem z kierunkiem wobec poprzedniego okresu. Warstwa 3: całe
+  dawne sekcje w zwijanych `details` (Pozostałe obserwacje, Jedzenie, Stolec
+  i objawy, Trening, Zegarek, Jak to liczymy). **Nie dokładać nowych sekcji na
+  wierzch: nowa treść idzie do istniejącego bloku warstwy 3 albo jako wniosek.**
+- **Wnioski liczy `utils/wnioski.ts`** (sen, stres, ruch, przerwy, makra, stolec,
+  wykluczenia, pokrycie grup, kompletność danych). Każdy wniosek wypisuje liczby,
+  z których powstał. Kolejność wewnątrz `zrob` ustawia pole `ranga`: klinika przed
+  komfortem (stolec 1, zakazane 2, dieta protokołu 3, regeneracja 4, sen 5, stres 6,
+  ruch 7, rytm posiłków 8, dane 9), bo dziennik jelitowy jest jedynym miernikiem
+  leczenia. Pierwszy `zrob` z rankingu trafia do karty statusu. Zielone OK nigdy
+  nie dostaje własnej karty: w zwiniętych obserwacjach idzie jako jedna linia
+  „Działa: …". Makra, stolec i stres liczą się z wybranego zakresu; sen, ruch
+  i regeneracja z ostatnich tygodni niezależnie od filtra, bo odpowiadają na
+  „co teraz robić". Ton bez straszenia: odchylenie to obserwacja, nie diagnoza.
+  To częściowe odejście od zasady „aplikacja nie ocenia": proste reguły liczbowe
+  ocenia aplikacja, pełną ocenę kliniczną dalej robi Claude na żądanie.
+- **Zdanie o skali wykresów („od najniższego punktu, nie od zera") żyje w jednym
+  miejscu**: blok „Jak to liczymy" na dole statystyk. Nie powtarzać go pod
+  każdym wykresem, tak było i dawało pięć kopii tego samego zdania.
 - **Wykresy słupkowe mają jedną kopię rysowania**: `views/charts.ts` (`slupkowy()`,
   `zwinDoTygodni()`). Korzystają z niej trendy makro (kcal i błonnik z pasmem fazy, tłuszcz
   bez pasma od migracji 064),

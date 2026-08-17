@@ -52,12 +52,13 @@ function wykresMetryki(dni: WatchRow[], m: Metryka, n: Norma | undefined, zwin: 
   // Bursztyn lapie tylko zly ogon: przy HRV i snie dol, przy tetnie gore.
   const pasmo = n ? (m.kierunek === 'wyzej' ? { min: n.p10 } : { max: n.p90 }) : null;
 
+  // Zdanie o skali od najnizszego punktu jest JEDNO, we wspolnej notce
+  // "Jak to liczymy" na dole statystyk, nie pod kazdym wykresem osobno.
   return card(`
     ${slupkowy(punkty, { pasmo, linia: n?.mediana ?? null, format: m.format })}
     <p class="hint" style="margin:8px 0 0">
       ${esc(m.label)}${zwin ? ', mediana tygodnia' : ' dzień po dniu'}.
       ${n ? 'Kreska to Twoja mediana, bursztynowe słupki to dni poza Twoim pasmem typowym.' : ''}
-      Skala zaczyna się od najniższego dnia, nie od zera, więc różnice są widoczne, ale wyglądają większe, niż są.
     </p>`);
 }
 
