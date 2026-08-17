@@ -57,7 +57,11 @@ export function normalizeAlias(input: string): string {
  * Celowo NIE ma tu procentu, bo "mleko bez laktozy 1,5 %" i "czekolada 85%"
  * to nazwy produktow, a nie ilosci.
  */
-const JEDNOSTKI = 'g|gr|dag|kg|ml|l|szt|sztuki|sztuk|łyżka|łyżki|łyżeczka|łyżeczki|plaster|plastry|kromka|kromki';
+// Formy dluzsze przed krotszymi: alternacja regexu bierze pierwszy pasujacy
+// wariant, wiec przy kolejnosci "szt|sztuki" napis "1 sztuka" trafial w "szt",
+// zostawal ogon "uka" i dopasowanie do konca stringa padalo. Tak 17.08.2026
+// "banan 1 sztuka" przeszedl caly parser i wyladowal w kolejce nierozpoznanych.
+const JEDNOSTKI = 'gr|g|dag|kg|ml|l|sztuki|sztuka|sztuk|szt|łyżeczka|łyżeczki|łyżka|łyżki|plaster|plastry|kromka|kromki|porcja|porcje';
 const ILOSC_NA_KONCU = new RegExp(`\\s+\\d+([.,]\\d+)?\\s*(${JEDNOSTKI})\\.?$`, 'i');
 const ILOSC_NA_POCZATKU = new RegExp(`^\\d+([.,]\\d+)?\\s*(${JEDNOSTKI})\\.?\\s+`, 'i');
 
