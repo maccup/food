@@ -113,7 +113,8 @@ przekierowuje, żeby nie psuć zakładek.
   odejście od zasady „aplikacja nie ocenia": proste reguły liczbowe ocenia aplikacja na
   bieżąco, pełną ocenę kliniczną dalej robi Claude na żądanie (decyzja Maćka 17.08.2026).
 - **Wykresy słupkowe mają jedną kopię rysowania**: `views/charts.ts` (`slupkowy()`,
-  `zwinDoTygodni()`). Korzystają z niej trendy makro (kcal, tłuszcz, błonnik z pasmem fazy),
+  `zwinDoTygodni()`). Korzystają z niej trendy makro (kcal i błonnik z pasmem fazy, tłuszcz
+  bez pasma od migracji 064),
   stolec w czasie (sztywna skala 0 do 7, pasmo 3 do 4) oraz trendy zegarka
   (HRV, sen, kroki wobec własnej normy). Zwijanie w tygodnie powyżej 92 dni, makra
   średnią jak tabela obok, zegarek medianą jak reszta ekranu zegarka. Skala domyślnie
@@ -165,12 +166,15 @@ zamienia jej wynik w kolor, widok dnia wypisuje go słowami w bloku „Dlaczego 
 zaznacza". Wcześniej reguła siedziała w pętli rysującej kratki, więc dawało się ją zobaczyć
 wyłącznie jako kolor, a widok dnia liczył swoje paski według innego progu.
 
-- **Kolor ustawiają tylko dwie rzeczy**: produkt z listy zakazanych (czerwony) oraz tłuszcz
-  albo błonnik odchylone o **ponad 10 procent** od pasma fazy (żółty).
-- **Kalendarz patrzy tylko na tłuszcz i błonnik** i to jest decyzja: tłuszcz z zalecenia
-  dietetyka z 21.05.2026 (kierunek śródziemnomorski; audyt 15.08.2026 odrzucił przesłankę
-  elastazy 151, migracja 047), błonnik przez obserwację, że więcej błonnika to twardszy stolec. Kalorie,
-  białko i węgle mają paski na widoku dnia, ale koloru nie ruszają.
+- **Kolor ustawiają tylko dwie rzeczy**: produkt z listy zakazanych (czerwony) oraz błonnik
+  odchylony o **ponad 10 procent** od pasma fazy (żółty).
+- **Kalendarz patrzy tylko na błonnik** i to jest decyzja: jedyna reguła makro z podstawą to
+  własna obserwacja, że więcej błonnika to twardszy stolec. Tłuszcz kolorował kratkę do
+  17.08.2026 i wypadł decyzją Maćka (migracja 064): pasmo 80 do 100 g było jedną linijką od
+  dietetyka bez uzasadnienia, lipidogram z 03.08 przy diecie powyżej 100 g/dobę wyszedł
+  rekordowy (LDL 65, apoB 0,62), a przesłankę elastazy odrzucił już audyt 15.08 (migracja 047).
+  Nie przywracać celu tłuszczu bez nowego wyniku badań, który by go uzasadniał. Kalorie,
+  białko, tłuszcz i węgle mają paski na widoku dnia, ale koloru nie ruszają.
 - **Limity nie kolorują dnia i nie mogą zacząć.** `v_restriction_breaches` zgłasza każde
   wystąpienie produktu z limitem, a nie przekroczenie limitu, więc kawa, banan czy surowa
   sałata pojawiają się prawie codziennie. Pomalowanie tego na żółto zrobiłoby żółty miesiąc.
@@ -247,7 +251,7 @@ i różni się od niego jednym warunkiem: bierze tylko posiłki zjedzone.
 błonnika 20 do 30 g ma w `source` wprost napisane, że PHGG dokłada swoje 5 g
 z góry. Doklejenie suplementów do sumy jedzenia przesunęłoby każdy dzień
 względem celu, który tego dodatku nie oczekuje, a przy okazji przemalowałoby
-kalendarz, bo kolor kratki liczy się z tłuszczu i błonnika.
+kalendarz, bo kolor kratki liczy się z błonnika.
 
 Skala jest realna, nie kosmetyczna: płynna omega to ok. 9 g tłuszczu dziennie,
 jedna saszetka FIBEgastrinu 5 g błonnika, od 18.08 dwie saszetki, czyli 10 g.

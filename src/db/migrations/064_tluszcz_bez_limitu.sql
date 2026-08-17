@@ -1,0 +1,21 @@
+-- Limit tluszczu 80-100 g usuniety z celow wszystkich faz. Decyzja Macka
+-- 17.08.2026, po pytaniu "na jakiej podstawie to jest nadal wazne".
+--
+-- Podstawy decyzji:
+--   1. Pasmo bylo jedna linijka od dietetyka z 21.05.2026 ("kierunek
+--      srodziemnomorski/longevity"), bez odwolania do jakiegokolwiek badania.
+--      Wspolpraca zakonczona 08.2026.
+--   2. Lipidogram 03.08.2026, robiony po tygodniach diety 106-113 g/dobe,
+--      wyszedl rekordowy: LDL 65, apoB 0,62 g/l, Lp(a) <7, TG 49.
+--   3. Trawienie tluszczu w normie (kal 28.04: kulki pojedyncze), elastaza
+--      odrzucona audytem 15.08 (migracja 047).
+--   4. RCT diety srodziemnomorskiej dzialaja przy ok. 40% energii z tluszczu,
+--      wsparcie ma jakosc tluszczu, nie sufit calkowity.
+--
+-- Skutek w aplikacji: kalendarz koloruje tylko blonnik, wnioski nie pilnuja
+-- tluszczu, paski i wykresy dalej go pokazuja. Ogranicznikiem zostaje pasmo
+-- kcal 2300-2700. Kontrola: nastepny rutynowy lipidogram.
+--
+-- Odwracalne: INSERT trzech wierszy fat_g 80-100 z powrotem (id 3, 8, 13).
+
+DELETE FROM targets WHERE metric = 'fat_g';

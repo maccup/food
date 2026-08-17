@@ -6,19 +6,20 @@
  * swoje paski wedlug innego progu i nie mowil ani slowa o tym, ktore
  * odchylenie zmienia kolor w kalendarzu. Teraz licza to same funkcje.
  *
- * Kalendarz patrzy **tylko na tluszcz i blonnik**, i to nie jest przeoczenie:
- * tluszcz z zalecenia dietetyka z 21.05.2026 (kierunek srodziemnomorski;
- * audyt 15.08.2026 odrzucil wczesniejsza przeslanke elastazy 151, patrz
- * migracja 047), blonnik przez wlasna obserwacje, ze wiecej blonnika to
- * twardszy stolec. Kalorie, bialko i wegle maja paski na widoku dnia, ale
- * nie zmieniaja koloru kratki.
+ * Kalendarz patrzy **tylko na blonnik**, i to nie jest przeoczenie: jedyna
+ * regula makro z podstawa jest wlasna obserwacja, ze wiecej blonnika to
+ * twardszy stolec. Tluszcz kolorowal kratke do 17.08.2026 i wypadl decyzja
+ * Macka (migracja 064): pasmo 80-100 g bylo jedna linijka od dietetyka bez
+ * uzasadnienia, lipidogram z 03.08 wyszedl rekordowy przy diecie powyzej
+ * 100 g/dobe, a przeslanke elastazy odrzucil juz audyt 15.08 (migracja 047).
+ * Kalorie, bialko, tluszcz i wegle maja paski na widoku dnia, ale nie
+ * zmieniaja koloru kratki.
  */
 
 export type PoziomDnia = 'ok' | 'warn' | 'bad';
 
 /** Makra, ktore decyduja o kolorze kratki w kalendarzu. */
 export const MAKRA_KALENDARZA = [
-  { key: 'fat_g', label: 'Tłuszcz', unit: 'g' },
   { key: 'fiber_g', label: 'Błonnik', unit: 'g' },
 ];
 
@@ -26,6 +27,7 @@ export const MAKRA_KALENDARZA = [
 export const MAKRA_POZOSTALE = [
   { key: 'kcal', label: 'Kalorie', unit: 'kcal' },
   { key: 'protein_g', label: 'Białko', unit: 'g' },
+  { key: 'fat_g', label: 'Tłuszcz', unit: 'g' },
   { key: 'carbs_g', label: 'Węgle', unit: 'g' },
 ];
 

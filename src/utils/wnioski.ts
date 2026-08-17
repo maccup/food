@@ -168,16 +168,18 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
   }
 
   /* ── Makro ───────────────────────────────────────────────────────── */
-  // Tluszcz i blonnik przed reszta, bo to one koloruja kalendarz. Powody sa
-  // rozne i nazwane w opisach: tluszcz to kierunek od dietetyka (audyt
-  // 15-16.08.2026 odrzucil przeslanke elastazy), blonnik to wlasna
-  // obserwacja twardosci stolca. Nie dopisywac tu "powodu klinicznego"
-  // zbiorczo: raz juz przez to ekran przypisal pasmu tluszczu trzustke.
+  // Blonnik przed reszta, bo jako jedyny koloruje kalendarz i ma podstawe:
+  // wlasna obserwacje twardosci stolca. Tluszcz nie ma tu wpisu, bo nie ma
+  // celu w bazie: limit 80-100 g usunieto 17.08.2026 (migracja 064), gdy
+  // wyszlo, ze byl jedna linijka od dietetyka bez uzasadnienia, a lipidogram
+  // z 03.08 przy diecie powyzej 100 g/dobe wyszedl rekordowy. Nie dopisywac
+  // tez "powodu klinicznego" zbiorczo: raz juz przez to ekran przypisal
+  // pasmu tluszczu trzustke.
   const MAKRA: Array<{ key: keyof DaneWnioskow['srednie']; nazwa: string; unit: string; kalendarzowe: boolean }> = [
-    { key: 'fat_g', nazwa: 'Tłuszcz', unit: 'g', kalendarzowe: true },
     { key: 'fiber_g', nazwa: 'Błonnik', unit: 'g', kalendarzowe: true },
     { key: 'kcal', nazwa: 'Kalorie', unit: 'kcal', kalendarzowe: false },
     { key: 'protein_g', nazwa: 'Białko', unit: 'g', kalendarzowe: false },
+    { key: 'fat_g', nazwa: 'Tłuszcz', unit: 'g', kalendarzowe: false },
   ];
 
   if (d.dniZWpisami >= 3) {
@@ -193,12 +195,9 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
       const kierunek = cel.min_value !== null && v < cel.min_value ? 'poniżej' : 'powyżej';
       const zdanie = `${m.nazwa} średnio ${pl(v)} ${m.unit} przy paśmie ${pasmo} ${m.unit}, czyli ${kierunek}`;
       if (m.kalendarzowe) {
-        const powod = m.key === 'fiber_g'
-          ? (kierunek === 'powyżej'
-              ? 'U Ciebie więcej błonnika to twardszy stolec, dlatego góra pasma jest tu granicą, nie sugestią.'
-              : 'Pasmo błonnika to Twoja własna kalibracja z obserwacji stolca, a PHGG dokłada swoje z góry.')
-          : 'Pasmo ustawił dietetyk 21.05.2026 jako kierunek śródziemnomorski, nie limit medyczny: przy 2500 kcal to 29 do 36% energii. ' +
-            'Od 16.08 wiąże średnia tygodniowa, z sufitem 115 g na pojedynczy dzień, więc jeden tłustszy dzień niczego nie psuje.';
+        const powod = kierunek === 'powyżej'
+          ? 'U Ciebie więcej błonnika to twardszy stolec, dlatego góra pasma jest tu granicą, nie sugestią.'
+          : 'Pasmo błonnika to Twoja własna kalibracja z obserwacji stolca, a PHGG dokłada swoje z góry.';
         zrob.push({
           poziom: 'zrob', obszar: 'Dieta',
           tytul: `${m.nazwa}: wróć do pasma fazy`,
@@ -211,7 +210,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     if (poza.length) {
       uwaga.push({
         poziom: 'uwaga', obszar: 'Dieta',
-        tytul: 'Kalorie albo białko odjeżdżają od pasma',
+        tytul: 'Pozostałe makra odjeżdżają od pasma',
         opis: poza.join('. ') + '. Te makra nie mają u Ciebie powodu klinicznego, więc to obserwacja, nie alarm.',
       });
     }

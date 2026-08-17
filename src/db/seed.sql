@@ -31,27 +31,28 @@ ON CONFLICT(id) DO UPDATE SET
 
 -- ---------------------------------------------------------------------------
 -- CELE MAKRO
--- Te same w każdej fazie. Tłuszcz to zalecenie Piotrowskiego (kierunek
--- śródziemnomorski/longevity), błonnik z własnej obserwacji o twardości
--- stolca, białko z zapotrzebowania przy treningu siłowym. Przesłanki
--- elastazy 151 i metioniny odrzucone audytem 15.08.2026 (migracja 047);
--- źródła niżej muszą się zgadzać z tą migracją, inaczej db:seed je cofnie.
+-- Te same w każdej fazie. Błonnik z własnej obserwacji o twardości stolca,
+-- białko z zapotrzebowania przy treningu siłowym. Przesłanki elastazy 151
+-- i metioniny odrzucone audytem 15.08.2026 (migracja 047); źródła niżej
+-- muszą się zgadzać z migracjami, inaczej db:seed je cofnie.
+--
+-- Tłuszcz NIE ma celu i to jest decyzja, nie przeoczenie (17.08.2026,
+-- migracja 064): pasmo 80-100 g było jedną linijką od dietetyka bez
+-- uzasadnienia, a lipidogram z 03.08 przy diecie powyżej 100 g/dobę wyszedł
+-- rekordowy. Id 3, 8, 13 zostają wolne po skasowanych wierszach fat_g.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO targets (id, phase_id, metric, min_value, max_value, source) VALUES
   (1,  1, 'kcal',      2300, 2700, 'zamówienie hfood 2500 kcal'),
   (2,  1, 'protein_g',  130,  160, 'Zapotrzebowanie przy treningu silowym, 1,6 do 1,9 g/kg przy 83 kg. Watek metioniny odrzucony 15.08.2026: bialko spadlo, a homocysteina wzrosla'),
-  (3,  1, 'fat_g',       80,  100, 'Piotrowski 2026-05-21: kierunek srodziemnomorski/longevity. NIE elastaza, ta przeslanka odrzucona 15.08.2026'),
   (4,  1, 'carbs_g',    250,  350, 'Piotrowski 2026-05-21: więcej węglowodanów'),
   (5,  1, 'fiber_g',     20,   30, 'Analiza 2026-08-09. Własna obserwacja: więcej błonnika to twardszy stolec'),
   (6,  2, 'kcal',      2300, 2700, 'zamówienie hfood 2500 kcal'),
   (7,  2, 'protein_g',  130,  160, 'Zapotrzebowanie przy treningu silowym, 1,6 do 1,9 g/kg przy 83 kg. Watek metioniny odrzucony 15.08.2026: bialko spadlo, a homocysteina wzrosla'),
-  (8,  2, 'fat_g',       80,  100, 'Piotrowski 2026-05-21: kierunek srodziemnomorski/longevity. NIE elastaza, ta przeslanka odrzucona 15.08.2026'),
   (9,  2, 'carbs_g',    250,  350, 'Piotrowski 2026-05-21'),
   (10, 2, 'fiber_g',     20,   30, 'Analiza 2026-08-09. Do tego PHGG 10 g z FIBEgastrinu'),
   (11, 3, 'kcal',      2300, 2700, 'zamówienie hfood 2500 kcal'),
   (12, 3, 'protein_g',  130,  160, 'Zapotrzebowanie przy treningu silowym, 1,6 do 1,9 g/kg przy 83 kg. Watek metioniny odrzucony 15.08.2026: bialko spadlo, a homocysteina wzrosla'),
-  (13, 3, 'fat_g',       80,  100, 'Piotrowski 2026-05-21: kierunek srodziemnomorski/longevity. NIE elastaza, ta przeslanka odrzucona 15.08.2026'),
   (14, 3, 'carbs_g',    250,  350, 'Piotrowski 2026-05-21'),
   (15, 3, 'fiber_g',     20,   30, 'v_day_totals liczy błonnik z jedzenia, a PHGG dokłada 5 g z góry. Własna obserwacja: więcej błonnika to więcej twardych grudek. Bez prokinetyku górnej granicy nie podnosimy automatycznie od 15.09, najwcześniej po ocenie dziennika 15.10.')
 ON CONFLICT(id) DO UPDATE SET
