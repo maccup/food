@@ -9,6 +9,8 @@ import {
   bilans, zdanieBilansu, zdanieMasy, kgNaTydzien, KCAL_NA_KILOGRAM,
 } from '../utils/watch';
 import { slupkowy, zwinDoTygodni, etykietaDnia } from '../views/charts';
+import { policzBaterie } from '../utils/bateria';
+import { podsumujTydzien, TreningWpis, PROG_INTENSYWNY_KCAL_MIN } from '../utils/trening';
 
 /**
  * Ekran zegarka.
@@ -74,7 +76,7 @@ export async function sekcjeZegarka(
 ): Promise<string> {
   const dzis = todayWarsaw();
 
-  const [wZakresie, doNormy, ostatni, zjedzone, ostatniaWaga] = await Promise.all([
+  const [wZakresie, doNormy, ostatni, zjedzone, ostatniaWaga, oceny, stresy, treningiOkno] = await Promise.all([
     db.prepare(`SELECT * FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
       .bind(o.od, o.do).all<WatchRow>(),
     db.prepare(`SELECT * FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`)
@@ -84,6 +86,14 @@ export async function sekcjeZegarka(
       .bind(o.od, o.do).all<any>(),
     db.prepare(`SELECT date, waga FROM watch WHERE waga IS NOT NULL ORDER BY date DESC LIMIT 1`)
       .first<any>(),
+    // Do konfrontacji baterii z ocena: oceny z zakresu, stres i treningi
+    // cofniete o tyle, ile potrzebuje rachunek wczorajszych obciazen.
+    db.prepare(`SELECT date, level FROM energy WHERE date BETWEEN ? AND ?`)
+      .bind(o.od, o.do).all<any>(),
+    db.prepare(`SELECT date, level FROM stress WHERE date BETWEEN ? AND ?`)
+      .bind(shiftDate(o.od, -1), o.do).all<any>(),
+    db.prepare(`SELECT date, typ_apple, minuty, kcal FROM workouts WHERE date BETWEEN ? AND ? ORDER BY date`)
+      .bind(shiftDate(o.od, -10), o.do).all<any>(),
   ]);
 
   const lista = wZakresie.results ?? [];
@@ -298,6 +308,75 @@ export async function sekcjeZegarka(
         i co trzeci dzień wyglądałby na nietypowy.
       </p>`;
 
+  /*
+   * Bateria kontra Twoja ocena.
+   *
+   * Bateria nie jest nigdzie zapisana, liczy sie z tych samych danych co na
+   * widoku dnia (jedna kopia rachunku w utils/bateria.ts), wiec zmiana wag
+   * przelicza takze historie. Norma brana z okna biezacego, jak wszedzie na
+   * tym ekranie. Sekcja szuka rozjazdow SYSTEMATYCZNYCH: pojedynczy dzien
+   * niezgody to szum albo dzien nietypowy, ale stale zawyzanie w jedna strone
+   * to argument, zeby przestawic wagi skladnikow.
+   */
+  const ocenaByDate = new Map<string, number>((oceny.results ?? []).map((x: any) => [x.date, Number(x.level)]));
+  const stresByDate = new Map<string, number>((stresy.results ?? []).map((x: any) => [x.date, Number(x.level)]));
+  const treningi = (treningiOkno.results ?? []) as TreningWpis[];
+
+  const pary = lista.flatMap((d) => {
+    const ocena = ocenaByDate.get(d.date);
+    if (ocena === undefined) return [];
+    const wczoraj = shiftDate(d.date, -1);
+    const b = policzBaterie({
+      doba: d,
+      normy: n,
+      stresWczoraj: stresByDate.get(wczoraj) ?? null,
+      dniZRzedu: podsumujTydzien(treningi, wczoraj).dniZRzedu,
+      intensywnaWczoraj: treningi.some(
+        (t) => t.date === wczoraj && t.kcal !== null && t.minuty !== null
+          && t.minuty >= 15 && t.kcal / t.minuty >= PROG_INTENSYWNY_KCAL_MIN
+      ),
+    });
+    return b ? [{ date: d.date, procent: b.procent, ocena, roznica: b.procent - ocena * 10 }] : [];
+  });
+
+  const MIN_PAR = 5;
+  const sredniaRoznica = pary.length
+    ? pary.reduce((a, p) => a + p.roznica, 0) / pary.length
+    : 0;
+  const zdaniePrzesuniecia = Math.abs(sredniaRoznica) <= 10
+    ? 'Bez systematycznego przesunięcia: algorytm i Twoje odczucie mówią mniej więcej to samo.'
+    : sredniaRoznica > 0
+      ? `Algorytm średnio ZAWYŻA o ${Math.round(Math.abs(sredniaRoznica))} pkt względem Twojego odczucia. Jeśli to się utrzyma, wagi składników są do przestawienia.`
+      : `Algorytm średnio ZANIŻA o ${Math.round(Math.abs(sredniaRoznica))} pkt względem Twojego odczucia. Jeśli to się utrzyma, wagi składników są do przestawienia.`;
+
+  const kolorRoznicy = (r: number) =>
+    Math.abs(r) <= 15 ? 'var(--ok)' : 'var(--warn)';
+
+  const bateriaOcenaHtml = pary.length
+    ? card(`
+      ${pary.length >= MIN_PAR
+        ? `<div style="font-size:14px;margin-bottom:10px"><b>${esc(zdaniePrzesuniecia)}</b></div>`
+        : `<p class="hint" style="margin:0 0 10px">
+            ${pary.length} ${pary.length === 1 ? 'dzień' : 'dni'} z oceną i pomiarem. Wnioski o kalibracji ruszają od ${MIN_PAR}:
+            wcześniej każda różnica to pojedynczy dzień, nie wzorzec.
+          </p>`}
+      <div style="overflow-x:auto"><table class="data-table" style="width:100%;font-size:13px">
+        <thead><tr><th>Dzień</th><th style="text-align:right">algorytm</th><th style="text-align:right">Twoja ocena</th><th style="text-align:right">różnica</th></tr></thead>
+        <tbody>${[...pary].reverse().slice(0, 14).map((p) => `<tr>
+          <td><a href="/day/${p.date}">${p.date.slice(8)}.${p.date.slice(5, 7)}</a></td>
+          <td style="text-align:right">${p.procent}%</td>
+          <td style="text-align:right">${p.ocena}/10</td>
+          <td style="text-align:right;font-weight:600;color:${kolorRoznicy(p.roznica)}">${p.roznica > 0 ? '+' : ''}${Math.round(p.roznica)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <p class="hint" style="margin:10px 0 0">
+        Różnica to procent algorytmu minus Twoja ocena razy dziesięć: plus znaczy, że algorytm widział
+        więcej sił niż Ty. Do 15 punktów uznajemy zgodę. Ocena wpisywana po zobaczeniu procentu jest nim
+        trochę zakotwiczona, ale stałego przesunięcia w jedną stronę kotwica nie wyprodukuje i właśnie
+        takiego przesunięcia tu szukamy.
+      </p>`)
+    : emptyState('Ani jednego dnia z oceną naładowania. Wpisuje się ją jednym dotknięciem przy baterii na widoku dnia.');
+
   const coSledzimy = `<div class="list media-list" style="margin:0"><ul>
     ${METRYKI.map((m) => `<li><div class="item-content"><div class="item-inner" style="display:block;padding:10px 0">
       <b style="font-size:14px">${esc(m.label)}</b>
@@ -312,6 +391,9 @@ export async function sekcjeZegarka(
 
     ${blockTitle('Bilans kalorii', 'zjedzone wobec spalonego')}
     ${bilansHtml}
+
+    ${blockTitle('Bateria a Twoja ocena', 'algorytm kontra odczucie')}
+    ${bateriaOcenaHtml}
 
     ${blockTitle('Trend HRV', `${esc(o.od)} do ${esc(o.do)}`)}
     ${wykresMetryki(lista, METRYKI.find((m) => m.key === 'hrv_noc')!, n.get('hrv_noc'), dniZakresu > 92)}

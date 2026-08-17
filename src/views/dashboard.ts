@@ -54,6 +54,8 @@ export interface DashboardData {
    * obciazenia. Null, gdy doba nie ma pomiarow z zegarka.
    */
   bateria: Bateria | null;
+  /** Subiektywna ocena naladowania 0 do 10 z tabeli energy, null gdy niewpisana. */
+  energia: number | null;
 }
 
 /**
@@ -151,6 +153,36 @@ export function dashboard(d: DashboardData): string {
         const czesci = b.skladniki.map((s) =>
           s.typ === 'baza' ? `${s.nazwa.toLowerCase()}: ${s.opis}` : `minus ${s.nazwa.toLowerCase()} (${s.opis})`
         ).join(' · ');
+        /*
+         * Ocena subiektywna pod procentem algorytmu. Jedno dotkniecie, upsert,
+         * wiec poprawka to kolejne dotkniecie. Zdanie konfrontacji pojawia sie
+         * dopiero po wpisie: procent kontra ocena razy dziesiec, prog zgody
+         * to 15 punktow. Uczciwosc wymaga przyznania, ze ocena wpisywana PO
+         * zobaczeniu procentu jest nim zakotwiczona; mimo to rozjazdy
+         * systematyczne (algorytm stale zawyza albo zaniza) przez kotwice
+         * przebija i wlasnie ich szuka sekcja w statystykach.
+         */
+        const roznica = d.energia !== null ? b.procent - d.energia * 10 : null;
+        const konfrontacja = roznica === null
+          ? ''
+          : Math.abs(roznica) <= 15
+            ? 'mniej więcej się zgadzacie'
+            : roznica > 0
+              ? 'algorytm widzi więcej sił, niż czujesz'
+              : 'czujesz się lepiej, niż wynika z nocy';
+        const ocena = `
+          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">
+            <span style="font-size:12px;color:var(--muted)">Twoja ocena:</span>
+            ${[...Array(11).keys()].map((n) => `
+              <form method="POST" action="/log/energia" style="display:contents">
+                <input type="hidden" name="date" value="${d.date}">
+                <input type="hidden" name="level" value="${n}">
+                <button type="submit" class="chip" style="padding:2px 8px;font-size:12px${
+                  d.energia === n ? ';border-color:var(--color-primary);font-weight:700' : ''
+                }" aria-label="Ocena naładowania ${n} na 10">${n}</button>
+              </form>`).join('')}
+            ${roznica !== null ? `<span style="font-size:12px;color:var(--muted)">· ${esc(konfrontacja)}</span>` : ''}
+          </div>`;
         return `<div class="panel-row">
           <div>
             <div class="panel-row-label">Bateria dnia</div>
@@ -159,6 +191,7 @@ export function dashboard(d: DashboardData): string {
               ${esc(czesci)}${b.braki.length ? ` (${esc(b.braki.join(', '))})` : ''}.
               Szacunek z nocy, nie pomiar.
             </div>
+            ${ocena}
           </div>
           <div class="panel-row-side">
             <div style="width:56px;height:10px;border:1px solid var(--hairline);border-radius:5px;overflow:hidden" role="img" aria-label="Bateria ${b.procent} procent">

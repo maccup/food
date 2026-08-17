@@ -41,6 +41,8 @@ export interface DaneWnioskow {
   /** Wszystkie wpisy Bristol z zakresu. */
   bristole: number[];
   stres: { dni: number; srednia: number; napiete: number } | null;
+  /** Medytacja z zegarka w zakresie. Null, gdy zaden dzien nie ma pomiaru. */
+  medytacja: { dniZDanymi: number; dniZPraktyka: number; sredniaMin: number } | null;
   /** Stolce z 1 i 2 dob po dniach napietych i po spokojnych. */
   stresStolec: { poNapietych: number[]; poSpokojnych: number[] } | null;
   /** Sen w minutach z ostatnich 14 dob z pomiarem. */
@@ -106,11 +108,18 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
     }
 
     if (czesteNapiecie) {
+      // Rada o medytacji patrzy na to, co zegarek juz widzi. Namawianie do
+      // startu kogos, kto medytuje co drugi dzien, podwaza caly ekran.
+      const praktyka = d.medytacja && d.medytacja.dniZPraktyka > 0
+        ? ` Zegarek widzi medytację w ${d.medytacja.dniZPraktyka} z ${d.medytacja.dniZDanymi} dni, średnio ${pl(d.medytacja.sredniaMin)} min: utrzymaj regularność, to jest dokładnie to narzędzie.`
+        : d.medytacja
+          ? ' Zegarek nie widzi w tym zakresie ani jednej sesji uważności, a to najprostszy start: 10 minut o stałej porze.'
+          : '';
       zrob.push({
         poziom: 'zrob', obszar: 'Stres',
         tytul: 'Wstaw w dzień stały moment wyciszenia',
         opis: `${d.stres.napiete} z ${d.stres.dni} wpisanych dni miało napięcie 6 lub więcej, średnia to ${pl(d.stres.srednia, 1)}/10. ` +
-          `10 minut oddechu, medytacji albo spaceru bez telefonu, codziennie o tej samej porze, działa lepiej niż długi odpoczynek raz w tygodniu.${jelito}`,
+          `10 minut oddechu, medytacji albo spaceru bez telefonu, codziennie o tej samej porze, działa lepiej niż długi odpoczynek raz w tygodniu.${praktyka}${jelito}`,
       });
     } else {
       ok.push({

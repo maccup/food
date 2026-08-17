@@ -431,6 +431,25 @@ log.post('/log/stool', async (c) => {
  * poprawia liczbe zamiast tworzyc druga. Dzieki temu nie ma osobnego trybu
  * edycji ani ryzyka, ze jeden dzien bedzie mial dwie sprzeczne oceny.
  */
+/*
+ * Subiektywna ocena naladowania, jeden wiersz na dobe, upsert jak stres.
+ * Zapisuje sie jednym dotknieciem z wiersza baterii na widoku dnia, wiec
+ * nie ma tu formularza w Dopisz: ocena ma powstawac tam, gdzie widac
+ * procent algorytmu, bo cala jej wartosc to konfrontacja z nim.
+ */
+log.post('/log/energia', async (c) => {
+  const b = await c.req.parseBody();
+  const date = String(b.date || todayWarsaw());
+  const level = Math.min(10, Math.max(0, Number(b.level ?? 0) || 0));
+
+  await c.env.DB.prepare(
+    `INSERT INTO energy (date, level) VALUES (?, ?)
+     ON CONFLICT(date) DO UPDATE SET level = excluded.level`
+  ).bind(date, level).run();
+
+  return c.redirect(`/day/${date}`);
+});
+
 log.post('/log/stres', async (c) => {
   const b = await c.req.parseBody();
   const date = String(b.date || todayWarsaw());

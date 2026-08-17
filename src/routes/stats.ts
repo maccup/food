@@ -91,6 +91,24 @@ stats.get('/statystyki', async (c) => {
     ).bind(shiftDate(o.od, -1), shiftDate(o.do, 2)).all<any>(),
   ]);
 
+  // Medytacja z zegarka, do sekcji stresu i wnioskow. Zero i NULL znacza co
+  // innego (patrz import): zero to dzien sprawdzony bez praktyki, NULL to
+  // doba sprzed poczatku pomiarow, wiec NULL-e w ogole nie wchodza do mianownika.
+  const medytacje = await db.prepare(
+    `SELECT date, medytacja_min FROM watch WHERE date BETWEEN ? AND ? AND medytacja_min IS NOT NULL`
+  ).bind(o.od, o.do).all<any>();
+  const medDni = (medytacje.results ?? []) as Array<{ date: string; medytacja_min: number }>;
+  const medPraktyka = medDni.filter((m) => m.medytacja_min > 0);
+  const medytacja = medDni.length
+    ? {
+        dniZDanymi: medDni.length,
+        dniZPraktyka: medPraktyka.length,
+        sredniaMin: medPraktyka.length
+          ? medPraktyka.reduce((a, m) => a + m.medytacja_min, 0) / medPraktyka.length
+          : 0,
+      }
+    : null;
+
   const targets = phase
     ? await db.prepare(`SELECT metric, min_value, max_value FROM targets WHERE phase_id = ?`).bind(phase.id).all<any>()
     : { results: [] };
@@ -441,15 +459,30 @@ stats.get('/statystyki', async (c) => {
       </table></div>`
     : '';
 
+  const medytacjaWiersz = medytacja
+    ? `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--muted)">Medytacja z zegarka</span>
+        <b style="font-size:15px">${medytacja.dniZPraktyka} z ${medytacja.dniZDanymi} dni${
+          medytacja.dniZPraktyka ? `<span style="font-size:13px;font-weight:400;color:var(--muted)">, średnio ${pl(medytacja.sredniaMin, 0)} min</span>` : ''
+        }</b>
+      </div>`
+    : '';
+
   const stresHtml = stresLista.length
     ? card(`
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px">
         <span style="font-size:13px;color:var(--muted)">Wpisany stres, średnia</span>
         <b style="font-size:19px">${pl(sredniStres, 1)}<span style="font-size:13px;font-weight:400;color:var(--muted)">/10 z ${stresLista.length} dni</span></b>
       </div>
+      ${medytacjaWiersz}
       ${porownanie}
       ${dzienPoDniu}`)
-    : emptyState('Żadnego wpisu o stresie w tym zakresie. Wpisuje się go wieczorem, w zakładce Dopisz.');
+    : medytacja
+      // Wiersz medytacji nie moze znikac razem z brakiem wpisow o stresie:
+      // zegarek mierzy praktyke niezaleznie od tego, czy wieczorny wpis powstal.
+      ? card(`${medytacjaWiersz}
+          <p class="hint" style="margin:0">Żadnego wpisu o stresie w tym zakresie. Wpisuje się go wieczorem, w zakładce Dopisz.</p>`)
+      : emptyState('Żadnego wpisu o stresie w tym zakresie. Wpisuje się go wieczorem, w zakładce Dopisz.');
 
   /*
    * Plan treningowy NIE zalezy od wybranego zakresu i to jest celowe. Reszta
@@ -510,6 +543,7 @@ stats.get('/statystyki', async (c) => {
       .filter((s: any) => s.date >= o.od && s.date <= o.do)
       .map((s: any) => Number(s.bristol)),
     stres: stresLista.length ? { dni: stresLista.length, srednia: sredniStres, napiete: napiete.length } : null,
+    medytacja,
     stresStolec: napiete.length && spokojne.length
       ? { poNapietych: stolcePoLagach(napiete), poSpokojnych: stolcePoLagach(spokojne) }
       : null,

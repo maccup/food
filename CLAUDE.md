@@ -181,6 +181,28 @@ sesja −10, ≥4 dni treningu z rzędu −5, wpisany stres ≥7 to −15, 5–6
 - Wiersz zawsze kończy się słowami „Szacunek z nocy, nie pomiar" i to zostaje:
   bez tego procent wygląda na zmierzoną wielkość fizyczną.
 
+### Ocena subiektywna i kalibracja
+
+Pod procentem siedzą chipsy 0 do 10 (`POST /log/energia`, tabela `energy`,
+jeden wiersz na dobę, upsert jak stres, migracja 065). Po wpisie wiersz mówi,
+czy algorytm i odczucie się zgadzają (próg 15 punktów; porównanie mnoży ocenę
+przez 10 i to jedyne miejsce tego przelicznika). Statystyki mają sekcję
+„Bateria a Twoja ocena": bateria nie jest nigdzie zapisana, liczy się z tych
+samych danych co widok dnia, więc zmiana wag przelicza też historię. Sekcja
+szuka rozjazdów SYSTEMATYCZNYCH (średnie przesunięcie ponad 10 pkt przy min. 5
+parach), bo pojedynczy dzień niezgody to szum. Ocena wpisywana po zobaczeniu
+procentu jest nim zakotwiczona, ale stałego przesunięcia w jedną stronę kotwica
+nie wyprodukuje. Kalibrację wag robi Claude na żądanie, na podstawie tej sekcji.
+
+### Medytacja
+
+Zegarek mierzy ją od migracji 035 (`watch.medytacja_min`, `medytacja_sesji`,
+kanały iOS i XML; **zero to dzień sprawdzony bez praktyki, NULL to brak
+pomiaru** i NULL-e nie wchodzą do mianownika). Widać ją w sekcji stresu na
+statystykach (wiersz nie znika przy braku wpisów o stresie, bo zegarek mierzy
+niezależnie od wpisu) i czyta ją wniosek o stresie: komu zegarek widzi
+regularną praktykę, temu radzi ją utrzymać, a nie zaczynać.
+
 ## Dlaczego kalendarz zaznacza dzień
 
 Regułę koloru kratki liczy `utils/day-status.ts` i **korzystają z niej dwa ekrany**: kalendarz

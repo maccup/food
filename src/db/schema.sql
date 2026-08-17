@@ -236,6 +236,16 @@ CREATE TABLE IF NOT EXISTS stress (
   CHECK (level BETWEEN 0 AND 10)
 );
 
+-- Subiektywna ocena naladowania baterii, jeden wiersz na dobe, upsert.
+-- Skala 0 do 10 jak stress.level; porownanie z algorytmem (utils/bateria.ts)
+-- mnozy ja przez 10. Migracja 065.
+CREATE TABLE IF NOT EXISTS energy (
+  date       TEXT PRIMARY KEY,
+  level      INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (level BETWEEN 0 AND 10)
+);
+
 -- Apple Watch, jeden wiersz na dobe, wsadem z recznego eksportu ze Zdrowia.
 -- Wiersz istnieje takze dla dni bez zadnego wpisu, bo zegarek mierzy niezaleznie
 -- od tego, czy cokolwiek zapisales. Powody projektowe w migracji 027.

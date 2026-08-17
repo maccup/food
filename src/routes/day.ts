@@ -104,7 +104,7 @@ export async function renderDay(c: any, date: string) {
   // po odhaczeniu, wiec pytanie znika samo przy kazdym kolejnym wejsciu.
   const pytajOGodziny = Number(c.req.query('start') ?? 0);
 
-  const [totals, suppMacros, phase, meals, breaches, symptoms, stools, stres, zegarek] = await Promise.all([
+  const [totals, suppMacros, phase, meals, breaches, symptoms, stools, stres, zegarek, energia] = await Promise.all([
     db.prepare(`SELECT * FROM v_day_totals WHERE date = ?`).bind(date).first<any>(),
     db.prepare(`SELECT * FROM v_day_supplement_macros WHERE date = ?`).bind(date).first<any>(),
     db.prepare(
@@ -125,6 +125,7 @@ export async function renderDay(c: any, date: string) {
     db.prepare(`SELECT * FROM stools WHERE date = ? ORDER BY COALESCE(time,'99:99')`).bind(date).all<any>(),
     db.prepare(`SELECT * FROM stress WHERE date = ?`).bind(date).first(),
     db.prepare(`SELECT * FROM watch WHERE date = ?`).bind(date).first(),
+    db.prepare(`SELECT level FROM energy WHERE date = ?`).bind(date).first(),
   ]);
 
   /*
@@ -414,6 +415,7 @@ export async function renderDay(c: any, date: string) {
     zegarekOpoznienie,
     treningDzis,
     bateria,
+    energia: (energia as { level: number } | null)?.level ?? null,
   });
 
   /*
