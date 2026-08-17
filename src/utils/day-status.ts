@@ -7,9 +7,11 @@
  * odchylenie zmienia kolor w kalendarzu. Teraz licza to same funkcje.
  *
  * Kalendarz patrzy **tylko na tluszcz i blonnik**, i to nie jest przeoczenie:
- * tluszcz przy elastazie 151, blonnik przez wlasna obserwacje, ze wiecej
- * blonnika to twardszy stolec. Kalorie, bialko i wegle maja paski na widoku
- * dnia, ale nie zmieniaja koloru kratki.
+ * tluszcz z zalecenia dietetyka z 21.05.2026 (kierunek srodziemnomorski;
+ * audyt 15.08.2026 odrzucil wczesniejsza przeslanke elastazy 151, patrz
+ * migracja 047), blonnik przez wlasna obserwacje, ze wiecej blonnika to
+ * twardszy stolec. Kalorie, bialko i wegle maja paski na widoku dnia, ale
+ * nie zmieniaja koloru kratki.
  */
 
 export type PoziomDnia = 'ok' | 'warn' | 'bad';

@@ -167,8 +167,9 @@ wyłącznie jako kolor, a widok dnia liczył swoje paski według innego progu.
 
 - **Kolor ustawiają tylko dwie rzeczy**: produkt z listy zakazanych (czerwony) oraz tłuszcz
   albo błonnik odchylone o **ponad 10 procent** od pasma fazy (żółty).
-- **Kalendarz patrzy tylko na tłuszcz i błonnik** i to jest decyzja kliniczna: tłuszcz przy
-  elastazie 151, błonnik przez obserwację, że więcej błonnika to twardszy stolec. Kalorie,
+- **Kalendarz patrzy tylko na tłuszcz i błonnik** i to jest decyzja: tłuszcz z zalecenia
+  dietetyka z 21.05.2026 (kierunek śródziemnomorski; audyt 15.08.2026 odrzucił przesłankę
+  elastazy 151, migracja 047), błonnik przez obserwację, że więcej błonnika to twardszy stolec. Kalorie,
   białko i węgle mają paski na widoku dnia, ale koloru nie ruszają.
 - **Limity nie kolorują dnia i nie mogą zacząć.** `v_restriction_breaches` zgłasza każde
   wystąpienie produktu z limitem, a nie przekroczenie limitu, więc kawa, banan czy surowa

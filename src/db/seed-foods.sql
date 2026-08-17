@@ -54,7 +54,7 @@ INSERT INTO foods (id, name, group_id, fodmap, fodmap_note, fermented, histamine
   (29, 'tuńczyk',              4, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Rtęć, maks. raz w tygodniu'),
   (30, 'dorsz',                5, 'low',      NULL,        0, 'low',      'none',      0, 0, NULL),
   (31, 'łosoś',                4, 'low',      NULL,        0, 'moderate', 'none',      0, 0, NULL),
-  (32, 'szproty',              4, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Wędzone. Odsączyć olej przy elastazie 151'),
+  (32, 'szproty',              4, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Wędzone. Odsączyć olej: tłuszcz z zalewy liczy się do pasma dnia'),
   (33, 'tofu',                NULL, 'low',    NULL,        0, 'low',      'none',      0, 0, 'Twarde tofu jest niskofermentujące, FODMAP zostają w serwatce'),
   (34, 'tempeh',              NULL, 'low',    NULL,        1, 'moderate', 'mixed',     0, 0, 'Soja fermentowana, oligosacharydy już rozłożone'),
   -- mięso przetworzone: pozycja onkologiczna, nie FODMAP
