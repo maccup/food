@@ -104,6 +104,20 @@ przekierowuje, żeby nie psuć zakładek.
 - Przerwy liczy `statystykaPrzerw()` z `utils/gaps-stats.ts`, ta sama funkcja co widok dnia.
   **Grupowanie po dacie jest konieczne**: noc to najdłuższa przerwa doby i wliczona do średniej
   zakłamałaby ją całkowicie.
+- **Pierwsza sekcja ekranu to „Wnioski i rekomendacje"**, liczone regułami w `utils/wnioski.ts`
+  (sen, stres, ruch, przerwy, makra, stolec, wykluczenia, pokrycie grup, kompletność danych).
+  Każdy wniosek wypisuje liczby, z których powstał, żeby dało się go sprawdzić bez bazy.
+  Makra, stolec i stres liczą się z wybranego zakresu; sen, ruch i regeneracja z ostatnich
+  tygodni niezależnie od filtra, z tego samego powodu co plan treningowy: odpowiadają na
+  „co teraz robić". Ton bez straszenia: odchylenie to obserwacja, nie diagnoza. To częściowe
+  odejście od zasady „aplikacja nie ocenia": proste reguły liczbowe ocenia aplikacja na
+  bieżąco, pełną ocenę kliniczną dalej robi Claude na żądanie (decyzja Maćka 17.08.2026).
+- **Wykresy słupkowe mają jedną kopię rysowania**: `views/charts.ts` (`slupkowy()`,
+  `zwinDoTygodni()`). Korzystają z niej trendy makro (kcal, tłuszcz, błonnik z pasmem fazy),
+  stolec w czasie (sztywna skala 0 do 7, pasmo 3 do 4) oraz trendy zegarka
+  (HRV, sen, kroki wobec własnej normy). Zwijanie w tygodnie powyżej 92 dni, makra
+  średnią jak tabela obok, zegarek medianą jak reszta ekranu zegarka. Skala domyślnie
+  od najniższego punktu, nie od zera, i podpis ma o tym mówić.
 
 ## Czego brakuje: tydzień, nie dzień
 
@@ -616,6 +630,12 @@ wypełniać formularz. Wtedy:
 Szablony żyją w `meal_templates`, dodawanie jednym dotknięciem jest
 w zakładce Dopisz, edycja w Ustawieniach. Wariantów nie skracamy:
 „duże latte" i „małe latte" to dwie pozycje, bo różnią się o 55 kcal.
+
+**Kolejność szablonów w Dopisz liczy się z dziennika, nie z licznika.**
+Posiłki wpisywane przez czat i import lądują w `meals` bez dotykania
+`times_used`, więc licznik kłamał o realnych nawykach. Zapytanie zlicza
+wiersze `meals` o tej samej nazwie i stanie `zjedzony`; `times_used`
+zostaje jako rozstrzygnięcie remisów i pamięta użycia sprzed zmiany nazwy.
 
 ## Przegląd danych, uruchamiany na żądanie
 

@@ -1,13 +1,14 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import {
-  card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween, poniedzialek,
+  card, blockTitle, emptyState, esc, todayWarsaw, shiftDate, daysBetween,
 } from '../views/ui';
 import { loadSettings } from '../utils/settings';
 import {
-  METRYKI, WatchRow, Norma, Bilans, normy, sygnaly, stan, MIN_DNI_NORMY,
+  METRYKI, Metryka, WatchRow, Norma, Bilans, normy, sygnaly, stan, MIN_DNI_NORMY,
   bilans, zdanieBilansu, zdanieMasy, kgNaTydzien, KCAL_NA_KILOGRAM,
 } from '../utils/watch';
+import { slupkowy, zwinDoTygodni, etykietaDnia } from '../views/charts';
 
 /**
  * Ekran zegarka.
@@ -28,69 +29,32 @@ const watch = new Hono<{ Bindings: Env }>();
  */
 const OKNO_NORMY = 180;
 
-function mediana(v: number[]): number | null {
-  if (!v.length) return null;
-  const s = [...v].sort((a, b) => a - b);
-  const p = (s.length - 1) / 2;
-  return (s[Math.floor(p)] + s[Math.ceil(p)]) / 2;
-}
-
 /**
- * Slupki HRV w czasie.
+ * Trend jednej metryki zegarka w czasie.
  *
- * Powyzej trzech miesiecy dni zwijaja sie w tygodnie, bo 365 slupkow na
- * szerokosci telefonu ma po jednym pikselu i nie pokazuje juz trendu, tylko
- * szum. Wysokosc liczona od zera bylaby plaska (HRV rzadko schodzi ponizej
- * polowy mediany), wiec skala zaczyna sie od najnizszego dnia.
+ * Powyzej trzech miesiecy dni zwijaja sie w tygodnie (mediana, jak wszedzie
+ * przy zegarku), bo 365 slupkow na szerokosci telefonu ma po jednym pikselu
+ * i nie pokazuje juz trendu, tylko szum. Rysowanie siedzi w views/charts.ts,
+ * tu zostaje tylko to, co zegarkowe: ktora strona normy jest zla.
  */
-function wykres(dni: WatchRow[], n: Norma | undefined, zwin: boolean): string {
-  let punkty: Array<{ etykieta: string; v: number }> = [];
-
-  if (zwin) {
-    const tygodnie = new Map<string, number[]>();
-    for (const d of dni) {
-      if (typeof d.hrv_noc !== 'number') continue;
-      const k = poniedzialek(d.date);
-      if (!tygodnie.has(k)) tygodnie.set(k, []);
-      tygodnie.get(k)!.push(d.hrv_noc);
-    }
-    punkty = [...tygodnie.entries()].map(([k, v]) => ({
-      etykieta: `${k.slice(8)}.${k.slice(5, 7)}`,
-      v: mediana(v)!,
-    }));
-  } else {
-    punkty = dni
-      .filter((d): d is WatchRow & { hrv_noc: number } => typeof d.hrv_noc === 'number')
-      .map((d) => ({ etykieta: `${d.date.slice(8)}.${d.date.slice(5, 7)}`, v: d.hrv_noc }));
-  }
+function wykresMetryki(dni: WatchRow[], m: Metryka, n: Norma | undefined, zwin: boolean): string {
+  const seria = dni
+    .filter((d) => typeof d[m.key] === 'number')
+    .map((d) => ({ date: d.date, v: d[m.key] as number }));
+  const punkty = zwin
+    ? zwinDoTygodni(seria, 'mediana')
+    : seria.map((x) => ({ etykieta: etykietaDnia(x.date), v: x.v }));
 
   if (punkty.length < 2) return emptyState('Za mało dni, żeby narysować trend.');
 
-  const wartosci = punkty.map((p) => p.v);
-  const dol = Math.min(...wartosci) * 0.95;
-  const gora = Math.max(...wartosci) * 1.02;
-  const wysokosc = (v: number) => Math.max(2, Math.round(((v - dol) / (gora - dol)) * 60));
-
-  const slupki = punkty.map((p) => {
-    const poza = n && p.v < n.p10;
-    return `<div style="flex:1;min-width:2px;display:flex;flex-direction:column;justify-content:flex-end;height:62px"
-                 title="${esc(p.etykieta)}: ${p.v.toFixed(1)} ms">
-      <div style="height:${wysokosc(p.v)}px;background:${poza ? 'var(--warn)' : 'var(--ok)'};border-radius:2px 2px 0 0"></div>
-    </div>`;
-  }).join('');
-
-  const linia = n
-    ? `<div style="position:absolute;left:0;right:0;bottom:${wysokosc(n.mediana)}px;border-top:1px dashed var(--muted);opacity:.7"></div>`
-    : '';
+  // Bursztyn lapie tylko zly ogon: przy HRV i snie dol, przy tetnie gore.
+  const pasmo = n ? (m.kierunek === 'wyzej' ? { min: n.p10 } : { max: n.p90 }) : null;
 
   return card(`
-    <div style="position:relative"><div style="display:flex;gap:1px;align-items:flex-end">${slupki}</div>${linia}</div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px">
-      <span>${esc(punkty[0].etykieta)}</span><span>${esc(punkty[punkty.length - 1].etykieta)}</span>
-    </div>
+    ${slupkowy(punkty, { pasmo, linia: n?.mediana ?? null, format: m.format })}
     <p class="hint" style="margin:8px 0 0">
-      HRV w nocy${zwin ? ', mediana tygodnia' : ' dzień po dniu'}.
-      ${n ? 'Kreska to Twoja mediana, bursztynowe słupki to dni poniżej Twojego progu.' : ''}
+      ${esc(m.label)}${zwin ? ', mediana tygodnia' : ' dzień po dniu'}.
+      ${n ? 'Kreska to Twoja mediana, bursztynowe słupki to dni poza Twoim pasmem typowym.' : ''}
       Skala zaczyna się od najniższego dnia, nie od zera, więc różnice są widoczne, ale wyglądają większe, niż są.
     </p>`);
 }
@@ -350,7 +314,13 @@ export async function sekcjeZegarka(
     ${bilansHtml}
 
     ${blockTitle('Trend HRV', `${esc(o.od)} do ${esc(o.do)}`)}
-    ${wykres(lista, n.get('hrv_noc'), dniZakresu > 92)}
+    ${wykresMetryki(lista, METRYKI.find((m) => m.key === 'hrv_noc')!, n.get('hrv_noc'), dniZakresu > 92)}
+
+    ${blockTitle('Trend snu', `${esc(o.od)} do ${esc(o.do)}`)}
+    ${wykresMetryki(lista, METRYKI.find((m) => m.key === 'sen_min')!, n.get('sen_min'), dniZakresu > 92)}
+
+    ${blockTitle('Trend kroków', `${esc(o.od)} do ${esc(o.do)}`)}
+    ${wykresMetryki(lista, METRYKI.find((m) => m.key === 'kroki')!, n.get('kroki'), dniZakresu > 92)}
 
     ${blockTitle('Zegarek dzień po dniu')}
     ${card(tabela)}

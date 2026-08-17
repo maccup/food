@@ -4,6 +4,8 @@ import { page, card, blockTitle, emptyState, esc, pl, todayWarsaw, shiftDate, da
 import { loadSettings } from '../utils/settings';
 import { statystykaPrzerw, PosilekDoPrzerw } from '../utils/gaps-stats';
 import { ulozPlan, DobaZegarka, TreningWpis, Zalecenie } from '../utils/trening';
+import { ulozWnioski, Wniosek } from '../utils/wnioski';
+import { slupkowy, zwinDoTygodni, etykietaDnia, Slupek } from '../views/charts';
 import { sekcjeZegarka } from './watch';
 
 /**
@@ -158,6 +160,42 @@ stats.get('/statystyki', async (c) => {
     }).join('');
   }
 
+  /*
+   * Trend makro nad tabela: trzy wykresy dla kalorii oraz dwoch makr, ktore
+   * koloruja kalendarz (tluszcz i blonnik). Tabela mowi „ile", wykres mowi
+   * „czy to sie trzyma pasma", i to drugie pytanie jest wazniejsze.
+   * Zwijanie w tygodnie idzie tym samym progiem i tym samym agregatem co
+   * tabela obok, zeby obie rzeczy pokazywaly te same liczby.
+   */
+  const seriaMakro = (key: string): Slupek[] => {
+    const dnie = lista.map((d: any) => ({ date: d.date, v: Number(d[key] ?? 0) }));
+    return poTygodniach
+      ? zwinDoTygodni(dnie, 'srednia')
+      : dnie.map((x) => ({ etykieta: etykietaDnia(x.date), v: x.v }));
+  };
+  const wykresMakro = (key: string, nazwa: string, unit: string) => {
+    const spec = t.get(key);
+    const pasmo = spec ? { min: spec.min_value, max: spec.max_value } : null;
+    const podpis = spec && spec.min_value !== null && spec.max_value !== null
+      ? `, pasmo ${pl(spec.min_value, 0)} do ${pl(spec.max_value, 0)} ${unit}` : '';
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${esc(nazwa)}${podpis}</div>
+      ${slupkowy(seriaMakro(key), { pasmo, format: (v) => `${Math.round(v)} ${unit}` })}
+    </div>`;
+  };
+  const wykresyMakro = lista.length >= 2
+    ? card(`
+      <div class="cols">
+        ${wykresMakro('kcal', 'Kalorie', 'kcal')}
+        ${wykresMakro('fat_g', 'Tłuszcz', 'g')}
+        ${wykresMakro('fiber_g', 'Błonnik', 'g')}
+      </div>
+      <p class="hint" style="margin:0">
+        Zielone słupki mieszczą się w paśmie fazy, bursztynowe są poza nim, przerywane kreski to granice pasma.
+        Skala zaczyna się od najniższego ${poTygodniach ? 'tygodnia' : 'dnia'}, nie od zera, więc różnice wyglądają na większe, niż są.
+      </p>`)
+    : '';
+
   const table = lista.length
     ? `<div style="overflow-x:auto"><table class="data-table" style="width:100%;font-size:13px">
         <thead><tr><th>${poTygodniach ? 'Tydzień od' : 'Dzień'}</th><th style="text-align:right">kcal</th><th style="text-align:right">B</th><th style="text-align:right">T</th><th style="text-align:right">W</th><th style="text-align:right">bł</th></tr></thead>
@@ -210,21 +248,24 @@ stats.get('/statystyki', async (c) => {
 
   const covBy = new Map<number, any>((coverage.results ?? []).map((x: any) => [x.group_id, x]));
   const tygodni = Math.max(1, dniZakresu / 7);
-  const gaps = (rules.results ?? []).map((r: any) => {
-    const dniZGrupa = covBy.get(r.group_id)?.days ?? 0;
+  // Najpierw dane, potem HTML: status grup czytaja dwa miejsca, lista nizej
+  // i silnik wnioskow na gorze ekranu.
+  const grupyStatus = (rules.results ?? []).map((r: any) => {
     // Norma jest tygodniowa, wiec przy dluzszym zakresie porownujemy srednia na tydzien.
-    const naTydzien = dniZGrupa / tygodni;
+    const naTydzien = (covBy.get(r.group_id)?.days ?? 0) / tygodni;
     const need = r.min_days_per_week ?? 0;
-    const ok = naTydzien >= need;
-    const color = ok ? 'var(--ok)' : r.severity === 'critical' ? 'var(--bad)' : 'var(--warn)';
+    return { ...r, naTydzien, need, ok: naTydzien >= need };
+  });
+  const gaps = grupyStatus.map((r: any) => {
+    const color = r.ok ? 'var(--ok)' : r.severity === 'critical' ? 'var(--bad)' : 'var(--warn)';
     return `<li>
       <div class="item-content"><div class="item-inner" style="display:block;padding:10px 0">
         <div style="display:flex;justify-content:space-between;gap:8px">
           <b style="font-size:14px">${esc(r.name)}</b>
-          <span style="color:${color};font-weight:700;white-space:nowrap">${pl(naTydzien, 1)} z ${need} dni/tydz.</span>
+          <span style="color:${color};font-weight:700;white-space:nowrap">${pl(r.naTydzien, 1)} z ${r.need} dni/tydz.</span>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">daje: ${esc(r.provides ?? '')}</div>
-        ${!ok && r.rationale ? `<div style="font-size:12px;color:${color};margin-top:4px">${esc(r.rationale)}</div>` : ''}
+        ${!r.ok && r.rationale ? `<div style="font-size:12px;color:${color};margin-top:4px">${esc(r.rationale)}</div>` : ''}
       </div></div>
     </li>`;
   }).join('');
@@ -235,10 +276,40 @@ stats.get('/statystyki', async (c) => {
       ).join('')}</ul></div>`
     : emptyState('Żadnych naruszeń w tym zakresie.');
 
+  // Stolce po datach: czyta to wykres trendu nizej oraz sekcja stresu, ktora
+  // oglada kazdy dzien z czterema przesunieciami.
+  const stolceWgDat = new Map<string, number[]>();
+  for (const s of stolceDat.results ?? []) {
+    if (!stolceWgDat.has(s.date)) stolceWgDat.set(s.date, []);
+    stolceWgDat.get(s.date)!.push(s.bristol);
+  }
+
+  /*
+   * Stolec w czasie: srednia dnia na sztywnej skali 0 do 7 z pasmem 3 do 4.
+   * Rozklad slupkowy nizej mowi „jakie byly", ten wykres mowi „kiedy", a przy
+   * leczeniu jelita kierunek zmiany jest wazniejszy niz rozklad.
+   */
+  const stolceDniSeria: Array<{ date: string; v: number }> = [...stolceWgDat.entries()]
+    .filter(([data]) => data >= o.od && data <= o.do)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([data, b]) => ({ date: data, v: b.reduce((x, y) => x + y, 0) / b.length }));
+  const stolceTrend = stolceDniSeria.length >= 2
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">Postać w czasie, pasmo prawidłowe 3 do 4</div>
+       ${slupkowy(
+         dniZakresu > 92 ? zwinDoTygodni(stolceDniSeria, 'srednia') : stolceDniSeria.map((x) => ({ etykieta: etykietaDnia(x.date), v: x.v })),
+         { pasmo: { min: 3, max: 4 }, skala: { min: 0, max: 7 }, format: (v) => `Bristol ${v.toFixed(1).replace('.', ',')}` }
+       )}
+       <p class="hint" style="margin:6px 0 14px">
+         Słupek to średnia z wpisów dnia w skali Bristol: niski to zaparcie, wysoki to biegunka,
+         zielony mieści się w paśmie prawidłowym. Dni bez wpisu nie mają słupka.
+       </p>`
+    : '';
+
   const stolceLista = stolce.results ?? [];
   const stolceRazem = stolceLista.reduce((a: number, s: any) => a + s.n, 0);
   const zdrowiaHtml = (objawy.results ?? []).length || stolceRazem
     ? card(`
+      ${stolceRazem ? stolceTrend : ''}
       ${stolceRazem ? `
         <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Stolce, skala Bristol (${stolceRazem} wpisów)</div>
         <div style="display:flex;gap:4px;align-items:flex-end;height:56px;margin-bottom:14px">
@@ -286,12 +357,6 @@ stats.get('/statystyki', async (c) => {
    * odpowiadac na pytanie „czy dni napiete roznia sie od spokojnych", a dzien
    * przecietny nie jest ani jednym, ani drugim i tylko rozmyclby obie strony.
    */
-  const stolceWgDat = new Map<string, number[]>();
-  for (const s of stolceDat.results ?? []) {
-    if (!stolceWgDat.has(s.date)) stolceWgDat.set(s.date, []);
-    stolceWgDat.get(s.date)!.push(s.bristol);
-  }
-
   const stresLista = (stresDni.results ?? []) as Array<{ date: string; level: number; powod: string | null }>;
   const sredniStres = stresLista.length
     ? stresLista.reduce((a, s) => a + s.level, 0) / stresLista.length
@@ -396,14 +461,84 @@ stats.get('/statystyki', async (c) => {
   const dzis = todayWarsaw();
   const [zegarekPlan, treningiPlan] = await Promise.all([
     db.prepare(
-      `SELECT date, hrv_noc, hrv, rhr, sen_min FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`
-    ).bind(shiftDate(dzis, -59), dzis).all<DobaZegarka>(),
+      `SELECT date, hrv_noc, hrv, rhr, sen_min, kroki FROM watch WHERE date BETWEEN ? AND ? ORDER BY date`
+    ).bind(shiftDate(dzis, -59), dzis).all<DobaZegarka & { kroki: number | null }>(),
     db.prepare(
       `SELECT date, typ_apple, minuty, kcal FROM workouts WHERE date BETWEEN ? AND ? ORDER BY date`
     ).bind(shiftDate(dzis, -59), dzis).all<TreningWpis>(),
   ]);
 
   const plan = ulozPlan(zegarekPlan.results ?? [], treningiPlan.results ?? [], dzis);
+
+  /*
+   * Wnioski i rekomendacje: pierwsza sekcja ekranu. Makra, stolec, stres,
+   * przerwy i wykluczenia licza sie z wybranego zakresu, bo o nie pyta filtr.
+   * Sen, ruch i regeneracja ida z ostatnich tygodni niezaleznie od filtra,
+   * z tego samego powodu co plan treningowy: odpowiadaja na „co teraz robic",
+   * a wybranie roku w filtrze nie moze zmieniac dzisiejszej rady.
+   */
+  const doby60 = zegarekPlan.results ?? [];
+  const sen14 = doby60
+    .filter((x): x is typeof x & { sen_min: number } => typeof x.sen_min === 'number')
+    .slice(-14).map((x) => x.sen_min);
+  const kroki30 = doby60
+    .filter((x) => x.date >= shiftDate(dzis, -29) && typeof x.kroki === 'number')
+    .map((x) => Number(x.kroki)).sort((a, b) => a - b);
+  const krokiMediana = kroki30.length >= 7
+    ? (kroki30[Math.floor((kroki30.length - 1) / 2)] + kroki30[Math.ceil((kroki30.length - 1) / 2)]) / 2
+    : null;
+  const stolcePoLagach = (dni: string[]) =>
+    dni.flatMap((data) => [1, 2].flatMap((lag) => stolceWgDat.get(shiftDate(data, lag)) ?? []));
+
+  const wnioski = ulozWnioski({
+    dniZakresu,
+    dniZWpisami: lista.length,
+    srednie: {
+      kcal: srednia('kcal'), protein_g: srednia('protein_g'), fat_g: srednia('fat_g'),
+      carbs_g: srednia('carbs_g'), fiber_g: srednia('fiber_g'),
+    },
+    cel: (m) => t.get(m),
+    przerwy: przerwy.przerwy ? { dni: przerwy.dni, dniPonizejProgu: przerwy.dniPonizejProgu } : null,
+    minGapH: minGap,
+    zakazane: (breaches.results ?? [])
+      .filter((b: any) => b.level === 'forbidden')
+      .map((b: any) => ({ nazwa: b.food_name, n: b.n })),
+    grupyPonizej: grupyStatus
+      .filter((g: any) => !g.ok)
+      .map((g: any) => ({ nazwa: g.name, naTydzien: g.naTydzien, celDni: g.need, krytyczna: g.severity === 'critical' })),
+    bristole: (stolceDat.results ?? [])
+      .filter((s: any) => s.date >= o.od && s.date <= o.do)
+      .map((s: any) => Number(s.bristol)),
+    stres: stresLista.length ? { dni: stresLista.length, srednia: sredniStres, napiete: napiete.length } : null,
+    stresStolec: napiete.length && spokojne.length
+      ? { poNapietych: stolcePoLagach(napiete), poSpokojnych: stolcePoLagach(spokojne) }
+      : null,
+    sen14,
+    krokiMediana,
+    gotowosc: doby60.length ? plan.gotowosc : null,
+  });
+
+  const KOLOR_WNIOSKU: Record<Wniosek['poziom'], string> = {
+    zrob: 'var(--warn)', uwaga: 'var(--muted)', ok: 'var(--ok)',
+  };
+  const wnioskiHtml = wnioski.length
+    ? card(wnioski.map((w, i) => `
+        <div style="display:flex;gap:10px;padding:8px 0${i ? ';border-top:1px solid var(--hairline)' : ''}">
+          <div style="width:4px;border-radius:2px;background:${KOLOR_WNIOSKU[w.poziom]};flex:0 0 4px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+              <b style="font-size:14px">${esc(w.tytul)}</b>
+              <span style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(w.obszar)}</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(w.opis)}</div>
+          </div>
+        </div>`).join('') + `
+        <p class="hint" style="margin:10px 0 0">
+          Bursztyn to rzecz do zrobienia, szary to obserwacja, zielony to obszar, który działa.
+          Każda liczba w opisie pochodzi z sekcji niżej na tym ekranie, więc da się ją sprawdzić.
+          To podpowiedzi liczone regułami, nie porada lekarska.
+        </p>`)
+    : emptyState('Za mało danych w tym zakresie, żeby cokolwiek doradzać.');
 
   const KOLOR_ZALECENIA: Record<Zalecenie, string> = {
     sila: 'var(--ok)',
@@ -504,6 +639,9 @@ stats.get('/statystyki', async (c) => {
       </p>
     </div>
 
+    ${blockTitle('Wnioski i rekomendacje', 'liczone z Twoich danych')}
+    ${wnioskiHtml}
+
     ${blockTitle('Trening na najbliższe dni', 'z ostatnich 60 dób, niezależnie od filtra')}
     ${planHtml}
 
@@ -514,6 +652,7 @@ stats.get('/statystyki', async (c) => {
     ${przerwyHtml}
 
     ${blockTitle('Makro', poTygodniach ? 'średnie tygodniowe' : 'dzień po dniu')}
+    ${wykresyMakro}
     ${card(table)}
 
     ${blockTitle('Pokrycie grup produktów')}

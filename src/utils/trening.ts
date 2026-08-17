@@ -102,7 +102,7 @@ const CELE = {
 const PROG_INTENSYWNY_KCAL_MIN = 8;
 
 /** Sen uznawany za pokryty. Jego wlasna mediana z ostatnich 60 dni to 453 min. */
-const POTRZEBA_SNU_MIN = 450;
+export const POTRZEBA_SNU_MIN = 450;
 
 const OKNO_BAZY = 60;
 const OKNO_KROCZACE = 7;

@@ -66,12 +66,20 @@ log.get('/log', async (c) => {
 
   // Jeden formularz naraz. Wczesniej wszystkie trzy wisialy pod soba i trzeba
   // bylo przewijac obok dwoch, ktorych sie akurat nie wypelnia.
-  // Szablony: rzeczy powtarzalne jednym dotknieciem. Kolejnosc wg tego,
-  // jak czesto uzywane, wiec lista sama sie ustawia pod realne nawyki.
+  // Szablony: rzeczy powtarzalne jednym dotknieciem, najczesciej jedzone na
+  // poczatku. Czestosc liczy sie z DZIENNIKA po nazwie, nie z licznika
+  // `times_used`: posilki dopisywane przez czat i import laduja w `meals`
+  // bez dotykania licznika, wiec sam licznik klamal o realnych nawykach.
+  // Licznik zostaje jako rozstrzygniecie remisow, bo widzi uzycia szablonu
+  // sprzed ewentualnej zmiany nazwy.
   const szablony = co === 'posilek'
     ? (await db.prepare(
-        `SELECT id, name, kcal, slot FROM meal_templates
-         WHERE archived = 0 ORDER BY times_used DESC, last_used DESC, name LIMIT 20`
+        `SELECT t.id, t.name, t.kcal, t.slot,
+                (SELECT COUNT(*) FROM meals m
+                 WHERE m.name = t.name COLLATE NOCASE AND m.stan = 'zjedzony') AS uzycia
+         FROM meal_templates t
+         WHERE t.archived = 0
+         ORDER BY uzycia DESC, t.times_used DESC, t.last_used DESC, t.name LIMIT 20`
       ).all<any>()).results ?? []
     : [];
 
