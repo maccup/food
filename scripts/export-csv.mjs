@@ -22,6 +22,9 @@ const QUERIES = {
     FROM v_day_totals d
     LEFT JOIN phases p ON d.date >= p.date_from AND (p.date_to IS NULL OR d.date <= p.date_to)
     ORDER BY d.date`,
+  // Stres jedzie plikiem objawow, bo analiza i tak zestawia go ze stolcem; godzina
+  // pusta celowo (ocena calej doby). Komentarzy SQL '--' tu nie wolno: zapytanie idzie
+  // do wranglera po sklejeniu bialych znakow do jednej linii i '--' ucina reszte.
   'food_symptoms.csv': `
     SELECT 'objaw' AS typ, date, time, kind AS szczegol, severity AS nasilenie, notes
     FROM symptoms
@@ -32,9 +35,6 @@ const QUERIES = {
                       COALESCE(CASE WHEN floating THEN 'plywajacy' END,''))
     FROM stools
     UNION ALL
-    -- Stres jedzie tym samym plikiem, bo analiza i tak zestawia go ze stolcem,
-    -- a osobny CSV z jedna liczba na dobe znaczylby laczenie po dacie w Pythonie.
-    -- Godzina pusta celowo: to ocena calej doby, nie zdarzenie.
     SELECT 'stres', date, NULL, COALESCE(powod, ''), level, notes
     FROM stress
     ORDER BY date, time`,
