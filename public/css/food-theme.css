@@ -372,6 +372,20 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; accent-color:
   text-align: left;
 }
 .chip:hover { border-color: var(--color-primary); }
+
+/* Ocena naladowania: 11 przyciskow w JEDNEJ linii, rowna siatka.
+   Chipsy owijaly sie w dwa nierowne rzedy i wygladaly na przypadkowe. */
+.ocena-grid { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 4px; margin-top: 6px; }
+.ocena-btn {
+  min-height: 40px; padding: 0;
+  border: 1px solid var(--hairline); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.ocena-btn:hover { border-color: var(--color-primary); }
+.ocena-btn.wybrana { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.ocena-summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.ocena-summary b { color: var(--text); }
 .chip-kcal {
   font-size: 11px; font-weight: 700; color: var(--muted);
   background: var(--surface-sunken); border-radius: 999px; padding: 3px 8px;

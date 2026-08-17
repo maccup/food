@@ -2,7 +2,7 @@ import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui'
 import { stanMakro } from '../utils/day-status';
 import { zdanieBilansu, zdanieMasy } from '../utils/watch';
 import { Zalecenie } from '../utils/trening';
-import { Bateria, ZDANIE_BATERII } from '../utils/bateria';
+import { Bateria, ZDANIE_BATERII, rekomendacjaDnia } from '../utils/bateria';
 
 export interface DashboardData {
   date: string;
@@ -160,7 +160,11 @@ export function dashboard(d: DashboardData): string {
          * to 15 punktow. Uczciwosc wymaga przyznania, ze ocena wpisywana PO
          * zobaczeniu procentu jest nim zakotwiczona; mimo to rozjazdy
          * systematyczne (algorytm stale zawyza albo zaniza) przez kotwice
-         * przebija i wlasnie ich szuka sekcja w statystykach.
+         * przebijaja i wlasnie ich szuka sekcja w statystykach.
+         *
+         * Po wpisie siatka zwija sie do jednej linijki (details), a ogolne
+         * zdanie poziomu zastepuje JEDNA rekomendacja dnia liczona z oceny
+         * i procentu razem. Ekran nigdy nie mowi dwoch rzeczy naraz.
          */
         const roznica = d.energia !== null ? b.procent - d.energia * 10 : null;
         const konfrontacja = roznica === null
@@ -170,23 +174,39 @@ export function dashboard(d: DashboardData): string {
             : roznica > 0
               ? 'algorytm widzi więcej sił, niż czujesz'
               : 'czujesz się lepiej, niż wynika z nocy';
-        const ocena = `
-          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">
-            <span style="font-size:12px;color:var(--muted)">Twoja ocena:</span>
-            ${[...Array(11).keys()].map((n) => `
-              <form method="POST" action="/log/energia" style="display:contents">
-                <input type="hidden" name="date" value="${d.date}">
-                <input type="hidden" name="level" value="${n}">
-                <button type="submit" class="chip" style="padding:2px 8px;font-size:12px${
-                  d.energia === n ? ';border-color:var(--color-primary);font-weight:700' : ''
-                }" aria-label="Ocena naładowania ${n} na 10">${n}</button>
-              </form>`).join('')}
-            ${roznica !== null ? `<span style="font-size:12px;color:var(--muted)">· ${esc(konfrontacja)}</span>` : ''}
-          </div>`;
+
+        const siatka = `<div class="ocena-grid">
+          ${[...Array(11).keys()].map((n) => `
+            <form method="POST" action="/log/energia" style="display:contents">
+              <input type="hidden" name="date" value="${d.date}">
+              <input type="hidden" name="level" value="${n}">
+              <button type="submit" class="ocena-btn${d.energia === n ? ' wybrana' : ''}"
+                      aria-label="Ocena naładowania ${n} na 10">${n}</button>
+            </form>`).join('')}
+        </div>`;
+
+        const ocena = d.energia === null
+          ? `<div style="margin-top:8px">
+              <span style="font-size:12px;color:var(--muted)">Jak czujesz naładowanie? 0 pusto, 10 pełna moc</span>
+              ${siatka}
+            </div>`
+          : `<details style="margin-top:8px">
+              <summary class="ocena-summary">Twoja ocena: <b>${d.energia}/10</b> · ${esc(konfrontacja)} · zmień ›</summary>
+              ${siatka}
+            </details>`;
+
+        const rekomendacja = d.isToday && d.energia !== null
+          ? rekomendacjaDnia(b.procent, d.energia, d.treningDzis
+              ? { zalecenie: d.treningDzis.zalecenie, tytul: d.treningDzis.tytul }
+              : null)
+          : null;
+
         return `<div class="panel-row">
           <div>
             <div class="panel-row-label">Bateria dnia</div>
-            <div class="panel-row-main">${b.procent}%${d.isToday ? `. ${esc(ZDANIE_BATERII[b.poziom])}` : ''}</div>
+            <div class="panel-row-main">${b.procent}%${
+              rekomendacja ? `. ${esc(rekomendacja)}` : d.isToday ? `. ${esc(ZDANIE_BATERII[b.poziom])}` : ''
+            }</div>
             <div class="panel-row-why">
               ${esc(czesci)}${b.braki.length ? ` (${esc(b.braki.join(', '))})` : ''}.
               Szacunek z nocy, nie pomiar.

@@ -183,10 +183,23 @@ sesja −10, ≥4 dni treningu z rzędu −5, wpisany stres ≥7 to −15, 5–6
 
 ### Ocena subiektywna i kalibracja
 
-Pod procentem siedzą chipsy 0 do 10 (`POST /log/energia`, tabela `energy`,
-jeden wiersz na dobę, upsert jak stres, migracja 065). Po wpisie wiersz mówi,
-czy algorytm i odczucie się zgadzają (próg 15 punktów; porównanie mnoży ocenę
-przez 10 i to jedyne miejsce tego przelicznika). Statystyki mają sekcję
+Pod procentem siedzi siatka 0 do 10 w jednej linii (`.ocena-grid`, 11 równych
+przycisków; `POST /log/energia`, tabela `energy`, jeden wiersz na dobę, upsert
+jak stres, migracja 065). Po wpisie siatka zwija się do jednej linijki
+(`details` z podsumowaniem i „zmień"), a wiersz mówi, czy algorytm i odczucie
+się zgadzają (próg 15 punktów; porównanie mnoży ocenę przez 10 i to jedyne
+miejsce tego przelicznika).
+
+**Po ocenie ekran daje JEDNĄ rekomendację dnia** (`rekomendacjaDnia()` w
+`utils/bateria.ts`), która zastępuje ogólne zdanie poziomu, żeby panel nie
+mówił dwóch rzeczy naraz. Reguła kierunku: ocena może zalecenie wyłącznie
+OBNIŻYĆ, nigdy podbić. Zmęczenie przy dobrej nocy wygrywa z algorytmem
+(stres i praca są niewidzialne dla zegarka), ale entuzjazm przy złej nocy nie
+odblokowuje intensywności, bo tak właśnie wchodzi się w przetrenowanie.
+Liczy się `min(procent, ocena razy 10)`: poniżej 45 regeneracja, 45 do 69
+objętość bez intensywności (siła i interwały schodzą do spokojnego cardio),
+od 70 plan bez zmian. Dopisek „decyduje Twoja ocena / decyduje noc" pojawia
+się tylko przy rozjeździe ponad 15 punktów. Statystyki mają sekcję
 „Bateria a Twoja ocena": bateria nie jest nigdzie zapisana, liczy się z tych
 samych danych co widok dnia, więc zmiana wag przelicza też historię. Sekcja
 szuka rozjazdów SYSTEMATYCZNYCH (średnie przesunięcie ponad 10 pkt przy min. 5

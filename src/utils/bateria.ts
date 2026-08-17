@@ -1,5 +1,5 @@
 import { WatchRow, Norma } from './watch';
-import { POTRZEBA_SNU_MIN } from './trening';
+import { POTRZEBA_SNU_MIN, Zalecenie } from './trening';
 
 /**
  * Bateria dnia: jeden procent odpowiadajacy na pytanie „z jakim zapasem
@@ -160,3 +160,46 @@ export const ZDANIE_BATERII: Record<Bateria['poziom'], string> = {
   sredni: 'Zwykły dzień: objętość tak, szczyty niekoniecznie.',
   niski: 'Organizm na rezerwie: przesuń intensywny wysiłek, wieczorem połóż się wcześniej.',
 };
+
+/**
+ * Jedna rekomendacja na dzien, liczona PO wpisaniu oceny subiektywnej.
+ * Zastepuje w widoku ogolne zdanie ZDANIE_BATERII, zeby ekran nie mowil
+ * dwoch rzeczy naraz.
+ *
+ * Regula kierunku: ocena moze zalecenie wylacznie OBNIZYC, nigdy podbic.
+ * Zmeczony czlowiek z dobra noca to normalne zjawisko (stres, praca, dzien
+ * bez slonca) i wtedy wygrywa czlowiek. Odwrotnie nie: dobre samopoczucie
+ * przy zlej nocy to najczestszy sposob, w jaki ludzie wchodza w przetrenowanie,
+ * wiec entuzjazm nie odblokowuje intensywnosci, ktorej zabronila noc.
+ */
+export function rekomendacjaDnia(
+  procent: number,
+  ocena: number,
+  plan: { zalecenie: Zalecenie; tytul: string } | null
+): string {
+  const efekt = Math.min(procent, ocena * 10);
+  // Zrodlo decyzji wypisujemy tylko przy rozjezdzie: gdy oba mowia to samo,
+  // dopisek bylby szumem.
+  const zrodlo = ocena * 10 < procent - 15
+    ? ' Decyduje Twoja ocena, nie algorytm.'
+    : procent < ocena * 10 - 15
+      ? ' Decyduje noc, nie samopoczucie.'
+      : '';
+
+  if (plan?.zalecenie === 'zrobione') {
+    return efekt < 45
+      ? 'Trening dziś już był i więcej nie dokładaj. Wieczorem najwyżej spacer, światło gaszone 30 minut wcześniej.'
+      : 'Trening dziś już był. Reszta dnia zwyczajnie, bez drugiej sesji.';
+  }
+  if (efekt < 45) {
+    return `Regeneracja zamiast planu: spacer albo mobilność, bez ciężarów i interwałów, wieczorem połóż się wcześniej.${zrodlo}`;
+  }
+  if (efekt < 70) {
+    return plan && (plan.zalecenie === 'sila' || plan.zalecenie === 'interwaly')
+      ? `Zejdź z intensywności: zamiast „${plan.tytul}" spokojne cardio albo dłuższy spacer.${zrodlo}`
+      : `Zwykły dzień: ${plan ? `„${plan.tytul}" z planu wystarczy` : 'utrzymaj rytm'}, nic ponad to.${zrodlo}`;
+  }
+  return plan
+    ? `Jedziesz z planem: ${plan.tytul.toLowerCase()}. Dobry dzień też na trudne rzeczy poza treningiem.`
+    : 'Pełna bateria: dobry dzień na trening i trudne rzeczy.';
+}

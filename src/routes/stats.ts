@@ -657,17 +657,23 @@ stats.get('/statystyki', async (c) => {
     </div>
 
     <div class="block">
-      <form method="GET" action="/statystyki" class="stats-filtr">
-        <div class="field">
-          <label class="field-label" for="st-od">Od</label>
-          <input type="date" id="st-od" name="od" value="${esc(o.od)}">
-        </div>
-        <div class="field">
-          <label class="field-label" for="st-do">Do</label>
-          <input type="date" id="st-do" name="do" value="${esc(o.do)}">
-        </div>
-        <button type="submit" class="button button-small">Pokaż</button>
-      </form>
+      <!-- Formularz wlasnego zakresu zwiniety domyslnie: na telefonie dwa pola
+           daty i przycisk zjadaly pol ekranu, a uzywa sie ich rzadko. Zakres
+           wlasny w adresie otwiera blok, zeby bylo widac, co jest ustawione. -->
+      <details${o.zakres === 'wlasny' ? ' open' : ''}>
+        <summary class="ocena-summary">Własny zakres dat ›</summary>
+        <form method="GET" action="/statystyki" class="stats-filtr" style="margin-top:8px">
+          <div class="field">
+            <label class="field-label" for="st-od">Od</label>
+            <input type="date" id="st-od" name="od" value="${esc(o.od)}">
+          </div>
+          <div class="field">
+            <label class="field-label" for="st-do">Do</label>
+            <input type="date" id="st-do" name="do" value="${esc(o.do)}">
+          </div>
+          <button type="submit" class="button button-small">Pokaż</button>
+        </form>
+      </details>
       <p class="hint" style="margin:6px 0 0">
         ${esc(o.od)} do ${esc(o.do)}, ${dniZakresu} dni${phase ? `, faza: ${esc(phase.name)}` : ''}
       </p>
