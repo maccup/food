@@ -99,7 +99,7 @@ const CELE = {
  * intensywnym. Liczymy z kalorii, a nie z rodzaju treningu, bo „bieganie"
  * bywa truchtem, a „rower" bywa dojazdem do sklepu.
  */
-const PROG_INTENSYWNY_KCAL_MIN = 8;
+export const PROG_INTENSYWNY_KCAL_MIN = 8;
 
 /** Sen uznawany za pokryty. Jego wlasna mediana z ostatnich 60 dni to 453 min. */
 export const POTRZEBA_SNU_MIN = 450;

@@ -159,6 +159,28 @@ jak miska szpinaku i tydzień wyglądał na 4 z 5 dni zamiast prawdziwych 2 z 5.
 - Gdyby kiedyś pojawił się produkt raz jako porcja, raz jako posypka, wtedy dopiero
   warto przenieść to na `meal_foods`. Nie robić tego z góry.
 
+## Bateria dnia
+
+Pierwszy wiersz panelu na widoku dnia: jeden procent odpowiadający na pytanie
+„z jakim zapasem energii wstałem". Liczy `policzBaterie()` w `utils/bateria.ts`,
+na wzór „recovery" Whoopa, tylko jawnie: trzy składniki bazowe ważone (sen 40
+wobec potrzeby 450 min z trening.ts, HRV nocne 35 i tętno spoczynkowe 25 wobec
+własnej normy 180 dni), od tego odejmowane obciążenia z wczoraj (intensywna
+sesja −10, ≥4 dni treningu z rzędu −5, wpisany stres ≥7 to −15, 5–6 to −8).
+
+- **Składnik bez danych wypada, wagi rosną proporcjonalnie**, a braki są
+  wypisane w wierszu. Bez ani jednego składnika bazowego baterii nie ma:
+  procent z samych obciążeń byłby zgadywaniem ubranym w liczbę.
+- **Mediana własnej normy daje 75, nie 100** (kotwice: zły decyl 30, mediana 75,
+  dobry decyl 100). Typowy dzień ma być dobry, ale skala musi zostawiać miejsce
+  na dzień naprawdę świetny.
+- **Zdanie z radą dostaje wyłącznie dzień dzisiejszy.** Dla dnia z przeszłości
+  to odczyt stanu, nie zalecenie, ta sama zasada co przy wierszu treningu.
+- **Kolory bez czerwieni**: wysoki zielony, średni szary, niski bursztynowy.
+  Niska bateria to informacja o zmęczeniu, nie awaria.
+- Wiersz zawsze kończy się słowami „Szacunek z nocy, nie pomiar" i to zostaje:
+  bez tego procent wygląda na zmierzoną wielkość fizyczną.
+
 ## Dlaczego kalendarz zaznacza dzień
 
 Regułę koloru kratki liczy `utils/day-status.ts` i **korzystają z niej dwa ekrany**: kalendarz

@@ -6,7 +6,8 @@ import {
   hhmmToMinutes, minutyNaHhmm,
 } from '../views/ui';
 import { dashboard } from '../views/dashboard';
-import { ulozPlan, DobaZegarka, TreningWpis } from '../utils/trening';
+import { ulozPlan, podsumujTydzien, DobaZegarka, TreningWpis, PROG_INTENSYWNY_KCAL_MIN } from '../utils/trening';
+import { policzBaterie } from '../utils/bateria';
 import { loadSettings, sittingTimes, loadNoDelivery } from '../utils/settings';
 import { przerwyDnia, koniecOstatniegoPodejscia, przerywaPrzerwe, RegulyPrzerw } from '../utils/gaps-stats';
 import {
@@ -154,6 +155,37 @@ export async function renderDay(c: any, date: string) {
     // Jeden dzien to norma, bo doba domyka sie dopiero po pobudce i wysylce.
     return dni > 1 ? { dni, ostatni } : null;
   })();
+
+  /*
+   * Bateria dnia: procent liczony z nocy poprzedzajacej TEN dzien (wiersz
+   * zegarka trzyma sen i HRV nocy zakonczonej rano tego dnia) minus
+   * obciazenia z dnia poprzedniego. Liczy sie takze dla dni z przeszlosci,
+   * bo to odczyt stanu, nie zalecenie; zdanie z rada dostaje wylacznie
+   * dzisiaj, w widoku (dashboard.ts). Dwa dodatkowe zapytania ida tylko
+   * wtedy, gdy doba w ogole ma pomiary, jak przy normach wyzej.
+   */
+  const wczoraj = shiftDate(date, -1);
+  const bateria = zegarek
+    ? await (async () => {
+        const [stresWczoraj, treningiOkno] = await Promise.all([
+          db.prepare(`SELECT level FROM stress WHERE date = ?`).bind(wczoraj).first(),
+          db.prepare(
+            `SELECT date, typ_apple, minuty, kcal FROM workouts WHERE date BETWEEN ? AND ? ORDER BY date`
+          ).bind(shiftDate(date, -10), wczoraj).all(),
+        ]);
+        const treningi = (treningiOkno.results ?? []) as unknown as TreningWpis[];
+        return policzBaterie({
+          doba: zegarek as unknown as WatchRow,
+          normy: normyZegarka,
+          stresWczoraj: (stresWczoraj as { level: number } | null)?.level ?? null,
+          dniZRzedu: podsumujTydzien(treningi, wczoraj).dniZRzedu,
+          intensywnaWczoraj: treningi.some(
+            (t) => t.date === wczoraj && t.kcal !== null && t.minuty !== null
+              && t.minuty >= 15 && t.kcal / t.minuty >= PROG_INTENSYWNY_KCAL_MIN
+          ),
+        });
+      })()
+    : null;
 
   /*
    * Zalecenie treningowe na dzis. Pelny plan tygodnia siedzi w statystykach,
@@ -381,6 +413,7 @@ export async function renderDay(c: any, date: string) {
     ),
     zegarekOpoznienie,
     treningDzis,
+    bateria,
   });
 
   /*

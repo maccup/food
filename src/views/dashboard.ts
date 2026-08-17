@@ -2,6 +2,7 @@ import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui'
 import { stanMakro } from '../utils/day-status';
 import { zdanieBilansu, zdanieMasy } from '../utils/watch';
 import { Zalecenie } from '../utils/trening';
+import { Bateria, ZDANIE_BATERII } from '../utils/bateria';
 
 export interface DashboardData {
   date: string;
@@ -48,6 +49,11 @@ export interface DashboardData {
     gotowosc: 'zielona' | 'zolta' | 'czerwona';
     powod: string | null;
   } | null;
+  /**
+   * Bateria dnia z utils/bateria.ts: procent z nocy minus wczorajsze
+   * obciazenia. Null, gdy doba nie ma pomiarow z zegarka.
+   */
+  bateria: Bateria | null;
 }
 
 /**
@@ -127,6 +133,41 @@ export function dashboard(d: DashboardData): string {
       </div>`;
     }
   }
+
+  /*
+   * Bateria na samej gorze panelu, bo odpowiada na pierwsze pytanie poranka:
+   * „z jakim zapasem wstalem". Zdanie z rada dostaje wylacznie dzien
+   * dzisiejszy; dla dnia z przeszlosci to odczyt stanu, nie zalecenie,
+   * ta sama zasada co przy wierszu treningu.
+   *
+   * Kolory celowo bez czerwieni: wysoki zielony, sredni szary, niski
+   * bursztynowy. Niska bateria to informacja o zmeczeniu, nie awaria,
+   * a czerwien nauczylaby ignorowac te, ktore cos znacza (zakazane skladniki).
+   */
+  const bateriaLine = d.bateria
+    ? (() => {
+        const b = d.bateria!;
+        const kolor = b.poziom === 'wysoki' ? 'var(--ok)' : b.poziom === 'sredni' ? 'var(--muted)' : 'var(--warn)';
+        const czesci = b.skladniki.map((s) =>
+          s.typ === 'baza' ? `${s.nazwa.toLowerCase()}: ${s.opis}` : `minus ${s.nazwa.toLowerCase()} (${s.opis})`
+        ).join(' · ');
+        return `<div class="panel-row">
+          <div>
+            <div class="panel-row-label">Bateria dnia</div>
+            <div class="panel-row-main">${b.procent}%${d.isToday ? `. ${esc(ZDANIE_BATERII[b.poziom])}` : ''}</div>
+            <div class="panel-row-why">
+              ${esc(czesci)}${b.braki.length ? ` (${esc(b.braki.join(', '))})` : ''}.
+              Szacunek z nocy, nie pomiar.
+            </div>
+          </div>
+          <div class="panel-row-side">
+            <div style="width:56px;height:10px;border:1px solid var(--hairline);border-radius:5px;overflow:hidden" role="img" aria-label="Bateria ${b.procent} procent">
+              <div style="width:${b.procent}%;height:100%;background:${kolor}"></div>
+            </div>
+          </div>
+        </div>`;
+      })()
+    : '';
 
   const suppLine = d.supplementsTotal
     ? `<div class="panel-row">
@@ -252,9 +293,10 @@ export function dashboard(d: DashboardData): string {
     : '';
 
   // Kolejnosc wiersze przed kafelkami jest celowa. Rano pytanie brzmi
-  // "co mam wziac i kiedy jem", a nie "ile mialem bialka".
+  // "jak wstalem, co mam wziac i kiedy jem", a nie "ile mialem bialka".
   return `<div class="panel">
     <div class="panel-main">
+      ${bateriaLine}
       ${suppLine}
       ${nextWindow}
       ${treningLine}
