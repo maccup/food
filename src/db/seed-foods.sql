@@ -54,6 +54,17 @@ INSERT INTO foods (id, name, group_id, fodmap, fodmap_note, fermented, histamine
   (29, 'tuńczyk',              4, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Rtęć, maks. raz w tygodniu'),
   (30, 'dorsz',                5, 'low',      NULL,        0, 'low',      'none',      0, 0, NULL),
   (31, 'łosoś',                4, 'low',      NULL,        0, 'moderate', 'none',      0, 0, NULL),
+  -- przeglad hfood 18.08.2026 (migracja 070)
+  (167, 'brama (ryba)',            5, 'low',  NULL, 0, 'low',      'none',      0, 0, 'Filet bez skory z cateringu hfood; ryba chuda, liczy sie do grupy ryb'),
+  (168, 'pasta curry',          NULL, 'high', 'gotowa mieszanka, zwykle czosnek i szalotka', 0, 'low', 'none', 0, 0, 'Sklad cateringu nieznany'),
+  (169, 'przyprawa gyros',      NULL, 'high', 'mieszanka, zwykle czosnek i cebula w proszku', 0, 'low', 'none', 0, 0, 'Sklad cateringu nieznany'),
+  (170, 'olej kokosowy',          19, 'low',  NULL, 0, 'low',      'none',      0, 1, 'Tluszcz nasycony; w cateringu ilosci deserowe'),
+  (171, 'tortilla kukurydziana',  11, 'low',  NULL, 0, 'low',      'none',      0, 0, NULL),
+  (172, 'mąka kukurydziana',      11, 'low',  NULL, 0, 'low',      'none',      0, 0, NULL),
+  (173, 'mąka uniwersalna bezglutenowa', 11, 'low', NULL, 0, 'low', 'none',     0, 0, 'Nazwa cateringu; w daniach [BG] to mieszanka bezglutenowa'),
+  (174, 'pomarańcza',           NULL, 'low',  NULL, 0, 'low',      'soluble',   0, 0, 'Cytrus, low FODMAP w porcji'),
+  (175, 'kapusta pekińska',       17, 'low',  'lagodniejsza niz biala', 0, 'low', 'insoluble', 0, 0, NULL),
+  (176, 'rabarbar',             NULL, 'low',  NULL, 0, 'low',      'mixed',     0, 0, 'Low FODMAP; w cateringu jako mus'),
   (32, 'szproty',              4, 'low',      NULL,        0, 'high',     'none',      0, 0, 'Wędzone. Odsączyć olej: tłuszcz z zalewy liczy się do pasma dnia'),
   (33, 'tofu',                NULL, 'low',    NULL,        0, 'low',      'none',      0, 0, 'Twarde tofu jest niskofermentujące, FODMAP zostają w serwatce'),
   (34, 'tempeh',              NULL, 'low',    NULL,        1, 'moderate', 'mixed',     0, 0, 'Soja fermentowana, oligosacharydy już rozłożone'),
@@ -186,7 +197,16 @@ INSERT INTO food_aliases (alias, food_id, ignored) VALUES
   ('ser gouda bez laktozy', 41, 0), ('ser typu "feta" bez laktozy', 41, 0),
   ('ser parmezan', 41, 0), ('wegańska feta', 41, 0), ('ser wegański', 41, 0),
   ('mozzarella bez laktozy', 42, 0), ('wegańska mozzarella', 42, 0),
-  ('ryż', 45, 0), ('ryż biały ugotowany', 45, 0), ('ryż basmati ugotowany', 45, 0), ('kasza gryczana', 47, 0), ('kasza jaglana', 48, 0),
+  ('ryż', 45, 0), ('ryż biały ugotowany', 45, 0), ('ryż basmati ugotowany', 45, 0),
+  -- przeglad hfood 18.08.2026 (migracja 070)
+  ('marchewka mini', 1, 0), ('olej kokosowy', 170, 0), ('ryba brama filet bez skóry', 167, 0),
+  ('chipsy kokosowe', 77, 0), ('kapusta pekińska', 175, 0), ('kiełki rzodkiewki', 119, 0),
+  ('mięso z kurczaka', 23, 0), ('mąka kukurydziana', 172, 0), ('mąka owsiana bezgluteniwa', 51, 0),
+  ('mąka uniwersalna', 173, 0), ('młoda kapusta biała', 151, 0), ('olej roślinny', 61, 0),
+  ('pasta curry', 168, 0), ('pieczywo chrupkie bezglutenowe', 55, 0), ('pomarańcza', 174, 0),
+  ('pomidory krojone', 11, 0), ('przyprawa gyros', 169, 0), ('tortilla kukurydziana', 171, 0),
+  ('rabarbar', 176, 0), ('jagody goji', NULL, 1), ('kolendra suszona', NULL, 1), ('baza z białka roślinnego', NULL, 1), ('błonnik owsiany', NULL, 1),
+  ('drożdze piekarskie', NULL, 1), ('suche', NULL, 1), ('limonka', NULL, 1), ('liść lubczyku suszony', NULL, 1), ('kasza gryczana', 47, 0), ('kasza jaglana', 48, 0),
   ('kasza kukurydziana', 49, 0), ('komosa ryżowa', 50, 0),
   ('płatki owsiane bezglutenowe', 51, 0), ('mąka ryżowa', 52, 0),
   ('mąka gryczana', 52, 0), ('skrobia kukurydziana', 53, 0),
@@ -247,6 +267,10 @@ ON CONFLICT(alias) DO UPDATE SET food_id = excluded.food_id, ignored = excluded.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO restrictions (id, food_id, group_id, level, reason, source, date_from, date_to, status, max_amount) VALUES
+  -- przeglad hfood 18.08.2026 (migracje 070 i 071)
+  (79, 168, NULL, 'limit', 'Gotowa pasta curry: zwykle czosnek i szalotka, skladu catering nie publikuje', 'przeglad hfood 18.08.2026', '2026-08-18', '2026-09-14', 'active', 'sporadycznie, obserwowac wzdecia'),
+  (80, 169, NULL, 'limit', 'Przyprawa gyros: zwykle czosnek i cebula w proszku, skladu catering nie publikuje', 'przeglad hfood 18.08.2026', '2026-08-18', '2026-09-14', 'active', 'sporadycznie, obserwowac wzdecia'),
+  (81, 87,  NULL, 'limit', 'Wysokie FODMAP; catering wsadza melon do salatek owocowych mimo linii low FODMAP', 'analiza hfood, kalendarz decyzji 19.08', '2026-08-18', '2026-09-14', 'active', 'pomijac na talerzu albo do 90 g'),
   -- bezterminowo, niezaleznie od metanu
   (1,  91,  NULL, 'forbidden', 'FODMAP bomba, fruktany', 'food_list.md, czarna lista', '2026-08-03', NULL, 'active', NULL),
   (2,  92,  NULL, 'forbidden', 'FODMAP bomba, fruktany', 'food_list.md, czarna lista', '2026-08-03', NULL, 'active', NULL),
