@@ -30,8 +30,6 @@ const NAV: Array<{
   { href: '/wiecej', icon: '☰', label: 'Więcej', key: 'more', tab: true, hub: true },
   { href: '/kalendarz', icon: '🗓️', label: 'Kalendarz', key: 'calendar', tab: false,
     opis: 'Miesiąc dzień po dniu, przerwy w dostawach cateringu' },
-  { href: '/zakupy', icon: '🛒', label: 'Zakupy', key: 'shopping', tab: false,
-    opis: 'Lista do kupienia i podpowiedzi z brakujących grup' },
   { href: '/restrictions', icon: '🚫', label: 'Wykluczenia', key: 'restrictions', tab: false,
     opis: 'Zakazy, limity i kolejka nierozpoznanych składników' },
   { href: '/ustawienia', icon: '⚙️', label: 'Ustawienia', key: 'settings', tab: false,

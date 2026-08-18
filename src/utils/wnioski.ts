@@ -258,7 +258,7 @@ export function ulozWnioski(d: DaneWnioskow): Wniosek[] {
       poziom: 'zrob', obszar: 'Dieta', ranga: 3,
       tytul: `Dołóż brakujące grupy produktów`,
       opis: `Poniżej reguły tygodniowej: ${lista}${d.grupyPonizej.length > 3 ? ' i dalej' : ''}. ` +
-        `Podpowiedzi, w które dni je wstawić, są na widoku dnia i na liście zakupów.`,
+        `Podpowiedzi, w które dni je wstawić, są na widoku dnia.`,
     });
   }
 

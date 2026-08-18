@@ -331,10 +331,7 @@ export async function renderDay(c: any, date: string) {
   // Poniedzialek biezacego tygodnia, bo reguly braków sa tygodniowe.
   const dow = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
   const weekStart = shiftDate(date, -dow);
-  const [dayGaps, doKupienia] = await Promise.all([
-    loadWeekGaps(db, date, weekStart),
-    db.prepare(`SELECT COUNT(*) AS n FROM shopping WHERE bought = 0`).first<{ n: number }>(),
-  ]);
+  const dayGaps = await loadWeekGaps(db, date, weekStart);
 
   // Najblizsza przerwa w dostawach w ciagu dwoch tygodni. Planowanie, nie retrospekcja.
   const noDelivery = await loadNoDelivery(db);
@@ -579,7 +576,7 @@ export async function renderDay(c: any, date: string) {
     ${eventsHtml}
 
     ${blockTitle('Czego brakuje w tym tygodniu', 'poniedziałek do niedzieli')}
-    ${renderGaps(dayGaps, date, doKupienia?.n ?? 0)}
+    ${renderGaps(dayGaps, date)}
 
     ${blockTitle('Dlaczego kalendarz to zaznacza', 'wszystkie ostrzeżenia dnia')}
     ${ostrzezenia(

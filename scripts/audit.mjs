@@ -100,8 +100,6 @@ const dane = {
     SELECT f.name AS produkt, t.planned_date, t.tested_date, t.amount, t.status, t.verdict
     FROM trials t JOIN foods f ON f.id = t.food_id ORDER BY t.status, t.id DESC`),
 
-  zakupy: q(`SELECT label, note, added_on FROM shopping WHERE bought = 0 ORDER BY added_on`),
-
   // Kandydaci na szablony: to samo wpisywane recznie wiecej niz raz,
   // a nie ma jeszcze pozycji jednym dotknieciem. Stad bierze sie cykliczne
   // uzupelnianie listy szablonow.
@@ -193,7 +191,6 @@ if (dane.kandydaci_na_szablony.length) {
   console.log('  --- brak nowych kandydatow');
 }
 
-sek('testy produktów i lista zakupów');
+sek('testy produktów');
 for (const t of dane.testy) console.log(`  ${t.status.padEnd(8)} ${t.produkt} ${t.amount ?? ''} ${t.verdict ? `→ ${t.verdict}` : ''}`);
 if (!dane.testy.length) console.log('  (brak testów)');
-for (const z of dane.zakupy) console.log(`  do kupienia: ${z.label} ${z.note ? `(${z.note})` : ''}`);

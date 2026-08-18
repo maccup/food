@@ -46,17 +46,8 @@ CREATE TABLE IF NOT EXISTS food_groups (
   examples    TEXT   -- podpowiedz produktow przy braku grupy
 );
 
--- Lista zakupow. Sekcja "czego brakuje" konczy sie czynnoscia, nie informacja.
-CREATE TABLE IF NOT EXISTS shopping (
-  id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  food_id   INTEGER REFERENCES foods(id) ON DELETE CASCADE,
-  label     TEXT NOT NULL,
-  note      TEXT,
-  added_on  TEXT NOT NULL DEFAULT (date('now')),
-  bought    INTEGER NOT NULL DEFAULT 0,
-  bought_on TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_shopping_open ON shopping(bought, added_on);
+-- Lista zakupow USUNIETA 18.08.2026 (migracja 069) decyzja Macka: kupuje,
+-- patrzac na sekcje "czego brakuje", osobna lista byla martwym ogniwem.
 
 CREATE TABLE IF NOT EXISTS foods (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,

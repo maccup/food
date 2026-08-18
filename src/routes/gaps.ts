@@ -29,7 +29,6 @@ export interface WeekGap {
   /** Dni od dzisiaj do niedzieli, w których nie ma ani wpisu, ani pudełka. */
   dniWolne: number;
   dzisStatus: StatusDnia;
-  onShoppingList: boolean;
 }
 
 /**
@@ -51,7 +50,7 @@ export async function loadWeekGaps(
   const dniTygodnia = Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i));
   const weekEnd = dniTygodnia[6];
 
-  const [rules, pokrycie, shopping] = await Promise.all([
+  const [rules, pokrycie] = await Promise.all([
     db.prepare(
       `SELECT r.group_id, r.min_days_per_week, r.severity, g.name, g.provides, g.examples
        FROM coverage_rules r JOIN food_groups g ON g.id = r.group_id
@@ -76,13 +75,7 @@ export async function loadWeekGaps(
          AND m.stan IN ('zjedzony', 'plan')
        GROUP BY f.group_id, m.date, m.stan`
     ).bind(weekStart, weekEnd).all<any>(),
-    db.prepare(
-      `SELECT s.food_id, f.group_id FROM shopping s
-       LEFT JOIN foods f ON f.id = s.food_id WHERE s.bought = 0`
-    ).all<any>(),
   ]);
-
-  const shopSet = new Set((shopping.results ?? []).map((r: any) => r.group_id).filter(Boolean));
 
   // klucz: "grupa|data" -> stan -> produkty
   const bierz = new Map<string, { zjedzone?: string[]; plan?: string[] }>();
@@ -120,7 +113,6 @@ export async function loadWeekGaps(
       brakuje: Math.max(0, need - dniZjedzone - dniPlan),
       dniWolne: dni.filter((d) => d.status === 'brak' && d.date >= date).length,
       dzisStatus: dni.find((d) => d.date === date)?.status ?? 'brak',
-      onShoppingList: shopSet.has(r.group_id),
     };
   });
 }
@@ -166,7 +158,7 @@ function werdykt(g: WeekGap): { tekst: string; klasa: string } {
   };
 }
 
-export function renderGaps(list: WeekGap[], date: string, doKupienia: number): string {
+export function renderGaps(list: WeekGap[], date: string): string {
   // Kolejność: najpierw to, co wymaga ruchu, na końcu to, co zamknięte.
   const waga = (g: WeekGap) =>
     (g.brakuje === 0 ? 2 : g.brakuje > g.dniWolne ? 1 : 0) * 10 +
@@ -199,24 +191,13 @@ export function renderGaps(list: WeekGap[], date: string, doKupienia: number): s
         <div class="tydzien-werdykt ${w.klasa}">${esc(w.tekst)} &middot; ${dzisiaj}</div>
         ${g.examples ? `<div style="font-size:13px;margin-top:4px">${esc(g.examples)}</div>` : ''}
         ${
-          g.brakuje > 0
+          g.brakuje > 0 && g.dzisStatus === 'brak'
             ? `<div class="gap-actions">
-                ${g.dzisStatus === 'brak'
-                  ? `<form method="POST" action="/braki/zjedzone">
-                      <input type="hidden" name="group_id" value="${g.group_id}">
-                      <input type="hidden" name="date" value="${date}">
-                      <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
-                    </form>`
-                  : ''}
-                ${
-                  g.onShoppingList
-                    ? `<span class="flag info" style="align-self:center">na liście zakupów</span>`
-                    : `<form method="POST" action="/zakupy/dodaj">
-                        <input type="hidden" name="group_id" value="${g.group_id}">
-                        <input type="hidden" name="date" value="${date}">
-                        <button type="submit" class="button button-small" style="width:100%">Do kupienia</button>
-                      </form>`
-                }
+                <form method="POST" action="/braki/zjedzone">
+                  <input type="hidden" name="group_id" value="${g.group_id}">
+                  <input type="hidden" name="date" value="${date}">
+                  <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
+                </form>
               </div>`
             : ''
         }
@@ -255,13 +236,7 @@ export function renderGaps(list: WeekGap[], date: string, doKupienia: number): s
       <span><span class="kropka brak"></span> nic z tej grupy</span>
       <span class="tydzien-zrodlo">liczone z twoich wpisów i składów z cateringu, dotknij kropki, żeby zobaczyć produkt</span>
     </div>
-    <div class="list" style="margin:0"><ul>${posortowane.map(wiersz).join('')}</ul></div>
-    <div class="block" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <span style="font-size:13px;color:var(--muted)">
-        ${doKupienia ? `Na liście zakupów: ${doKupienia} ${doKupienia === 1 ? 'pozycja' : 'pozycji'}` : 'Lista zakupów pusta'}
-      </span>
-      <a href="/zakupy" class="button button-small">Zakupy ›</a>
-    </div>`;
+    <div class="list" style="margin:0"><ul>${posortowane.map(wiersz).join('')}</ul></div>`;
 }
 
 /** Odhaczenie grupy jako zjedzonej: zapisuje realny posiłek, żeby reguły to zobaczyły. */

@@ -56,7 +56,7 @@ menu boczne i ekran „Więcej".
 |---|---|
 | Górny pasek, każdy ekran | 🗓️ Kalendarz, 🚫 Wykluczenia, ⚙️ Ustawienia, 🌙 motyw |
 | Pasek na telefonie (`tab: true`) | Dziś, Statystyki, Dopisz, Suple, **Więcej** |
-| Za „Więcej" (`tab: false`) | Kalendarz, Zakupy, Wykluczenia, Ustawienia |
+| Za „Więcej" (`tab: false`) | Kalendarz, Wykluczenia, Ustawienia |
 | Menu boczne od 1024 px | wszystko naraz, **bez** pozycji „Więcej" (`hub: true`) |
 
 **Liczby kolumn nie ma w arkuszu.** Pasek to `grid-auto-flow: column` z `grid-auto-columns:
@@ -66,7 +66,10 @@ zmiana nawigacji wymagała pamiętania o drugim pliku.
 Kolejność w pasku to **kolejność czytania dnia**: najpierw stan (Dziś), potem spojrzenie wstecz
 (Statystyki), dopiero potem dwie akcje (Dopisz, Suple). **Kalendarza w pasku nie ma celowo**:
 siedzi jako ikona w górnym pasku, więc jest pod ręką z każdego ekranu, nie tylko z dolnego.
-Zakupy zeszły za „Więcej". Oba ustawienia na prośbę Maćka 11.08.2026.
+Oba ustawienia na prośbę Maćka 11.08.2026. **Lista zakupów usunięta w całości
+18.08.2026** (ekran, nawigacja, tabela `shopping`, migracja 069): Maciek kupuje,
+patrząc na sekcję „czego brakuje", osobna lista była martwym ogniwem. Nie wracać
+do niej bez jego wyraźnej prośby.
 
 Górny pasek mieści **cztery ikony po 44 px**, co na 402 px zostawia ok. 186 px na tytuł.
 Najdłuższy nagłówek to pełna data („niedziela, 9.08.2026") i przy 19 px gubiła końcówkę roku,
@@ -140,9 +143,9 @@ przekierowuje, żeby nie psuć zakładek.
 
 Reguły w `coverage_rules` są tygodniowe („kiwi 7 dni", „ryby 2 dni"), więc sekcja
 pytająca „czy ta grupa była dzisiaj" pytała o co innego niż reguła. Liczy
-`loadWeekGaps()` w `routes/gaps.ts` i czytają go dwa ekrany: widok dnia i podpowiedzi
-na liście zakupów. **Jedna funkcja, bo dwa liczenia rozjechałyby się przy pierwszej
-zmianie reguły**, a wtedy zakupy kazałyby kupować to, co widok dnia uważa za zrobione.
+`loadWeekGaps()` w `routes/gaps.ts`, czyta go widok dnia. **Funkcja ma jedną kopię**,
+żeby każde miejsce pokazujące pokrycie grup liczyło identycznie (do 18.08.2026 czytała
+ją też lista zakupów, usunięta migracją 069).
 
 - **Plan liczy się jako dzień pokryty.** Pudełka na resztę tygodnia siedzą w bazie od
   importu, więc aplikacja wie, że tuńczyk przyjdzie w sobotę. Do 15.08.2026 sekcja
@@ -730,7 +733,7 @@ npm run audit -- 14 json # surowe dane
 posiłków szacowanych i bez makr, cele bieżącej fazy, pełne składy posiłków
 wpisanych ręcznie, naruszenia wykluczeń, pokrycie grup wobec reguł,
 składniki nierozpoznane przez słownik, odhaczone suplementy, objawy i stolce,
-otwarte testy produktów i listę zakupów.
+i otwarte testy produktów.
 
 ### Co z tym zrobić, kolejność
 
