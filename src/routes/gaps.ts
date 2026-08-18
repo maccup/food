@@ -29,6 +29,10 @@ export interface WeekGap {
   /** Dni od dzisiaj do niedzieli, w których nie ma ani wpisu, ani pudełka. */
   dniWolne: number;
   dzisStatus: StatusDnia;
+  /** Ile porcji dziennie wymaga regula. Null znaczy: jedna wystarcza. */
+  minPorcjeDnia: number | null;
+  /** Ile porcji z tej grupy zjedzono DZIS. */
+  porcjeDzis: number;
 }
 
 /**
@@ -50,9 +54,9 @@ export async function loadWeekGaps(
   const dniTygodnia = Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i));
   const weekEnd = dniTygodnia[6];
 
-  const [rules, pokrycie] = await Promise.all([
+  const [rules, pokrycie, porcjeDzisiaj] = await Promise.all([
     db.prepare(
-      `SELECT r.group_id, r.min_days_per_week, r.severity, g.name, g.provides, g.examples
+      `SELECT r.group_id, r.min_days_per_week, r.min_portions_per_day, r.severity, g.name, g.provides, g.examples
        FROM coverage_rules r JOIN food_groups g ON g.id = r.group_id
        WHERE (r.active_from IS NULL OR r.active_from <= ?) AND (r.active_to IS NULL OR r.active_to >= ?)
        ORDER BY CASE r.severity WHEN 'critical' THEN 1 WHEN 'important' THEN 2 ELSE 3 END, g.name`
@@ -75,7 +79,25 @@ export async function loadWeekGaps(
          AND m.stan IN ('zjedzony', 'plan')
        GROUP BY f.group_id, m.date, m.stan`
     ).bind(weekStart, weekEnd).all<any>(),
+    /*
+     * Porcje DZISIEJSZE osobno, bo pokrycie wyzej liczy dni, nie porcje.
+     * Regula kiwi mowi "2 porcje dziennie" i po jednej sztuce dzien wygladal
+     * na zamkniety, a przycisk znikal w polowie zadania (zgloszone 18.08.2026).
+     */
+    db.prepare(
+      `SELECT f.group_id, COUNT(*) AS n
+       FROM meals m
+       JOIN meal_foods mf ON mf.meal_id = m.id
+       JOIN foods f       ON f.id = mf.food_id
+       WHERE m.date = ? AND m.stan = 'zjedzony'
+         AND f.group_id IS NOT NULL AND f.portion_role = 'porcja'
+       GROUP BY f.group_id`
+    ).bind(date).all<any>(),
   ]);
+
+  const porcjeByGrupa = new Map<number, number>(
+    (porcjeDzisiaj.results ?? []).map((r: any) => [r.group_id, Number(r.n)])
+  );
 
   // klucz: "grupa|data" -> stan -> produkty
   const bierz = new Map<string, { zjedzone?: string[]; plan?: string[] }>();
@@ -113,6 +135,8 @@ export async function loadWeekGaps(
       brakuje: Math.max(0, need - dniZjedzone - dniPlan),
       dniWolne: dni.filter((d) => d.status === 'brak' && d.date >= date).length,
       dzisStatus: dni.find((d) => d.date === date)?.status ?? 'brak',
+      minPorcjeDnia: r.min_portions_per_day ?? null,
+      porcjeDzis: porcjeByGrupa.get(r.group_id) ?? 0,
     };
   });
 }
@@ -176,10 +200,25 @@ export function renderGaps(list: WeekGap[], date: string): string {
 
   const wiersz = (g: WeekGap) => {
     const w = werdykt(g);
+
+    /*
+     * Regula wieloporcjowa (kiwi: 2 dziennie) trzyma przycisk az do domkniecia
+     * porcji, nie pierwszej sztuki. "Dzis juz bylo" po jednej z dwoch porcji
+     * chowalo przycisk w polowie zadania i wygladalo na zepsute.
+     */
+    const porcjeBrakuje = g.minPorcjeDnia !== null && g.minPorcjeDnia > 1
+      && g.porcjeDzis > 0 && g.porcjeDzis < g.minPorcjeDnia;
     const dzisiaj =
-      g.dzisStatus === 'zjedzone' ? 'dziś już było'
-      : g.dzisStatus === 'plan' ? 'dziś jest w pudełku'
-      : 'dziś jeszcze nie';
+      g.dzisStatus === 'zjedzone'
+        ? (g.minPorcjeDnia !== null && g.minPorcjeDnia > 1
+            ? `dziś ${g.porcjeDzis} z ${g.minPorcjeDnia} porcji`
+            : 'dziś już było')
+        : g.dzisStatus === 'plan' ? 'dziś jest w pudełku, odhacz je po zjedzeniu'
+        : 'dziś jeszcze nie';
+
+    // Zwykla grupa: przycisk tylko, gdy dzis pusto i tydzien niedomkniety.
+    // Grupa wieloporcjowa: takze po pierwszej porcji, az do kompletu dnia.
+    const pokazPrzycisk = (g.brakuje > 0 && g.dzisStatus === 'brak') || porcjeBrakuje;
 
     return `<li>
       <div class="item-content"><div class="item-inner" style="display:block;padding:12px 0">
@@ -188,15 +227,17 @@ export function renderGaps(list: WeekGap[], date: string): string {
           <span class="tydzien-licznik ${w.klasa}">${g.dniZjedzone + g.dniPlan} z ${g.need} dni</span>
         </div>
         ${kropki(g, date)}
-        <div class="tydzien-werdykt ${w.klasa}">${esc(w.tekst)} &middot; ${dzisiaj}</div>
+        <div class="tydzien-werdykt ${w.klasa}">${esc(w.tekst)} &middot; ${esc(dzisiaj)}</div>
         ${g.examples ? `<div style="font-size:13px;margin-top:4px">${esc(g.examples)}</div>` : ''}
         ${
-          g.brakuje > 0 && g.dzisStatus === 'brak'
+          pokazPrzycisk
             ? `<div class="gap-actions">
                 <form method="POST" action="/braki/zjedzone">
                   <input type="hidden" name="group_id" value="${g.group_id}">
                   <input type="hidden" name="date" value="${date}">
-                  <button type="submit" class="button button-small button-fill" style="width:100%">Zjedzone dzisiaj</button>
+                  <button type="submit" class="button button-small button-fill" style="width:100%">
+                    ${porcjeBrakuje ? `Zjedzone dzisiaj, porcja ${g.porcjeDzis + 1} z ${g.minPorcjeDnia}` : 'Zjedzone dzisiaj'}
+                  </button>
                 </form>
               </div>`
             : ''
