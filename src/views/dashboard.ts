@@ -108,19 +108,30 @@ export function dashboard(d: DashboardData): string {
       const rest = mins % 60;
       const eaten = upcoming ? d.mealsBySitting.get(upcoming.s) : undefined;
 
+      /*
+       * Kopia z 18.08.2026 po uwadze Macka: „nie wiem, czy moge zjesc o 18,
+       * czy moge juz zjesc". Glowna linia mowi zawsze OD KIEDY, a dopisek
+       * nazywa JEDNA rzecz, ktora trzyma, i potwierdza, ze druga jest
+       * zaliczona. Wczesniejsza wersja wiazala obie godziny w jednym zdaniu
+       * i o przerwie juz minionej pisala czasem przyszlym („minie juz o 16:55").
+       */
       const powod =
         najwczesniej === null
-          ? 'okno z ustawień, dziś jeszcze nic nie zjedzone'
+          ? `Pierwsze jedzenie dziś. ${hhmm(kiedy)} to Twoja pora z ustawień.`
           : decydujePrzerwa
-            ? `przerwa ${d.minGapHours} h od ostatniego kęsa o ${hhmm(d.lastBiteMinutes!)}${
-                oknoMin !== null ? `, okno z ustawień to ${hhmm(oknoMin)}` : ''
+            ? `Trzyma Cię przerwa ${d.minGapHours} h od ostatniego kęsa (${hhmm(d.lastBiteMinutes!)}).${
+                oknoMin !== null && oknoMin <= d.nowMinutes
+                  ? ' Pora z ustawień już otwarta, czekasz tylko na przerwę.'
+                  : ''
               }`
-            : `okno z ustawień, przerwa ${d.minGapHours} h minie już o ${hhmm(najwczesniej)}`;
+            : najwczesniej <= d.nowMinutes
+              ? `Przerwa ${d.minGapHours} h już zaliczona. Czekasz tylko na porę z ustawień.`
+              : `Przerwa ${d.minGapHours} h skończy się o ${hhmm(najwczesniej)}, jeszcze przed porą z ustawień, więc to pora (${hhmm(kiedy)}) decyduje.`;
 
       nextWindow = `<div class="panel-row">
         <div>
           <div class="panel-row-label">Możesz zjeść</div>
-          <div class="panel-row-main">${hhmm(kiedy)}, ${mins === 0 ? 'już teraz' : `za ${h ? `${h} h ` : ''}${rest} min`}</div>
+          <div class="panel-row-main">${mins === 0 ? 'już teraz' : `od ${hhmm(kiedy)}, za ${h ? `${h} h ` : ''}${rest} min`}</div>
           <div class="panel-row-why">${esc(powod)}</div>
         </div>
         <div class="panel-row-side">${eaten ? `${eaten.total} pudełka` : 'brak pudełek'}</div>

@@ -417,11 +417,11 @@ liczą wyłącznie `zjedzony`.
   fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
   pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
   pełną listę wykluczeń jeszcze jeden dzień.
-- **Wiersz „Możesz zjeść" wiąże dwie godziny i mówi, która wygrała.** Pokazywał wyłącznie
-  godzinę okna z ustawień, więc przy zjedzonym późno śniadaniu twierdził, że pora na obiad,
-  choć przerwa jeszcze nie minęła, a użytkownik nie miał jak odróżnić schematu od rachunku.
-  Bierze późniejszą z dwóch: okna z ustawień i „koniec ostatniego kęsa plus `min_gap_hours`".
-  Drugi wiersz zawsze wypisuje powód. Koniec ostatniego podejścia liczy
+- **Wiersz „Możesz zjeść" wiąże dwie godziny i mówi, która wygrała.** Bierze późniejszą
+  z dwóch: okna z ustawień i „koniec ostatniego kęsa plus `min_gap_hours`". Od 18.08.2026
+  (uwaga Maćka „nie wiem, czy mogę zjeść o 18, czy już") główna linia mówi zawsze
+  „od KTÓREJ" albo „już teraz", a dopisek nazywa JEDNĄ trzymającą rzecz i potwierdza,
+  że druga jest zaliczona; o przerwie minionej nie wolno pisać czasem przyszłym. Koniec ostatniego podejścia liczy
   `koniecOstatniegoPodejscia()` z `utils/gaps-stats.ts`, ta sama funkcja i te same reguły
   progu kalorycznego co przerwy przy posiłkach, żeby dwie liczby nie mogły się rozjechać.
 - **Przerwę przerywa napływ składników odżywczych, nie liczba kalorii.** `przerywaPrzerwe()`
