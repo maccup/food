@@ -1,4 +1,4 @@
-import { esc, pl, hhmmToMinutes as toMinutes, minutyNaHhmm as hhmm } from './ui';
+import { esc, pl, minutyNaHhmm as hhmm } from './ui';
 import { stanMakro } from '../utils/day-status';
 import { zdanieBilansu, zdanieMasy } from '../utils/watch';
 import { Zalecenie } from '../utils/trening';
@@ -13,7 +13,6 @@ export interface DashboardData {
   daysLeft: number | null;
   totals: any | null;
   targets: Map<string, { min_value: number | null; max_value: number | null }>;
-  sittingTimes: Record<number, string>;
   mealsBySitting: Map<number, { total: number; eaten: number }>;
   supplementsTotal: number;
   supplementsTaken: number;
@@ -85,66 +84,41 @@ export function dashboard(d: DashboardData): string {
   // Najblizsze okno jedzenia i to, czy przerwa od poprzedniego jest wystarczajaca.
   let nextWindow = '';
   if (d.isToday && d.nowMinutes !== null) {
-    const entries = [1, 2, 3].map((s) => ({ s, t: d.sittingTimes[s], m: toMinutes(d.sittingTimes[s]) }));
-    const upcoming = entries.find((e) => e.m > d.nowMinutes!);
-    const current = [...entries].reverse().find((e) => e.m <= d.nowMinutes!);
-
     /*
-     * Wiersz odpowiada na pytanie „za ile moge zjesc", a nie „kiedy wypada okno".
-     * Wczesniej pokazywal wylacznie godzine z ustawien, wiec przy zjedzonym
-     * pozno sniadaniu mowil, ze pora na obiad, choc przerwa jeszcze nie minela.
-     * Wiaze pozniejsza z dwoch godzin i zawsze pisze, ktora wygrala.
+     * Wiersz liczy WYLACZNIE przerwe od ostatniego kesa. Pory podejsc
+     * z ustawien wypadly z tej logiki 18.08.2026 decyzja Macka: jego dzien
+     * jest ruchomy (raz je o 17, raz o 18), a jedynym narzedziem motoryki po
+     * rezygnacji z prokinetyku jest przerwa, nie godzina na zegarze. Pory
+     * zostaja w ustawieniach tylko jako podpowiedz godzin przy wpisach
+     * wstecznych i nie wolno ich tu przywracac.
      */
     const najwczesniej =
       d.lastBiteMinutes === null ? null : d.lastBiteMinutes + d.minGapHours * 60;
 
-    if (upcoming || (najwczesniej !== null && najwczesniej > d.nowMinutes)) {
-      const oknoMin = upcoming ? upcoming.m : null;
-      const kiedy = Math.max(oknoMin ?? -1, najwczesniej ?? -1);
-      const decydujePrzerwa = najwczesniej !== null && najwczesniej >= (oknoMin ?? -1);
+    const zostalo = [...d.mealsBySitting.values()].reduce((a, x) => a + (x.total - x.eaten), 0);
+    const pudelka = zostalo > 0
+      ? `${zostalo} ${zostalo === 1 ? 'pudełko' : zostalo < 5 ? 'pudełka' : 'pudełek'} do zjedzenia`
+      : 'pudełka zjedzone';
 
-      const mins = Math.max(0, kiedy - d.nowMinutes);
-      const h = Math.floor(mins / 60);
-      const rest = mins % 60;
-      const eaten = upcoming ? d.mealsBySitting.get(upcoming.s) : undefined;
+    const mins = najwczesniej === null ? 0 : Math.max(0, najwczesniej - d.nowMinutes);
+    const h = Math.floor(mins / 60);
+    const rest = mins % 60;
 
-      /*
-       * Kopia z 18.08.2026 po uwadze Macka: „nie wiem, czy moge zjesc o 18,
-       * czy moge juz zjesc". Glowna linia mowi zawsze OD KIEDY, a dopisek
-       * nazywa JEDNA rzecz, ktora trzyma, i potwierdza, ze druga jest
-       * zaliczona. Wczesniejsza wersja wiazala obie godziny w jednym zdaniu
-       * i o przerwie juz minionej pisala czasem przyszlym („minie juz o 16:55").
-       */
-      const powod =
-        najwczesniej === null
-          ? `Pierwsze jedzenie dziś. ${hhmm(kiedy)} to Twoja pora z ustawień.`
-          : decydujePrzerwa
-            ? `Trzyma Cię przerwa ${d.minGapHours} h od ostatniego kęsa (${hhmm(d.lastBiteMinutes!)}).${
-                oknoMin !== null && oknoMin <= d.nowMinutes
-                  ? ' Pora z ustawień już otwarta, czekasz tylko na przerwę.'
-                  : ''
-              }`
-            : najwczesniej <= d.nowMinutes
-              ? `Przerwa ${d.minGapHours} h już zaliczona. Czekasz tylko na porę z ustawień.`
-              : `Przerwa ${d.minGapHours} h skończy się o ${hhmm(najwczesniej)}, jeszcze przed porą z ustawień, więc to pora (${hhmm(kiedy)}) decyduje.`;
+    const powod =
+      najwczesniej === null
+        ? 'Dziś jeszcze nic nie jadłeś, więc przerwa nie biegnie.'
+        : mins === 0
+          ? `Przerwa ${d.minGapHours} h od ostatniego kęsa (${hhmm(d.lastBiteMinutes!)}) minęła o ${hhmm(najwczesniej)}.`
+          : `Trwa przerwa ${d.minGapHours} h od ostatniego kęsa (${hhmm(d.lastBiteMinutes!)}).`;
 
-      nextWindow = `<div class="panel-row">
-        <div>
-          <div class="panel-row-label">Możesz zjeść</div>
-          <div class="panel-row-main">${mins === 0 ? 'już teraz' : `od ${hhmm(kiedy)}, za ${h ? `${h} h ` : ''}${rest} min`}</div>
-          <div class="panel-row-why">${esc(powod)}</div>
-        </div>
-        <div class="panel-row-side">${eaten ? `${eaten.total} pudełka` : 'brak pudełek'}</div>
-      </div>`;
-    } else if (current) {
-      nextWindow = `<div class="panel-row">
-        <div>
-          <div class="panel-row-label">Ostatnie podejście</div>
-          <div class="panel-row-main">${esc(current.t)}, minęło</div>
-        </div>
-        <div class="panel-row-side">przerwa nocna</div>
-      </div>`;
-    }
+    nextWindow = `<div class="panel-row">
+      <div>
+        <div class="panel-row-label">Możesz zjeść</div>
+        <div class="panel-row-main">${mins === 0 ? 'już teraz' : `od ${hhmm(najwczesniej!)}, za ${h ? `${h} h ` : ''}${rest} min`}</div>
+        <div class="panel-row-why">${esc(powod)}</div>
+      </div>
+      <div class="panel-row-side">${esc(pudelka)}</div>
+    </div>`;
   }
 
   /*

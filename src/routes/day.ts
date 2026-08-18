@@ -229,7 +229,6 @@ export async function renderDay(c: any, date: string) {
   const targetBy = new Map<string, any>((targets.results ?? []).map((t: any) => [t.metric, t]));
 
   const settings = await loadSettings(db);
-  const times = sittingTimes(settings);
   const isToday = date === todayWarsaw();
 
   /*
@@ -385,7 +384,6 @@ export async function renderDay(c: any, date: string) {
     daysLeft: phase?.date_to ? Math.max(0, daysBetween(date, phase.date_to)) : null,
     totals: totals ?? null,
     targets: targetBy,
-    sittingTimes: times,
     mealsBySitting: new Map(
       [...bySitting.entries()].map(([s, list]) => [
         s,

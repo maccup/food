@@ -417,11 +417,14 @@ liczą wyłącznie `zjedzony`.
   fazy, dostaje `date_to` równe **ostatniemu dniu fazy poprzedniej**, nie
   pierwszemu dniu nowej. Pomyłka o jeden dzień tu nie krzyczy, tylko trzyma
   pełną listę wykluczeń jeszcze jeden dzień.
-- **Wiersz „Możesz zjeść" wiąże dwie godziny i mówi, która wygrała.** Bierze późniejszą
-  z dwóch: okna z ustawień i „koniec ostatniego kęsa plus `min_gap_hours`". Od 18.08.2026
-  (uwaga Maćka „nie wiem, czy mogę zjeść o 18, czy już") główna linia mówi zawsze
-  „od KTÓREJ" albo „już teraz", a dopisek nazywa JEDNĄ trzymającą rzecz i potwierdza,
-  że druga jest zaliczona; o przerwie minionej nie wolno pisać czasem przyszłym. Koniec ostatniego podejścia liczy
+- **Wiersz „Możesz zjeść" liczy WYŁĄCZNIE przerwę od ostatniego kęsa** („koniec ostatniego
+  kęsa plus `min_gap_hours`"). Pory podejść z ustawień wypadły z tej logiki 18.08.2026
+  decyzją Maćka: jego dzień jest ruchomy (raz je o 17, raz o 18), a jedynym narzędziem
+  motoryki po rezygnacji z prokinetyku jest przerwa, nie godzina na zegarze. Nie przywracać
+  okien do tego wiersza. Główna linia mówi „od KTÓREJ" albo „już teraz", dopisek jednym
+  zdaniem stan przerwy, bok pokazuje ile pudełek zostało. Pory podejść w ustawieniach
+  zostają wyłącznie jako podpowiedź godzin przy odhaczaniu wpisów wstecznych
+  (`sittingTimes` w day.ts). Koniec ostatniego podejścia liczy
   `koniecOstatniegoPodejscia()` z `utils/gaps-stats.ts`, ta sama funkcja i te same reguły
   progu kalorycznego co przerwy przy posiłkach, żeby dwie liczby nie mogły się rozjechać.
 - **Przerwę przerywa napływ składników odżywczych, nie liczba kalorii.** `przerywaPrzerwe()`
