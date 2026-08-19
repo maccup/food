@@ -216,9 +216,10 @@ export function renderGaps(list: WeekGap[], date: string): string {
         : g.dzisStatus === 'plan' ? 'dziś jest w pudełku, odhacz je po zjedzeniu'
         : 'dziś jeszcze nie';
 
-    // Zwykla grupa: przycisk tylko, gdy dzis pusto i tydzien niedomkniety.
-    // Grupa wieloporcjowa: takze po pierwszej porcji, az do kompletu dnia.
-    const pokazPrzycisk = (g.brakuje > 0 && g.dzisStatus === 'brak') || porcjeBrakuje;
+    // Przycisk znika dopiero, gdy dzien jest realnie zjedzony. Grupa w planie
+    // tez go dostaje: wlasna porcja obok cateringu to normalny przypadek
+    // (oliwa na salatce, gdy placuszki z oliwa czekaly w pudelku, 19.08.2026).
+    const pokazPrzycisk = g.dzisStatus !== 'zjedzone' || porcjeBrakuje;
 
     return `<li>
       <div class="item-content"><div class="item-inner" style="display:block;padding:12px 0">
