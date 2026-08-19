@@ -201,11 +201,6 @@ export function renderGaps(list: WeekGap[], date: string): string {
   const wiersz = (g: WeekGap) => {
     const w = werdykt(g);
 
-    /*
-     * Regula wieloporcjowa (kiwi: 2 dziennie) trzyma przycisk az do domkniecia
-     * porcji, nie pierwszej sztuki. "Dzis juz bylo" po jednej z dwoch porcji
-     * chowalo przycisk w polowie zadania i wygladalo na zepsute.
-     */
     const porcjeBrakuje = g.minPorcjeDnia !== null && g.minPorcjeDnia > 1
       && g.porcjeDzis > 0 && g.porcjeDzis < g.minPorcjeDnia;
     const dzisiaj =
@@ -216,10 +211,13 @@ export function renderGaps(list: WeekGap[], date: string): string {
         : g.dzisStatus === 'plan' ? 'dziś jest w pudełku, odhacz je po zjedzeniu'
         : 'dziś jeszcze nie';
 
-    // Przycisk znika dopiero, gdy dzien jest realnie zjedzony. Grupa w planie
-    // tez go dostaje: wlasna porcja obok cateringu to normalny przypadek
-    // (oliwa na salatce, gdy placuszki z oliwa czekaly w pudelku, 19.08.2026).
-    const pokazPrzycisk = g.dzisStatus !== 'zjedzone' || porcjeBrakuje;
+    // Przycisk jest zawsze. Decyzja, czy dorzucic kolejna porcje ponad cel,
+    // nalezy do Macka, nie do aplikacji (19.08.2026). Etykieta tylko
+    // podpowiada stan: licznik porcji w trakcie, "kolejna" po domknieciu dnia.
+    const etykieta = porcjeBrakuje
+      ? `Zjedzone dzisiaj, porcja ${g.porcjeDzis + 1} z ${g.minPorcjeDnia}`
+      : g.dzisStatus === 'zjedzone' ? 'Zjedzone dzisiaj, kolejna porcja'
+      : 'Zjedzone dzisiaj';
 
     return `<li>
       <div class="item-content"><div class="item-inner" style="display:block;padding:12px 0">
@@ -230,19 +228,15 @@ export function renderGaps(list: WeekGap[], date: string): string {
         ${kropki(g, date)}
         <div class="tydzien-werdykt ${w.klasa}">${esc(w.tekst)} &middot; ${esc(dzisiaj)}</div>
         ${g.examples ? `<div style="font-size:13px;margin-top:4px">${esc(g.examples)}</div>` : ''}
-        ${
-          pokazPrzycisk
-            ? `<div class="gap-actions">
-                <form method="POST" action="/braki/zjedzone">
-                  <input type="hidden" name="group_id" value="${g.group_id}">
-                  <input type="hidden" name="date" value="${date}">
-                  <button type="submit" class="button button-small button-fill" style="width:100%">
-                    ${porcjeBrakuje ? `Zjedzone dzisiaj, porcja ${g.porcjeDzis + 1} z ${g.minPorcjeDnia}` : 'Zjedzone dzisiaj'}
-                  </button>
-                </form>
-              </div>`
-            : ''
-        }
+        <div class="gap-actions">
+          <form method="POST" action="/braki/zjedzone">
+            <input type="hidden" name="group_id" value="${g.group_id}">
+            <input type="hidden" name="date" value="${date}">
+            <button type="submit" class="button button-small button-fill" style="width:100%">
+              ${etykieta}
+            </button>
+          </form>
+        </div>
       </div></div>
     </li>`;
   };
